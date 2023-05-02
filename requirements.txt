@@ -2,4 +2,6 @@ hydra-core
 pandas
 numpy
 matplotlib
+stapy
+python-Levenshtein
 ipython
