@@ -1,7 +1,7 @@
 VENV_NAME ?= venv
-VENV_ACTIVATE ?=. ${CURDIR}/$(VENV_NAME)/local/bin/activate
+VENV_ACTIVATE ?=. ${CURDIR}/$(VENV_NAME)/bin/activate
 PYTHON_VERSION ?= python3.10
-PYTHON ?= $(CURDIR)/$(VENV_NAME)/local/bin/$(PYTHON_VERSION)
+PYTHON ?= $(CURDIR)/$(VENV_NAME)/bin/$(PYTHON_VERSION)
 REQUIREMENTS ?= requirements.txt
 
 
