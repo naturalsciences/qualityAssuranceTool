@@ -2,3 +2,55 @@ data_api:
   base_url: https://sensors.naturalsciences.be/sta/v1.1
   things:
     id: 1
+QC:
+  seabed depth:
+    range:
+      - 0.
+      - 10000.
+  bottom hardness:
+    range:
+      - -100
+      - 0
+  altitude above sea bed:
+    range:
+      - 0.
+      - 10000.
+  atmospheric pressure:
+    range:
+      - 870.
+      - 1084.8
+  Speed of wind {wind speed} in the atmosphere by in-situ anemometer:
+    range:
+      - 0.
+      - 115.
+  ship speed:
+    range:
+      - 0.
+      - 13.
+other:
+  downwelling irradiance in the atmosphere:
+  conductivity:
+  water temperature:
+  salinity:
+  Total biomass in water bodies:
+  Pressure (measured variable) exerted by the water body plus atmosphere:
+  CDOM concentration:
+  Direction (towards) of wind relative to True North in the atmosphere by in-situ anemometer:
+  Speed of wind {wind speed} in the atmosphere:
+  atmospheric temperature:
+  partial CO₂ pressure:
+  Offset (THIS NEEDS MORE EXPLANATION!):
+  heading:
+  speed over ground:
+  chlorophyll concentration:
+  Depth (spatial coordinate) relative to water surface in the water body by physical measurement:
+  Sound velocity in the water body:
+  sigma-t:
+  photosynthetically active radiation in the water column:
+  Direction (from) of wind relative to moving platform and heading {wind direction} in the atmosphere by in-situ anemometer:
+  Water flow in the scientific seawater circuit:
+  dissolved O₂ concentration:
+  atmospheric humidity:
+  pH:
+  suspended matter concentration:
+  Sensor Status LI-COR:
