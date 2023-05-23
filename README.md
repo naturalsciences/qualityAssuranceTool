@@ -22,3 +22,20 @@ No install script if foreseen for windows.
 ## License
 
 ## Project status
+
+
+### inspect return obj restructure
+
+- out -> dict
+  - Thing
+    - name
+    - @iot.id
+  - Datastreams
+    - name
+      - @iot.id
+      - unitOfMeasurement
+    - ObservedProperty
+      - name
+        - @iot.id
+    - Observations
+      - count
