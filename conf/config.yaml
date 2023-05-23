@@ -27,12 +27,35 @@ QC:
     range:
       - 0.
       - 13.
-other:
   downwelling irradiance in the atmosphere:
+    range:
+      - 0.
+      - 440.
   conductivity:
+    range:
+      - 3.
+      - 6.
   water temperature:
+    range:
+      - -2.
+      - 30.
   salinity:
+    range:
+      - 29.
+      - 36.
   Total biomass in water bodies:
+    range:
+      - 0.
+      - 3429904.
+  heading: # don't understand this. shouldn't this be -180 to 180?
+    range:
+      - -1.6
+      - 15.
+  speed over ground:
+    range:
+      - 0.
+      - 10.
+other:
   Pressure (measured variable) exerted by the water body plus atmosphere:
   CDOM concentration:
   Direction (towards) of wind relative to True North in the atmosphere by in-situ anemometer:
@@ -40,8 +63,6 @@ other:
   atmospheric temperature:
   partial CO₂ pressure:
   Offset (THIS NEEDS MORE EXPLANATION!):
-  heading:
-  speed over ground:
   chlorophyll concentration:
   Depth (spatial coordinate) relative to water surface in the water body by physical measurement:
   Sound velocity in the water body:
