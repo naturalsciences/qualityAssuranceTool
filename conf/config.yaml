@@ -1,3 +1,5 @@
+# hydra:
+#   verbose: __main__
 data_api:
   base_url: https://sensors.naturalsciences.be/sta/v1.1
   things:
@@ -55,23 +57,58 @@ QC:
     range:
       - 0.
       - 10.
-other:
   Pressure (measured variable) exerted by the water body plus atmosphere:
-  CDOM concentration:
+    range:
+      - 3.
+      - 5.
   Direction (towards) of wind relative to True North in the atmosphere by in-situ anemometer:
-  Speed of wind {wind speed} in the atmosphere:
+    range:
+      - 4.
+      - 352.
   atmospheric temperature:
+    range:
+      - -20.
+      - 40.
+  chlorophyll concentration:
+    range:
+      - 0.
+      - 20.
+  Depth (spatial coordinate) relative to water surface in the water body by physical measurement:
+    range:
+      - 0.
+      - 1500.
+  Water flow in the scientific seawater circuit:
+    range:
+      - 0.
+      - 10.
+  sigma-t:
+    range:
+      - 3.
+      - 1030.
+  photosynthetically active radiation in the water column:
+    range:
+      - 0.5
+      - 700.
+  dissolved O₂ concentration:
+    range:
+      - 0.3 # seems too low? or is very deep?
+      - 352.
+  atmospheric humidity:
+    range:
+      - 25
+      - 100
+  suspended matter concentration:
+    range:
+      - 0. # most values are negative
+      - 6000.
+
+other:
+  Sound velocity in the water body: # strange values
+
+  CDOM concentration: # no observations?
+  Speed of wind {wind speed} in the atmosphere: # no observations?
   partial CO₂ pressure:
   Offset (THIS NEEDS MORE EXPLANATION!):
-  chlorophyll concentration:
-  Depth (spatial coordinate) relative to water surface in the water body by physical measurement:
-  Sound velocity in the water body:
-  sigma-t:
-  photosynthetically active radiation in the water column:
-  Direction (from) of wind relative to moving platform and heading {wind direction} in the atmosphere by in-situ anemometer:
-  Water flow in the scientific seawater circuit:
-  dissolved O₂ concentration:
-  atmospheric humidity:
   pH:
-  suspended matter concentration:
   Sensor Status LI-COR:
+  Direction (from) of wind relative to moving platform and heading {wind direction} in the atmosphere by in-situ anemometer:
