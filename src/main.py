@@ -185,6 +185,37 @@ def qc_observation(iot_id: int, function: Callable):
     return df_
 
 
+def get_results_n_datastreams(n, skip):
+    query = f'https://sensors.naturalsciences.be/sta/v1.1/Things(1)' \
+            f'?$select=Datastreams&' \
+            f'$expand=Datastreams($top={n};$skip={skip};' \
+            f'$select=@iot.id,unitOfMeasurement/name,Observations;$expand=Observations($top=1000;$select=@iot.id,result),' \
+            f'ObservedProperty($select=@iot.id,name))'
+    request = json.loads(
+        Query(Entity.Thing).get_with_retry(
+            query
+        ).content)
+    base_query = Query(Entity.Thing).entity_id(1)
+    out_query = base_query.select(Properties.name, Properties.iot_id, Entities.Datastreams)
+    test = out_query.select(Entities.Datastreams,Entities.ObservedProperty,Entities.Observations).get_data_sets(query=query)
+    return request
+
+
+def datastreams_request_to_df(request_datastreams):
+    df = pd.DataFrame()
+    for di in request_datastreams:
+        observations_list = di.get(Entities.Observations)
+        if observations_list:
+            df_i = pd.DataFrame(observations_list).astype({Properties.iot_id: int, "result": float})
+            df_i["datastream_id"] = int(di.get(Properties.iot_id))
+            df_i["observation_type"] = di.get(Entities.ObservedProperty).get(Properties.name)
+            k1, k2 = Properties.unitOfMeasurement.split('/', 1)
+            df_i["units"] = di.get(k1).get(k2)
+            df = pd.concat([df, df_i], ignore_index=True)
+
+    return df
+
+
 log = logging.getLogger(__name__)
 
 
@@ -192,39 +223,46 @@ log = logging.getLogger(__name__)
 def main(cfg):
     log.info("Start")
     stapy.set_sta_url(cfg.data_api.base_url)
-    summary = inspect_datastreams_thing(1)
-    # print(f"{len(summary.get('Datastreams'))=}")
-    # print(f"{summary.get('Observations').get('count')=}")
-    # summary2 = inspect_datastreams_thing(2)
-    # print(f"{summary2.get('Observations').get('count')=}")
-    # # summary3 = inspect_datastreams_thing(3)
-    # # print(f"{summary3.get('Observations').get('count')=}")
-    # # summary4 = inspect_datastreams_thing(4)
-    # # print(f"{summary4.get('Observations').get('count')=}")
-    # # summary6 = inspect_datastreams_thing(6)
-    # # print(f"{summary6.get('Observations').get('count')=}")
+    # summary = inspect_datastreams_thing(1)
+    ## # print(f"{len(summary.get('Datastreams'))=}")
+    ## # print(f"{summary.get('Observations').get('count')=}")
+    ## # summary2 = inspect_datastreams_thing(2)
+    ## # print(f"{summary2.get('Observations').get('count')=}")
+    ## # # summary3 = inspect_datastreams_thing(3)
+    ## # # print(f"{summary3.get('Observations').get('count')=}")
+    ## # # summary4 = inspect_datastreams_thing(4)
+    ## # # print(f"{summary4.get('Observations').get('count')=}")
+    ## # # summary6 = inspect_datastreams_thing(6)
+    ## # # print(f"{summary6.get('Observations').get('count')=}")
 
     # summary = extend_summary_with_result_inspection(summary)
 
-    dict_out = {k: [] for k in cfg.QC}
-    dict_out = get_iot_id_datastreams_in_qc(dict_out, summary)
+    ## dict_out = {k: [] for k in cfg.QC}
+    ## dict_out = get_iot_id_datastreams_in_qc(dict_out, summary)
 
-    logging.debug(f"Start loop items dict out.")
-    for prop_name, list_ids in dict_out.items():
-        min_, max_ = cfg.QC.get(prop_name).get("range")
-        log.debug(f"Start qc {prop_name} with nb_ids: {len(list_ids)}")
-        for iot_id in list_ids:
-            df_ = qc_observation(iot_id,
-                                 function=partial(min_max_check_values, min_=min_, max_=max_))
-            # # flags_i = [(vi >= min_) & (vi <= max_) for vi in result_]
-            # if not flags_i.all():
-            #     print(f"issue with {prop_name} stream {iot_id}")
-            #     print(f"{np.array(result_)[~np.array(flags_i)]}")
+    ## logging.debug(f"Start loop items dict out.")
+    ## for prop_name, list_ids in dict_out.items():
+    ##     min_, max_ = cfg.QC.get(prop_name).get("range")
+    ##     log.debug(f"Start qc {prop_name} with nb_ids: {len(list_ids)}")
+    ##     for iot_id in list_ids:
+    ##         df_ = qc_observation(iot_id,
+    ##                              function=partial(min_max_check_values, min_=min_, max_=max_))
+    ##         # # flags_i = [(vi >= min_) & (vi <= max_) for vi in result_]
+    ##         # if not flags_i.all():
+    ##         #     print(f"issue with {prop_name} stream {iot_id}")
+    ##         #     print(f"{np.array(result_)[~np.array(flags_i)]}")
 
-    # logging.debug(f"Start writing inspect file.")
-    # with open('inspect.json', 'w', encoding='utf-8') as f:
-    #     json.dump(summary, f, ensure_ascii=False, indent=4)
-    logging.info(f"Done.")
+    ## # logging.debug(f"Start writing inspect file.")
+    ## # with open('inspect.json', 'w', encoding='utf-8') as f:
+    ## #     json.dump(summary, f, ensure_ascii=False, indent=4)
+    ## logging.info(f"Done.")
+
+
+    # sorting --> based on date?
+    content = get_results_n_datastreams(10, 0)
+    df = datastreams_request_to_df(content[Entities.Datastreams])
+    print(f"{type(content)=}")
+    print(f"{content}")
 
 
 if __name__ == "__main__":
