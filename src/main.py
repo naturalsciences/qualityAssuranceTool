@@ -11,6 +11,7 @@ import pandas as pd
 import logging
 from functools import partial
 from typing import Callable
+from math import ceil
 
 
 class BaseQueryStrEnum(StrEnum):
@@ -27,6 +28,7 @@ class Properties(StrEnum):
 
 class Settings(BaseQueryStrEnum):
     top = auto()
+    skip = auto()
     count = auto()
 
     def __call__(self, value):
@@ -53,11 +55,6 @@ class Qactions(BaseQueryStrEnum):
             str_arg = ','.join(arg)
             out = f"{str(self)}={str_arg}"
         return out
-
-
-def get_names(query: Query) -> list[str]:
-    names = query.select("name").get_data_sets()
-    return names
 
 
 def inspect_datastreams_thing(entity_id: int) -> (str, list[dict[str,str | int]]):
@@ -88,7 +85,6 @@ def inspect_datastreams_thing(entity_id: int) -> (str, list[dict[str,str | int]]
         out_query.get_with_retry(
             out_query.get_query() + '&' + additional_query
         ).content)
-    print(f"{out_query.get_query() + '&' + additional_query=}")
     log.debug(f"Start reformatting query.")
     observ_properties, observ_count = zip(*[(ds.get(Entities.ObservedProperty).get(Properties.name), ds.get("Observations@iot.count")) for ds in request.get(Entities.Datastreams)])
 
@@ -156,7 +152,7 @@ def testing_patch():
 
 
 def min_max_check_values(values: list[float], min_: float, max_: float):
-    out = np.logical_and(values >= min_, values >= max_)
+    out = np.logical_and(values >= min_, values <= max_)
     return out
 
 
@@ -170,34 +166,66 @@ def get_iot_id_datastreams_in_qc(dict_in: dict, summary_dict: dict):
     return dict_out
 
 
-def qc_observation(iot_id: int, function: Callable):
-    log.info(f"start qc {iot_id}")
+def get_id_result_lists(iot_id):
     id_list, result_list = Query(Entity.Datastream).entity_id(iot_id).sub_entity(Entity.Observation).select(
         Properties.iot_id, "result").get_data_sets()
     log.info(f"call done")
+    return id_list, result_list
+
+
+def qc_df(df_in, function):
+    df_out = copy.deepcopy(df_in)
+    df_out["bool"] = function(df_out["result"].array)
+    df_out.loc[df_out["bool"], "qc_flag"] = 2
+    df_out.loc[~df_out["bool"], "qc_flag"] = 3
+    return df_out
+
+
+def qc_observation(iot_id: int, function: Callable):
+    log.info(f"start qc {iot_id}")
+    id_list, result_list = get_id_result_lists(iot_id)
     df_ = pd.DataFrame.from_dict({Properties.iot_id: id_list,
                                   "result": result_list}) \
         .astype({Properties.iot_id: int, "result": float})
-    df_["bool"] = function(df_["result"].array)
-    df_.loc[df_["bool"], "qc_flag"] = 2
-    df_.loc[~df_["bool"], "qc_flag"] = 3
-    log.info(f"df creation done")
-    return df_
+    return qc_df(df_, function)
 
 
-def get_results_n_datastreams(n, skip):
-    query = f'https://sensors.naturalsciences.be/sta/v1.1/Things(1)' \
-            f'?$select=Datastreams&' \
-            f'$expand=Datastreams($top={n};$skip={skip};' \
-            f'$select=@iot.id,unitOfMeasurement/name,Observations;$expand=Observations($top=1000;$select=@iot.id,result),' \
-            f'ObservedProperty($select=@iot.id,name))'
+def get_results_n_datastreams(n, skip, entity_id=1):
+    top_observations = 1000
+    base_query = Query(Entity.Thing).entity_id(entity_id)
+    out_query = base_query.select(Entities.Datastreams)
+    #  additional_query = Qactions.expand([
+    Q = Qactions.expand([
+        Entities.Datastreams([
+            Settings.top(n),
+            Settings.skip(skip),
+            Qactions.select([
+                Properties.iot_id, Properties.unitOfMeasurement, Entities.Observations
+            ]),
+            Qactions.expand([
+                Entities.Observations([
+                    Settings.top(top_observations),
+                    Qactions.select([
+                        Properties.iot_id,
+                        'result'
+                    ])
+                ]),
+                Entities.ObservedProperty([
+                    Qactions.select([
+                        Properties.iot_id,
+                        Properties.name
+                    ])
+                ])
+            ])
+        ])
+    ])
     request = json.loads(
         Query(Entity.Thing).get_with_retry(
-            query
+            out_query.get_query() + '&' + Q
         ).content)
-    base_query = Query(Entity.Thing).entity_id(1)
-    out_query = base_query.select(Properties.name, Properties.iot_id, Entities.Datastreams)
-    test = out_query.select(Entities.Datastreams,Entities.ObservedProperty,Entities.Observations).get_data_sets(query=query)
+    # base_query = Query(Entity.Thing).entity_id(1)
+    # out_query = base_query.select(Properties.name, Properties.iot_id, Entities.Datastreams)
+    # test = out_query.select(Entities.Datastreams,Entities.ObservedProperty,Entities.Observations).get_data_sets(query=query)
     return request
 
 
@@ -212,8 +240,11 @@ def datastreams_request_to_df(request_datastreams):
             k1, k2 = Properties.unitOfMeasurement.split('/', 1)
             df_i["units"] = di.get(k1).get(k2)
             df = pd.concat([df, df_i], ignore_index=True)
-
     return df
+
+
+def qc_on_df_per_datastream(df, datastream_id, datastream_name):
+    pass
 
 
 log = logging.getLogger(__name__)
@@ -223,46 +254,34 @@ log = logging.getLogger(__name__)
 def main(cfg):
     log.info("Start")
     stapy.set_sta_url(cfg.data_api.base_url)
-    # summary = inspect_datastreams_thing(1)
-    ## # print(f"{len(summary.get('Datastreams'))=}")
-    ## # print(f"{summary.get('Observations').get('count')=}")
-    ## # summary2 = inspect_datastreams_thing(2)
-    ## # print(f"{summary2.get('Observations').get('count')=}")
-    ## # # summary3 = inspect_datastreams_thing(3)
-    ## # # print(f"{summary3.get('Observations').get('count')=}")
-    ## # # summary4 = inspect_datastreams_thing(4)
-    ## # # print(f"{summary4.get('Observations').get('count')=}")
-    ## # # summary6 = inspect_datastreams_thing(6)
-    ## # # print(f"{summary6.get('Observations').get('count')=}")
+    summary = inspect_datastreams_thing(1)
 
-    # summary = extend_summary_with_result_inspection(summary)
+    df_all = pd.DataFrame()
+    query_nb = "https://sensors.naturalsciences.be/sta/v1.1/Things(1)?$expand=Datastreams($count=true;$select=@iot.id)&$select=Datastreams/@iot.count"
+    nb_datastreams = json.loads(Query(Entity.Datastream).get_with_retry(query_nb).content).get("Datastreams@iot.count")
+    log.debug(f"{nb_datastreams=}")
+    nb_streams_per_call = 10
+    for i in range(ceil(nb_datastreams/nb_streams_per_call)):
+        df_i = datastreams_request_to_df(
+            get_results_n_datastreams(n=nb_streams_per_call, skip=nb_streams_per_call * i)[Entities.Datastreams])
+        log.debug(f"{df_i.shape[0]=}")
+        df_all = pd.concat([df_all, df_i],
+                           ignore_index=True)
+    log.debug(f"{df_all.shape=}")
+    log.debug("done with df_all")
 
-    ## dict_out = {k: [] for k in cfg.QC}
-    ## dict_out = get_iot_id_datastreams_in_qc(dict_out, summary)
-
-    ## logging.debug(f"Start loop items dict out.")
-    ## for prop_name, list_ids in dict_out.items():
-    ##     min_, max_ = cfg.QC.get(prop_name).get("range")
-    ##     log.debug(f"Start qc {prop_name} with nb_ids: {len(list_ids)}")
-    ##     for iot_id in list_ids:
-    ##         df_ = qc_observation(iot_id,
-    ##                              function=partial(min_max_check_values, min_=min_, max_=max_))
-    ##         # # flags_i = [(vi >= min_) & (vi <= max_) for vi in result_]
-    ##         # if not flags_i.all():
-    ##         #     print(f"issue with {prop_name} stream {iot_id}")
-    ##         #     print(f"{np.array(result_)[~np.array(flags_i)]}")
-
-    ## # logging.debug(f"Start writing inspect file.")
-    ## # with open('inspect.json', 'w', encoding='utf-8') as f:
-    ## #     json.dump(summary, f, ensure_ascii=False, indent=4)
-    ## logging.info(f"Done.")
-
-
-    # sorting --> based on date?
-    content = get_results_n_datastreams(10, 0)
-    df = datastreams_request_to_df(content[Entities.Datastreams])
-    print(f"{type(content)=}")
-    print(f"{content}")
+    df_all["bool"] = None
+    df_all["qc_flag"] = None
+    for _, row in df_all[['datastream_id', 'units', "observation_type"]].drop_duplicates().iterrows():
+        d_id_i, u_i, ot_i = row.values
+        df_sub = df_all.loc[df_all["datastream_id"] == d_id_i]
+        cfg_ds_i = cfg.get("QC").get(ot_i, {})
+        if cfg_ds_i:
+            min_, max_ = cfg.get("QC").get(ot_i).get("range")
+            function_i = partial(min_max_check_values, min_=min_, max_=max_)
+            df_sub = qc_df(df_sub, function_i)
+            df_all.loc[df_sub.index] = df_sub
+    log.info("End")
 
 
 if __name__ == "__main__":

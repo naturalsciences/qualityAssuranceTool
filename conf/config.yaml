@@ -51,8 +51,8 @@ QC:
       - 3429904.
   heading: # don't understand this. shouldn't this be -180 to 180?
     range:
-      - -1.6
-      - 15.
+      - 0.
+      - 360.
   speed over ground:
     range:
       - 0.
