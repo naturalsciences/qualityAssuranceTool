@@ -39,3 +39,23 @@ No install script if foreseen for windows.
         - @iot.id
     - Observations
       - count
+
+## TODO
+
+- [ ] Patch on test db
+- [ ] REF iterrows() -> function on columns
+- [ ] filter on date/time/...
+- [ ] Z needed in ISO time
+- [ ] put flag to BAD 
+- [ ] 160, 170 first sensors to focus on
+  - waterflow is first one to check
+- [ ] geolocation
+  - feature of interest -> is the point close to the one before
+  - one location is shared by all datastreams, can be done for all
+
+## Questions
+
+- observedArea
+  - are the coordinates based on the coordinates of the observations? or preset? If preset, could be checked if in box
+  - what coordinate reference system is used?
+  - 

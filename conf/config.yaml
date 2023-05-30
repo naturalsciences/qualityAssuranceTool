@@ -4,6 +4,16 @@ data_api:
   base_url: https://sensors.naturalsciences.be/sta/v1.1
   things:
     id: 1
+  datastreams:
+    top: 10
+  observations:
+    top: 100000
+  filter:
+    datatime:
+      format: "%Y"
+      range:
+        - 2021
+        - 2022
 QC:
   seabed depth:
     range:

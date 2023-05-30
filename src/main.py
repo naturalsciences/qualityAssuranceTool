@@ -12,6 +12,7 @@ import logging
 from functools import partial
 from typing import Callable
 from math import ceil
+from datetime import datetime
 
 
 class BaseQueryStrEnum(StrEnum):
@@ -24,6 +25,7 @@ class Properties(StrEnum):
     unitOfMeasurement = 'unitOfMeasurement/name'
     name = auto()
     iot_id = "@iot.id"
+    coordinates = 'feature/coordinates'
 
 
 class Settings(BaseQueryStrEnum):
@@ -39,6 +41,7 @@ class Entities(StrEnum):
     Datastreams = auto()
     ObservedProperty = auto()
     Observations = auto()
+    FeatureOfInterest = auto()
 
     def __call__(self, args: list[Properties] | list['Qactions']):
         out = f"{self}({';'.join(args)})"
@@ -48,6 +51,7 @@ class Entities(StrEnum):
 class Qactions(BaseQueryStrEnum):
     expand = auto()
     select = auto()
+    filter = auto()
 
     def __call__(self, arg: Entities | Properties | list[Properties] | list[Entities]):
         out = ""
@@ -190,8 +194,7 @@ def qc_observation(iot_id: int, function: Callable):
     return qc_df(df_, function)
 
 
-def get_results_n_datastreams(n, skip, entity_id=1):
-    top_observations = 1000
+def get_results_n_datastreams(n, skip, entity_id, top_observations):
     base_query = Query(Entity.Thing).entity_id(entity_id)
     out_query = base_query.select(Entities.Datastreams)
     #  additional_query = Qactions.expand([
@@ -208,6 +211,13 @@ def get_results_n_datastreams(n, skip, entity_id=1):
                     Qactions.select([
                         Properties.iot_id,
                         'result'
+                    ]),
+                    Qactions.expand([
+                        Entities.FeatureOfInterest([
+                            Qactions.select([
+                                Properties.coordinates
+                            ])
+                        ])
                     ])
                 ]),
                 Entities.ObservedProperty([
@@ -237,9 +247,12 @@ def datastreams_request_to_df(request_datastreams):
             df_i = pd.DataFrame(observations_list).astype({Properties.iot_id: int, "result": float})
             df_i["datastream_id"] = int(di.get(Properties.iot_id))
             df_i["observation_type"] = di.get(Entities.ObservedProperty).get(Properties.name)
+            df_i["observation_type"] = df_i["observation_type"].astype("category")
             k1, k2 = Properties.unitOfMeasurement.split('/', 1)
             df_i["units"] = di.get(k1).get(k2)
+            df_i["units"] = df_i["units"].astype("category")
             df = pd.concat([df, df_i], ignore_index=True)
+
     return df
 
 
@@ -254,16 +267,28 @@ log = logging.getLogger(__name__)
 def main(cfg):
     log.info("Start")
     stapy.set_sta_url(cfg.data_api.base_url)
-    summary = inspect_datastreams_thing(1)
+    thing_id = cfg.data_api.things.id
+    nb_streams_per_call = cfg.data_api.datastreams.top
+    top_observations = cfg.data_api.observations.top
+    base_query = Query(Entity.Thing).entity_id(thing_id).select("Datastreams/@iot.count")
+    # summary = inspect_datastreams_thing(1)
 
     df_all = pd.DataFrame()
-    query_nb = "https://sensors.naturalsciences.be/sta/v1.1/Things(1)?$expand=Datastreams($count=true;$select=@iot.id)&$select=Datastreams/@iot.count"
-    nb_datastreams = json.loads(Query(Entity.Datastream).get_with_retry(query_nb).content).get("Datastreams@iot.count")
+    add_query_nb = Qactions.expand([
+        Entities.Datastreams(
+            [Settings.count('true'),
+             Qactions.select(
+                 [Properties.iot_id]
+             )]
+        )
+    ])
+    nb_datastreams = json.loads(
+        Query(Entity.Datastream).get_with_retry(base_query.get_query() + '&' + add_query_nb).content)\
+        .get("Datastreams@iot.count")
     log.debug(f"{nb_datastreams=}")
-    nb_streams_per_call = 10
     for i in range(ceil(nb_datastreams/nb_streams_per_call)):
         df_i = datastreams_request_to_df(
-            get_results_n_datastreams(n=nb_streams_per_call, skip=nb_streams_per_call * i)[Entities.Datastreams])
+            get_results_n_datastreams(n=nb_streams_per_call, skip=nb_streams_per_call * i, entity_id=thing_id, top_observations=top_observations)[Entities.Datastreams])
         log.debug(f"{df_i.shape[0]=}")
         df_all = pd.concat([df_all, df_i],
                            ignore_index=True)
@@ -281,6 +306,9 @@ def main(cfg):
             function_i = partial(min_max_check_values, min_=min_, max_=max_)
             df_sub = qc_df(df_sub, function_i)
             df_all.loc[df_sub.index] = df_sub
+    df_all["observation_type"] = df_all["observation_type"].astype("category")
+    df_all["units"] = df_all["units"].astype("category")
+    print(f"{df_all.shape=}")
     log.info("End")
 
 
