@@ -49,7 +49,7 @@ No install script if foreseen for windows.
 - [ ] put flag to BAD 
 - [ ] 160, 170 first sensors to focus on
   - waterflow is first one to check
-- [ ] geolocation
+- [ ] geolocation -> when requesting expand feature of interest -> goes from 1 to 13 seconds!!
   - feature of interest -> is the point close to the one before
   - one location is shared by all datastreams, can be done for all
 

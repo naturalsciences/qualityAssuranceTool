@@ -210,7 +210,7 @@ def get_results_n_datastreams(n, skip, entity_id, top_observations):
                     Settings.top(top_observations),
                     Qactions.select([
                         Properties.iot_id,
-                        'result'
+                        'result',
                     ]),
                     Qactions.expand([
                         Entities.FeatureOfInterest([
@@ -242,8 +242,12 @@ def get_results_n_datastreams(n, skip, entity_id, top_observations):
 def datastreams_request_to_df(request_datastreams):
     df = pd.DataFrame()
     for di in request_datastreams:
+        data_coordinates = di.get(Entities.FeatureOfInterest, {})
+        if data_coordinates:
+            del di[Entities.FeatureOfInterest]
         observations_list = di.get(Entities.Observations)
         if observations_list:
+
             df_i = pd.DataFrame(observations_list).astype({Properties.iot_id: int, "result": float})
             df_i["datastream_id"] = int(di.get(Properties.iot_id))
             df_i["observation_type"] = di.get(Entities.ObservedProperty).get(Properties.name)

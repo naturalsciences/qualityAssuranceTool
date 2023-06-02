@@ -16,9 +16,12 @@ data_api:
         - 2022
 QC:
   seabed depth:
-    range:
-      - 0.
-      - 10000.
+    min-max:
+      range:
+        - 0.
+        - 10000.
+      gradient:
+
   bottom hardness:
     range:
       - -100
