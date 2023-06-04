@@ -58,4 +58,6 @@ No install script if foreseen for windows.
 - observedArea
   - are the coordinates based on the coordinates of the observations? or preset? If preset, could be checked if in box
   - what coordinate reference system is used?
-  - 
+  - ?
+
+

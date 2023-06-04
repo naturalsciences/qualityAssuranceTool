@@ -8,19 +8,20 @@ data_api:
     top: 10
   observations:
     top: 100000
-  filter:
-    datatime:
-      format: "%Y"
-      range:
-        - 2021
-        - 2022
+  # filter:
+  #   phenomenonTime:
+  #     format: "%Y-%m"
+  #     range:
+  #       - 1002-01
+  #       - 3003-01
+other:
+  pickle:
+    path: ${hydra:runtime.cwd}/features.pkl
 QC:
   seabed depth:
-    min-max:
-      range:
-        - 0.
-        - 10000.
-      gradient:
+    range:
+      - 0.
+      - 10000.
 
   bottom hardness:
     range:
@@ -115,7 +116,7 @@ QC:
       - 0. # most values are negative
       - 6000.
 
-other:
+ignored:
   Sound velocity in the water body: # strange values
 
   CDOM concentration: # no observations?

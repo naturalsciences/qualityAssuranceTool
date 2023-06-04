@@ -4,7 +4,7 @@ from stapy import Query, Entity, Patch
 from functools import reduce
 import copy
 import json
-from enum import auto
+from enum import auto, nonmember
 from strenum import StrEnum
 import numpy as np
 import pandas as pd
@@ -12,7 +12,14 @@ import logging
 from functools import partial
 from typing import Callable
 from math import ceil
-from datetime import datetime
+from datetime import datetime, timedelta
+import pickle
+import os.path
+from pathlib import Path
+
+
+iso_str_format = '%Y-%m-%dT%H:%M:%S.%fZ'
+iso_str_format2 = '%Y-%m-%dT%H:%M:%SZ'
 
 
 class BaseQueryStrEnum(StrEnum):
@@ -26,6 +33,7 @@ class Properties(StrEnum):
     name = auto()
     iot_id = "@iot.id"
     coordinates = 'feature/coordinates'
+    phenomenonTime = auto()
 
 
 class Settings(BaseQueryStrEnum):
@@ -44,20 +52,47 @@ class Entities(StrEnum):
     FeatureOfInterest = auto()
 
     def __call__(self, args: list[Properties] | list['Qactions']):
-        out = f"{self}({';'.join(args)})"
+        out = f"{self}({';'.join(list(filter(None, args)))})"
         return out
+
+    def __repr__(self):
+        return f"{self.name}"
 
 
 class Qactions(BaseQueryStrEnum):
     expand = auto()
     select = auto()
-    filter = auto()
+    orderby = auto()
 
     def __call__(self, arg: Entities | Properties | list[Properties] | list[Entities]):
         out = ""
         if isinstance(arg, list):
             str_arg = ','.join(arg)
             out = f"{str(self)}={str_arg}"
+        return out
+
+
+class Filter(BaseQueryStrEnum):
+    filter = auto()
+
+    def __call__(self, condition: str) -> str:
+        out = ''
+        if condition:
+            out = f"{str(self)}={condition}"
+        return out
+
+
+class Order(BaseQueryStrEnum):
+    orderBy = auto()
+
+    @nonmember
+    class OrderOption(StrEnum):
+        desc = auto()
+        asc = auto()
+
+    def __call__(self, property: BaseQueryStrEnum, option: str) -> str:
+        option_ = self.OrderOption(option)
+        out = f"{str(self)}={property} {option_}"
         return out
 
 
@@ -194,9 +229,24 @@ def qc_observation(iot_id: int, function: Callable):
     return qc_df(df_, function)
 
 
-def get_results_n_datastreams(n, skip, entity_id, top_observations):
+def filter_cfg_to_query(filter_cfg):
+    filter_condition = ""
+    if filter_cfg:
+        range = filter_cfg.get(Properties.phenomenonTime).get("range")
+        format = filter_cfg.get(Properties.phenomenonTime).get("format")
+
+        t0, t1 = [datetime.strptime(str(ti), format) for ti in range]
+
+        filter_condition = f"{Properties.phenomenonTime} gt {t0.strftime(iso_str_format)} and " \
+                           f"{Properties.phenomenonTime} lt {t1.strftime(iso_str_format)}"
+        return filter_condition
+
+
+def get_results_n_datastreams(n, skip, entity_id, top_observations, filter_cfg):
     base_query = Query(Entity.Thing).entity_id(entity_id)
     out_query = base_query.select(Entities.Datastreams)
+    filter_condition = filter_cfg_to_query(filter_cfg)
+
     #  additional_query = Qactions.expand([
     Q = Qactions.expand([
         Entities.Datastreams([
@@ -207,18 +257,20 @@ def get_results_n_datastreams(n, skip, entity_id, top_observations):
             ]),
             Qactions.expand([
                 Entities.Observations([
+                    Filter.filter(filter_condition),
                     Settings.top(top_observations),
                     Qactions.select([
                         Properties.iot_id,
                         'result',
+                        Properties.phenomenonTime,
                     ]),
-                    Qactions.expand([
-                        Entities.FeatureOfInterest([
-                            Qactions.select([
-                                Properties.coordinates
-                            ])
-                        ])
-                    ])
+                    # Qactions.expand([
+                    #     Entities.FeatureOfInterest([
+                    #         Qactions.select([
+                    #             Properties.coordinates
+                    #         ])
+                    #     ])
+                    # ])
                 ]),
                 Entities.ObservedProperty([
                     Qactions.select([
@@ -229,14 +281,58 @@ def get_results_n_datastreams(n, skip, entity_id, top_observations):
             ])
         ])
     ])
+    complete_query = out_query.get_query() + '&' + Q
+    log.info("Start request")
     request = json.loads(
         Query(Entity.Thing).get_with_retry(
-            out_query.get_query() + '&' + Q
+            complete_query
         ).content)
-    # base_query = Query(Entity.Thing).entity_id(1)
-    # out_query = base_query.select(Properties.name, Properties.iot_id, Entities.Datastreams)
-    # test = out_query.select(Entities.Datastreams,Entities.ObservedProperty,Entities.Observations).get_data_sets(query=query)
+    log.info("End request")
+
     return request
+
+
+def get_features_of_interest(filter_cfg, top_observations):
+    filter_condition = filter_cfg_to_query(filter_cfg)
+    base_query = Query(Entity.FeatureOfInterest).get_query()
+    complete_query = base_query + "?" +Qactions.select([Properties.iot_id, "feature/coordinates", "Observations"])\
+        + "&" + Qactions.expand([Entities.Observations([
+        Qactions.select([Properties.iot_id]),
+        Settings.top(top_observations)
+    ])])
+    complete_query += '&' + Settings.top(top_observations)
+    log.info("Start request features")
+    request_features = json.loads(
+        Query(Entity.FeatureOfInterest).get_with_retry(
+            complete_query
+        ).content)
+    log.info("End request features")
+
+    df_features = features_request_to_df(request_features)
+    features_observations_dict = {fi.get(Properties.iot_id):[oi.get(Properties.iot_id) for oi in fi.get(Entities.Observations)] for fi in request_features["value"]}
+    # possible to write to pickle?
+    # how to test if needed or not?
+    return features_observations_dict
+
+
+def convert_to_datetime(value):
+    try:
+        d_out = datetime.strptime(value, iso_str_format)
+    except ValueError:
+        d_out = datetime.strptime(value, iso_str_format2)
+    return d_out
+
+
+def features_request_to_df(request_features):
+    data = []
+    for fi in request_features["value"]:
+        v = fi.get(Properties.iot_id)
+        long, lat = fi.get("feature").get("coordinates")
+        idx = [oi.get(Properties.iot_id) for oi in fi.get(Entities.Observations)]
+        for idx_i in idx:
+            data.append([idx_i, v, long, lat])
+    df = pd.DataFrame(data, columns=["observation_id", "feature_id", "long", "lat"])
+    return df
 
 
 def datastreams_request_to_df(request_datastreams):
@@ -247,14 +343,17 @@ def datastreams_request_to_df(request_datastreams):
             del di[Entities.FeatureOfInterest]
         observations_list = di.get(Entities.Observations)
         if observations_list:
-
             df_i = pd.DataFrame(observations_list).astype({Properties.iot_id: int, "result": float})
             df_i["datastream_id"] = int(di.get(Properties.iot_id))
+            df_i[Properties.phenomenonTime] = df_i[Properties.phenomenonTime].apply(convert_to_datetime)
             df_i["observation_type"] = di.get(Entities.ObservedProperty).get(Properties.name)
             df_i["observation_type"] = df_i["observation_type"].astype("category")
             k1, k2 = Properties.unitOfMeasurement.split('/', 1)
             df_i["units"] = di.get(k1).get(k2)
             df_i["units"] = df_i["units"].astype("category")
+            # df_i[["long", "lat"]] = pd.DataFrame.from_records(df_i[str(Entities.FeatureOfInterest)].apply(
+            #     lambda x: x.get('feature').get('coordinates')))
+            # df_i.drop(columns=str(Entities.FeatureOfInterest))
             df = pd.concat([df, df_i], ignore_index=True)
 
     return df
@@ -263,6 +362,30 @@ def datastreams_request_to_df(request_datastreams):
 def qc_on_df_per_datastream(df, datastream_id, datastream_name):
     pass
 
+
+def get_datetime_latest_observation():
+    query = Query(Entity.Observation).get_query() +\
+            '?' + Order.orderBy(Properties.phenomenonTime, 'desc') + "&" +\
+            Settings.top(1) + "&" +\
+            Qactions.select([Properties.phenomenonTime])
+    request = json.loads(
+        Query(Entity.Observation).get_with_retry(
+            query
+        ).content)
+    # https://sensors.naturalsciences.be/sta/v1.1/Observations?$orderBy=phenomenonTime%20desc&$top=1&$select=phenomenonTime
+    latest_phenomenonTime = convert_to_datetime(request["value"][0].get(Properties.phenomenonTime))
+    return latest_phenomenonTime
+
+
+def features_to_global_df(features_dict: dict[int, list[int]], df: pd.DataFrame) -> pd.DataFrame:
+    df_out = df.set_index(Properties.iot_id)
+    i = 0
+    for k, v in features_dict.items():
+        log.info(f"{i}/{len(features_dict)}")
+        existing_indices = df_out.index.intersection(v)
+        # df_out.loc[existing_indices] = k
+        i += 1
+    return df_out
 
 log = logging.getLogger(__name__)
 
@@ -274,6 +397,23 @@ def main(cfg):
     thing_id = cfg.data_api.things.id
     nb_streams_per_call = cfg.data_api.datastreams.top
     top_observations = cfg.data_api.observations.top
+    filter_cfg = cfg.data_api.get("filter", {})
+
+    features_file = Path(cfg.other.pickle.path)
+    recreate_features_file = True
+    if features_file.exists():
+        latest_time = get_datetime_latest_observation()
+        mod_time = datetime.fromtimestamp(os.path.getmtime(features_file))
+        if mod_time > latest_time:
+            recreate_features_file = False
+    if recreate_features_file:
+        feature_dict = get_features_of_interest(filter_cfg, top_observations)
+        with open(features_file, 'wb') as f:
+            pickle.dump(feature_dict, f)
+    else:
+        with open(features_file, 'rb') as f:
+            feature_dict = pickle.load(f)
+
     base_query = Query(Entity.Thing).entity_id(thing_id).select("Datastreams/@iot.count")
     # summary = inspect_datastreams_thing(1)
 
@@ -291,14 +431,19 @@ def main(cfg):
         .get("Datastreams@iot.count")
     log.debug(f"{nb_datastreams=}")
     for i in range(ceil(nb_datastreams/nb_streams_per_call)):
+        log.info(f"nb {i} of {ceil(nb_datastreams/nb_streams_per_call)}")
         df_i = datastreams_request_to_df(
-            get_results_n_datastreams(n=nb_streams_per_call, skip=nb_streams_per_call * i, entity_id=thing_id, top_observations=top_observations)[Entities.Datastreams])
+            get_results_n_datastreams(n=nb_streams_per_call, skip=nb_streams_per_call * i, entity_id=thing_id,
+                                      top_observations=top_observations, filter_cfg=filter_cfg)[Entities.Datastreams])
         log.debug(f"{df_i.shape[0]=}")
         df_all = pd.concat([df_all, df_i],
                            ignore_index=True)
     log.debug(f"{df_all.shape=}")
     log.debug("done with df_all")
 
+    log.info("Start features to global df")
+    df_out = features_to_global_df(feature_dict, df_all)
+    log.info("End features to global df")
     df_all["bool"] = None
     df_all["qc_flag"] = None
     for _, row in df_all[['datastream_id', 'units', "observation_type"]].drop_duplicates().iterrows():
@@ -319,3 +464,8 @@ def main(cfg):
 if __name__ == "__main__":
     log.debug("testing...")
     main()
+
+
+# possibly faster?
+# https://sensors.naturalsciences.be/sta/v1.1/Observations?$filter=phenomenonTime%20gt%202022-03-01T00:00:00Z%20and%20phenomenonTime%20lt%202022-04-01T00:00:00Z&$expand=FeatureOfInterest($select=feature/coordinates)&$select=FeatureOfInterest/feature/coordinates,result
+# https://sensors.naturalsciences.be/sta/v1.1/Observations?$filter=phenomenonTime%20gt%202022-03-01T00:00:00Z%20and%20phenomenonTime%20lt%202022-04-01T00:00:00Z&$expand=FeatureOfInterest($select=feature/coordinates)&$select=FeatureOfInterest/feature/coordinates,result&$resultFormat=GeoJSON
