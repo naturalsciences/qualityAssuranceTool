@@ -1,2 +1,4 @@
 .*
-output
+outputs
+inspect.json
+features.pkl
