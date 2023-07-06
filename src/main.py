@@ -18,6 +18,10 @@ import os.path
 from pathlib import Path
 
 
+# Type hinting often ignored
+# name and count are probably *known* variables names of python property
+# might be solved with _name, _count, or NAME, COUNT. when all caps is used, the __str__ will need to be changed to lower
+
 iso_str_format = '%Y-%m-%dT%H:%M:%S.%fZ'
 iso_str_format2 = '%Y-%m-%dT%H:%M:%SZ'
 
@@ -30,7 +34,7 @@ class BaseQueryStrEnum(StrEnum):
 class Properties(StrEnum):
     description = auto()
     unitOfMeasurement = 'unitOfMeasurement/name'
-    name = auto()
+    name = auto() # type: ignore
     iot_id = "@iot.id"
     coordinates = 'feature/coordinates'
     phenomenonTime = auto()
@@ -39,7 +43,7 @@ class Properties(StrEnum):
 class Settings(BaseQueryStrEnum):
     top = auto()
     skip = auto()
-    count = auto()
+    count = auto() # type: ignore
 
     def __call__(self, value):
         return f"{self}={str(value)}"
@@ -51,7 +55,7 @@ class Entities(StrEnum):
     Observations = auto()
     FeatureOfInterest = auto()
 
-    def __call__(self, args: list[Properties] | list['Qactions']):
+    def __call__(self, args: list[Properties] | list['Qactions'] | list[str]):
         out = f"{self}({';'.join(list(filter(None, args)))})"
         return out
 
@@ -64,7 +68,7 @@ class Qactions(BaseQueryStrEnum):
     select = auto()
     orderby = auto()
 
-    def __call__(self, arg: Entities | Properties | list[Properties] | list[Entities]):
+    def __call__(self, arg: Entities | Properties | list[Properties] | list[Entities] | list[str]):
         out = ""
         if isinstance(arg, list):
             str_arg = ','.join(arg)
@@ -91,27 +95,27 @@ class Order(BaseQueryStrEnum):
         asc = auto()
 
     def __call__(self, property: BaseQueryStrEnum, option: str) -> str:
-        option_ = self.OrderOption(option)
-        out = f"{str(self)}={property} {option_}"
+        option_ = self.OrderOption(option) # type: ignore
+        out: str = f"{str(self)}={property} {option_}"
         return out
 
 
-def inspect_datastreams_thing(entity_id: int) -> (str, list[dict[str,str | int]]):
+def inspect_datastreams_thing(entity_id: int) -> dict[str, list[dict[str,str | int]]]:
     log.debug(f"Start inspecting entity {entity_id}.")
     base_query = Query(Entity.Thing).entity_id(entity_id)
     out_query = base_query.select(Properties.name, Properties.iot_id, Entities.Datastreams)
     additional_query = Qactions.expand([
         Entities.Datastreams(
             [
-                Settings.count('true'),
+                Settings.count('true'), # type: ignore
                 Qactions.expand([
-                    Entities.ObservedProperty([Qactions.select([Properties.name,
+                    Entities.ObservedProperty([Qactions.select([Properties.name, # type: ignore
                                                                 Properties.iot_id])]),
-                    Entities.Observations([Settings.count('true'),
+                    Entities.Observations([Settings.count('true'), # type: ignore
                                            Qactions.select([Properties.iot_id]),
                                            Settings.top(0)])
                 ]),
-                Qactions.select([Properties.name,
+                Qactions.select([Properties.name, # type: ignore
                                  Properties.iot_id,
                                  Properties.description,
                                  Properties.unitOfMeasurement,
@@ -157,13 +161,13 @@ def inspect_datastreams_thing(entity_id: int) -> (str, list[dict[str,str | int]]
     return out
 
 
-def extend_summary_with_result_inspection(summary_dict: (str, list[dict[str,str | int]])):
+def extend_summary_with_result_inspection(summary_dict: dict[str,list]):
     log.debug(f"Start extending summary.")
     summary_out = copy.deepcopy(summary_dict)
-    nb_streams = len(summary_out.get(Entities.Datastreams))
-    for i, dsi in enumerate(summary_dict.get(Entities.Datastreams)):
+    nb_streams = len(summary_out.get(Entities.Datastreams, []))
+    for i, dsi in enumerate(summary_dict.get(Entities.Datastreams, [])):
         log.debug(f"Start extending datastream {i+1}/{nb_streams}.")
-        iot_id_list = summary_dict.get(Entities.Datastreams).get(dsi).get(Properties.iot_id)
+        iot_id_list = summary_dict.get(Entities.Datastreams, []).get(dsi).get(Properties.iot_id) # type: ignore
         results = np.empty(0)
         for iot_id_i in iot_id_list:
             results_ = Query(Entity.Datastream).entity_id(iot_id_i).sub_entity(Entity.Observation).select("result").get_data_sets()
@@ -181,16 +185,15 @@ def extend_summary_with_result_inspection(summary_dict: (str, list[dict[str,str 
             "median": median,
             "nb": nb,
         }
-        summary_out.get(Entities.Datastreams).get(dsi)["results"] = extended_sumary
+        summary_out.get(Entities.Datastreams).get(dsi)["results"] = extended_sumary # type: ignore
     return summary_out
 
 
 def testing_patch():
-    Patch.observation()
     pass
 
 
-def min_max_check_values(values: list[float], min_: float, max_: float):
+def min_max_check_values(values: pd.DataFrame, min_: float, max_: float):
     out = np.logical_and(values >= min_, values <= max_)
     return out
 
@@ -198,7 +201,7 @@ def min_max_check_values(values: list[float], min_: float, max_: float):
 def get_iot_id_datastreams_in_qc(dict_in: dict, summary_dict: dict):
     log.debug(f"Start loop datastreams items.")
     dict_out = copy.deepcopy(dict_in)
-    for k, dsi in summary_dict.get(Entities.Datastreams).items():
+    for k, dsi in summary_dict.get(Entities.Datastreams, {}).items():
         property_name = k.split(" -- ", 1)[1]
         if property_name in dict_out:
             dict_out[property_name] += dsi.get(Properties.iot_id)
@@ -229,7 +232,7 @@ def qc_observation(iot_id: int, function: Callable):
     return qc_df(df_, function)
 
 
-def filter_cfg_to_query(filter_cfg):
+def filter_cfg_to_query(filter_cfg) -> str:
     filter_condition = ""
     if filter_cfg:
         range = filter_cfg.get(Properties.phenomenonTime).get("range")
@@ -239,8 +242,8 @@ def filter_cfg_to_query(filter_cfg):
 
         filter_condition = f"{Properties.phenomenonTime} gt {t0.strftime(iso_str_format)} and " \
                            f"{Properties.phenomenonTime} lt {t1.strftime(iso_str_format)}"
-        return filter_condition
-
+    return filter_condition
+    
 
 def get_results_n_datastreams(n, skip, entity_id, top_observations, filter_cfg):
     base_query = Query(Entity.Thing).entity_id(entity_id)
@@ -275,7 +278,7 @@ def get_results_n_datastreams(n, skip, entity_id, top_observations, filter_cfg):
                 Entities.ObservedProperty([
                     Qactions.select([
                         Properties.iot_id,
-                        Properties.name
+                        Properties.name # type: ignore
                     ])
                 ])
             ])
@@ -367,7 +370,7 @@ def get_datetime_latest_observation():
     query = Query(Entity.Observation).get_query() +\
             '?' + Order.orderBy(Properties.phenomenonTime, 'desc') + "&" +\
             Settings.top(1) + "&" +\
-            Qactions.select([Properties.phenomenonTime])
+            Qactions.select([Properties.phenomenonTime]) # type:ignore
     request = json.loads(
         Query(Entity.Observation).get_with_retry(
             query
