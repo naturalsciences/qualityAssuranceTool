@@ -538,6 +538,9 @@ def main(cfg):
             top_observations=top_observations,
             filter_cfg=filter_cfg,
         )
+        for ds_i in response[Entities.DATASTREAMS]:
+            if f"{Entities.OBSERVATIONS}@iot.nextLink" in ds_i:
+                log.warning("Not all observations are extracted!") # TODO: follow link!
         df_i = datastreams_request_to_df(response[Entities.DATASTREAMS])
         log.debug(f"{df_i.shape[0]=}")
         df_all = pd.concat([df_all, df_i], ignore_index=True)
