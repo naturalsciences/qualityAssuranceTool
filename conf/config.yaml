@@ -1,13 +1,14 @@
-# hydra:
-#   verbose: __main__
+hydra:
+  verbose: __main__
 data_api:
-  base_url: https://sensors.naturalsciences.be/sta/v1.1
+  # base_url: https://sensors.naturalsciences.be/sta/v1.1
+  base_url: http://localhost:8080/FROST-Server/v1.1
   things:
     id: 1
   datastreams:
     top: 10
   observations:
-    top: 100000
+    top: 10000
   # filter:
   #   phenomenonTime:
   #     format: "%Y-%m"

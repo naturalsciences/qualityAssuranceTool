@@ -116,7 +116,7 @@ def inspect_datastreams_thing(entity_id: int) -> dict[str, list[dict[str, str | 
         [
             Entities.DATASTREAMS(
                 [
-                    Settings.COUNT("true"),  # type: ignore
+                    Settings.COUNT("true"),
                     Qactions.EXPAND(
                         [
                             Entities.OBSERVEDPROPERTY(
@@ -133,7 +133,7 @@ def inspect_datastreams_thing(entity_id: int) -> dict[str, list[dict[str, str | 
                     ),
                     Qactions.SELECT(
                         [
-                            Properties.NAME,  # type: ignore
+                            Properties.NAME,
                             Properties.IOT_ID,
                             Properties.DESCRIPTION,
                             Properties.UNITOFMEASUREMENT,
@@ -234,10 +234,6 @@ def extend_summary_with_result_inspection(summary_dict: dict[str, list]):
     return summary_out
 
 
-def testing_patch():
-    pass
-
-
 def min_max_check_values(values: pd.DataFrame, min_: float, max_: float):
     out = np.logical_and(values >= min_, values <= max_)
     return out
@@ -297,18 +293,17 @@ def filter_cfg_to_query(filter_cfg) -> str:
     return filter_condition
 
 
-def get_results_n_datastreams(n, SKIP, entity_id, top_observations, filter_cfg):
+def get_results_n_datastreams(n, skip, entity_id, top_observations, filter_cfg):
     base_query = Query(Entity.Thing).entity_id(entity_id)
     out_query = base_query.select(Entities.DATASTREAMS)
     filter_condition = filter_cfg_to_query(filter_cfg)
 
-    #  additional_query = Qactions.EXPAND([
     Q = Qactions.EXPAND(
         [
             Entities.DATASTREAMS(
                 [
                     Settings.TOP(n),
-                    Settings.SKIP(SKIP),
+                    Settings.SKIP(skip),
                     Qactions.SELECT(
                         [
                             Properties.IOT_ID,
@@ -343,7 +338,7 @@ def get_results_n_datastreams(n, SKIP, entity_id, top_observations, filter_cfg):
                                     Qactions.SELECT(
                                         [
                                             Properties.IOT_ID,
-                                            Properties.NAME,  # type: ignore
+                                            Properties.NAME,
                                         ]
                                     )
                                 ]
@@ -368,7 +363,9 @@ def get_features_of_interest(filter_cfg, top_observations):
     complete_query = (
         base_query
         + "?"
-        + Qactions.SELECT([Properties.IOT_ID, "feature/coordinates", Entities.OBSERVATIONS])
+        + Qactions.SELECT(
+            [Properties.IOT_ID, "feature/coordinates", Entities.OBSERVATIONS]
+        )
         + "&"
         + Qactions.EXPAND(
             [
@@ -459,7 +456,7 @@ def get_datetime_latest_observation():
     query = (
         Query(Entity.Observation).get_query()
         + "?"
-        + Order.ORDERBY(Properties.PHENOMENONTIME, "desc") # type: ignore
+        + Order.ORDERBY(Properties.PHENOMENONTIME, "desc")  # type: ignore
         + "&"
         + Settings.TOP(1)
         + "&"
@@ -496,7 +493,7 @@ def main(cfg):
     thing_id = cfg.data_api.things.id
     nb_streams_per_call = cfg.data_api.datastreams.top
     top_observations = cfg.data_api.observations.top
-    filter_cfg = cfg.data_api.get("FILTER", {})
+    filter_cfg = cfg.data_api.get("filter", {})
 
     features_file = Path(cfg.other.pickle.path)
     recreate_features_file = True
@@ -534,18 +531,18 @@ def main(cfg):
     log.debug(f"{nb_datastreams=}")
     for i in range(ceil(nb_datastreams / nb_streams_per_call)):
         log.info(f"nb {i} of {ceil(nb_datastreams/nb_streams_per_call)}")
-        df_i = datastreams_request_to_df(
-            get_results_n_datastreams(
-                n=nb_streams_per_call,
-                SKIP=nb_streams_per_call * i,
-                entity_id=thing_id,
-                top_observations=top_observations,
-                filter_cfg=filter_cfg,
-            )[Entities.DATASTREAMS]
+        response = get_results_n_datastreams(
+            n=nb_streams_per_call,
+            skip=nb_streams_per_call * i,
+            entity_id=thing_id,
+            top_observations=top_observations,
+            filter_cfg=filter_cfg,
         )
+        df_i = datastreams_request_to_df(response[Entities.DATASTREAMS])
         log.debug(f"{df_i.shape[0]=}")
         df_all = pd.concat([df_all, df_i], ignore_index=True)
     log.debug(f"{df_all.shape=}")
+
     log.debug("done with df_all")
 
     log.info("Start features to global df")
