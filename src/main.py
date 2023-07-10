@@ -16,6 +16,8 @@ from datetime import datetime, timedelta
 import pickle
 import os.path
 from pathlib import Path
+import time
+import requests
 
 
 # Type hinting often ignored
@@ -262,6 +264,7 @@ def get_id_result_lists(iot_id):
 
 
 def qc_df(df_in, function):
+    # http://vocab.nerc.ac.uk/collection/L20/current/
     df_out = copy.deepcopy(df_in)
     df_out["bool"] = function(df_out["result"].array)
     df_out.loc[df_out["bool"], "qc_flag"] = 2
@@ -486,11 +489,49 @@ def features_to_global_df(
 log = logging.getLogger(__name__)
 
 
+def test_patch_single(id, value):
+    a = Patch.observation(entity_id=id, result_quality=str(value))
+    return a
+
+""""
+    POST /v1.1/$batch HTTP/1.1
+    Host: example.org
+    Content-Type: application/json
+    Content-Length: ###
+"""
+
+
+TEST_BATCH_JSON = {"requests":
+                   [{"id": "0", "method": "get", "url": "Things(1)"}
+                    ]
+                   }
+
+                   
+def test_batch_patch():
+    res = requests.post(headers={"Content-Type": "application/json"} , url='http://localhost:8080/FROST-Server/v1.1/$batch', data=json.dumps(TEST_BATCH_JSON))
+    print(res)
+    pass
+
+def compose_batch_qc_patch(df, col_id, col_qc):
+    df_ = df[[col_id, col_qc]].convert_dtypes(convert_string=True)
+    body = json.dumps(df_.to_json(orient="records"))
+    pass
+
+
 @hydra.main(config_path="../conf", config_name="config.yaml", version_base="1.2")
 def main(cfg):
     log.info("Start")
     stapy.set_sta_url(cfg.data_api.base_url)
+    # TESTING STUFF FOR PATCH
+    #   start = time.time()
+    #   for i in range(1, 5 + 1):
+    #       test_patch_single(i, i)
+    #   end = time.time()
+    #   print(f"{end-start}")
+    #   test_batch_patch()
     thing_id = cfg.data_api.things.id
+
+
     nb_streams_per_call = cfg.data_api.datastreams.top
     top_observations = cfg.data_api.observations.top
     filter_cfg = cfg.data_api.get("filter", {})
@@ -568,6 +609,8 @@ def main(cfg):
             df_all.loc[df_sub.index] = df_sub
     df_all["observation_type"] = df_all["observation_type"].astype("category")
     df_all["units"] = df_all["units"].astype("category")
+
+    compose_batch_qc_patch(df_all.loc[0:10], Properties.IOT_ID, "qc_flag")
     print(f"{df_all.shape=}")
     log.info("End")
 

@@ -61,3 +61,29 @@ No install script if foreseen for windows.
   - ?
 
 
+## Batch
+
+
+`curl -H "Content-Type: application/json" -d @/tmp/test.json "http://localhost:8080/FROST-Server/v1.1/\$batch"`
+
+with test.json:
+{
+  "requests": [
+    {
+      "id": "0",
+      "atomicityGroup": "group1",
+      "method": "post",
+      "url": "Things",
+      "body": {
+          "name": "stuff",
+          "description": "looser"
+      }
+    },
+    {
+        "id": "1",
+        "method": "get",
+        "atomicityGroup":"group2",
+        "url": "Datastreams(1)"
+    }
+  ]
+}
