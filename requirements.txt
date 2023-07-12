@@ -9,3 +9,4 @@ strenum
 frost_sta_client
 datetime
 geopy
+pytest

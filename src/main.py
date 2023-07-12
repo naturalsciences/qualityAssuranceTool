@@ -4,8 +4,6 @@ from stapy import Query, Entity, Patch
 from functools import reduce
 import copy
 import json
-from enum import auto, nonmember
-from strenum import StrEnum
 import numpy as np
 import pandas as pd
 import logging
@@ -18,6 +16,9 @@ import os.path
 from pathlib import Path
 import requests
 from collections import Counter
+import time
+
+from enums import Properties, Settings, Entities, Qactions, Filter, Order
 
 
 # Type hinting often ignored
@@ -27,85 +28,6 @@ from collections import Counter
 
 iso_str_format = "%Y-%m-%dT%H:%M:%S.%fZ"
 iso_str_format2 = "%Y-%m-%dT%H:%M:%SZ"
-
-
-class BaseQueryStrEnum(StrEnum):
-    def __str__(self):
-        return f"${self.value}"
-
-
-class Properties(StrEnum):
-    DESCRIPTION = "description"
-    UNITOFMEASUREMENT = "unitOfMeasurement/name"
-    NAME = "name"
-    IOT_ID = "@iot.id"
-    COORDINATES = "feature/coordinates"
-    PHENOMENONTIME = "phenomenonTime"
-
-
-class Settings(BaseQueryStrEnum):
-    TOP = "top"
-    SKIP = "skip"
-    COUNT = "count"
-
-    def __call__(self, value):
-        return f"{self}={str(value)}"
-
-
-class Entities(StrEnum):
-    DATASTREAMS = "Datastreams"
-    OBSERVEDPROPERTY = "ObservedProperty"
-    OBSERVATIONS = "Observations"
-    FEATUREOFINTEREST = "FeatureOfInterest"
-
-    def __call__(self, args: list[Properties] | list["Qactions"] | list[str]):
-        out = f"{self}({';'.join(list(filter(None, args)))})"
-        return out
-
-    def __repr__(self):
-        return f"{self.value}"
-
-    def __str__(self):
-        return f"{self.value}"
-
-
-class Qactions(BaseQueryStrEnum):
-    EXPAND = "expand"
-    SELECT = "select"
-    ORDERBY = "orderby"
-
-    def __call__(
-        self, arg: Entities | Properties | list[Properties] | list[Entities] | list[str]
-    ):
-        out = ""
-        if isinstance(arg, list):
-            str_arg = ",".join(arg)
-            out = f"{str(self)}={str_arg}"
-        return out
-
-
-class Filter(BaseQueryStrEnum):
-    FILTER = "filter"
-
-    def __call__(self, condition: str) -> str:
-        out = ""
-        if condition:
-            out = f"{str(self)}={condition}"
-        return out
-
-
-class Order(BaseQueryStrEnum):
-    ORDERBY = "orderBy"
-
-    @nonmember
-    class OrderOption(StrEnum):
-        DESC = "desc"
-        ASC = "asc"
-
-    def __call__(self, property: BaseQueryStrEnum, option: str) -> str:
-        option_ = self.OrderOption(option)  # type: ignore
-        out: str = f"{str(self)}={property} {option_}"
-        return out
 
 
 def inspect_datastreams_thing(entity_id: int) -> dict[str, list[dict[str, str | int]]]:
@@ -503,10 +425,13 @@ def test_batch_patch():
     pass
 
 
-def series_to_patch_dict(x):
+def series_to_patch_dict(x, group_per_x=1000):
     # qc_fla is hardcoded!
+    # atomicityGroup seems to improve performance, but amount of groups seems irrelevant (?)
+    # UNLESS multiple runs are done simultaneously?
     d_out = {
         "id": str(x.name + 1),
+        "atomicityGroup": f"Group{(int(x.name/group_per_x)+1)}",
         "method": "patch",
         "url": f"Observations({x.get(Properties.IOT_ID)})",
         "body": {"resultQuality": str(x.get("qc_flag"))},
@@ -611,21 +536,63 @@ def main(cfg):
     df_all["observation_type"] = df_all["observation_type"].astype("category")
     df_all["units"] = df_all["units"].astype("category")
 
+    df_all["patch_dict"] = None
+    df_all["path_dict"] = df_all["patch_dict"].astype("category")
     df_all["patch_dict"] = df_all[[Properties.IOT_ID, "qc_flag"]].apply(
         series_to_patch_dict, axis=1
     )
 
     final_json = {"requests": df_all["patch_dict"].to_list()}
-    log.info("Start batch patch query")
-    response = requests.post(
-        headers={"Content-Type": "application/json"},
-        url="http://localhost:8080/FROST-Server/v1.1/$batch",
-        data=json.dumps(final_json),
-    )
-    count_res = Counter([ri["status"] for ri in response.json()["responses"]])
 
-    log.info("End batch patch query")
-    log.info(f"{count_res}")
+    dict_jsons = {
+        "final_json_15000": {"requests": df_all["patch_dict"].iloc[:15000].to_list()},
+        "final_json_10000": {"requests": df_all["patch_dict"].iloc[:10000].to_list()},
+        "final_json_05000": {"requests": df_all["patch_dict"].iloc[:5000].to_list()},
+        "final_json_01000": {"requests": df_all["patch_dict"].iloc[:1000].to_list()},
+        "final_json_00500": {"requests": df_all["patch_dict"].iloc[:500].to_list()},
+    }
+    # log.info("Start batch patch query")
+    # response = requests.post(
+    #     headers={"Content-Type": "application/json"},
+    #     url="http://localhost:8080/FROST-Server/v1.1/$batch",
+    #     data=json.dumps(final_json),
+    # )
+    # count_res = Counter([ri["status"] for ri in response.json()["responses"]])
+    # log.info("End batch patch query")
+    # log.info(f"{count_res}")
+
+    for di in dict_jsons.keys():
+        log.info(f"Start batch {di}")
+        start_i = time.time()
+        response_i = requests.post(
+            headers={"Content-Type": "application/json"},
+            url="http://localhost:8080/FROST-Server/v1.1/$batch",
+            data=json.dumps(dict_jsons[di]),
+        )
+        end_i = time.time()
+        count_res_i = Counter([ri["status"] for ri in response_i.json()["responses"]])
+
+        log.info(f"End batch patch query {di}: {end_i-start_i}")
+        log.info(f"{count_res_i}")
+
+    for gp_i in [100, 500, 1000, 1500, 5000, 10000, 15000]:
+        df_all["patch_dict"] = df_all[[Properties.IOT_ID, "qc_flag"]].apply(
+            partial(series_to_patch_dict, group_per_x=gp_i), axis=1
+        )
+        used_json = {"requests": df_all["patch_dict"].iloc[:15000].to_list()}
+
+        log.info(f"Start batch group_per_x: {gp_i}")
+        start_i = time.time()
+        response_i = requests.post(
+            headers={"Content-Type": "application/json"},
+            url="http://localhost:8080/FROST-Server/v1.1/$batch",
+            data=json.dumps(used_json),
+        )
+        end_i = time.time()
+        count_res_i = Counter([ri["status"] for ri in response_i.json()["responses"]])
+
+        log.info(f"End batch patch query {gp_i}: {end_i-start_i}")
+        log.info(f"{count_res_i}")
 
     # compose_batch_qc_patch(df_all.loc[0:10], Properties.IOT_ID, "qc_flag")
     print(f"{df_all.shape=}")

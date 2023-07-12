@@ -3,3 +3,4 @@ outputs
 inspect.json
 features.pkl
 src/__pycache__
+tests/__pycache__
