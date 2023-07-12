@@ -54,6 +54,7 @@ No install script if foreseen for windows.
 
 * [ ] JSON schema yaml
 * [ ] extend QC checks
+* [ ] asynchronous requests?
 * [ ] refactoring
     ** [ ] restructure based on function
     ** [ ] reevaluate variable names
