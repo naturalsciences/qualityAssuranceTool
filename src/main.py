@@ -16,8 +16,8 @@ from datetime import datetime, timedelta
 import pickle
 import os.path
 from pathlib import Path
-import time
 import requests
+from collections import Counter
 
 
 # Type hinting often ignored
@@ -451,10 +451,6 @@ def datastreams_request_to_df(request_datastreams):
     return df
 
 
-def qc_on_df_per_datastream(df, datastream_id, datastream_name):
-    pass
-
-
 def get_datetime_latest_observation():
     query = (
         Query(Entity.Observation).get_query()
@@ -493,24 +489,30 @@ def test_patch_single(id, value):
     a = Patch.observation(entity_id=id, result_quality=str(value))
     return a
 
-""""
-    POST /v1.1/$batch HTTP/1.1
-    Host: example.org
-    Content-Type: application/json
-    Content-Length: ###
-"""
+
+TEST_BATCH_JSON = {"requests": [{"id": "0", "method": "get", "url": "Things(1)"}]}
 
 
-TEST_BATCH_JSON = {"requests":
-                   [{"id": "0", "method": "get", "url": "Things(1)"}
-                    ]
-                   }
-
-                   
 def test_batch_patch():
-    res = requests.post(headers={"Content-Type": "application/json"} , url='http://localhost:8080/FROST-Server/v1.1/$batch', data=json.dumps(TEST_BATCH_JSON))
+    res = requests.post(
+        headers={"Content-Type": "application/json"},
+        url="http://localhost:8080/FROST-Server/v1.1/$batch",
+        data=json.dumps(TEST_BATCH_JSON),
+    )
     print(res)
     pass
+
+
+def series_to_patch_dict(x):
+    # qc_fla is hardcoded!
+    d_out = {
+        "id": str(x.name + 1),
+        "method": "patch",
+        "url": f"Observations({x.get(Properties.IOT_ID)})",
+        "body": {"resultQuality": str(x.get("qc_flag"))},
+    }
+    return d_out
+
 
 def compose_batch_qc_patch(df, col_id, col_qc):
     df_ = df[[col_id, col_qc]].convert_dtypes(convert_string=True)
@@ -530,7 +532,6 @@ def main(cfg):
     #   print(f"{end-start}")
     #   test_batch_patch()
     thing_id = cfg.data_api.things.id
-
 
     nb_streams_per_call = cfg.data_api.datastreams.top
     top_observations = cfg.data_api.observations.top
@@ -581,7 +582,7 @@ def main(cfg):
         )
         for ds_i in response[Entities.DATASTREAMS]:
             if f"{Entities.OBSERVATIONS}@iot.nextLink" in ds_i:
-                log.warning("Not all observations are extracted!") # TODO: follow link!
+                log.warning("Not all observations are extracted!")  # TODO: follow link!
         df_i = datastreams_request_to_df(response[Entities.DATASTREAMS])
         log.debug(f"{df_i.shape[0]=}")
         df_all = pd.concat([df_all, df_i], ignore_index=True)
@@ -610,8 +611,25 @@ def main(cfg):
     df_all["observation_type"] = df_all["observation_type"].astype("category")
     df_all["units"] = df_all["units"].astype("category")
 
-    compose_batch_qc_patch(df_all.loc[0:10], Properties.IOT_ID, "qc_flag")
+    df_all["patch_dict"] = df_all[[Properties.IOT_ID, "qc_flag"]].apply(
+        series_to_patch_dict, axis=1
+    )
+
+    final_json = {"requests": df_all["patch_dict"].to_list()}
+    log.info("Start batch patch query")
+    response = requests.post(
+        headers={"Content-Type": "application/json"},
+        url="http://localhost:8080/FROST-Server/v1.1/$batch",
+        data=json.dumps(final_json),
+    )
+    count_res = Counter([ri["status"] for ri in response.json()["responses"]])
+
+    log.info("End batch patch query")
+    log.info(f"{count_res}")
+
+    # compose_batch_qc_patch(df_all.loc[0:10], Properties.IOT_ID, "qc_flag")
     print(f"{df_all.shape=}")
+
     log.info("End")
 
 

@@ -81,3 +81,11 @@ with test.json: \{ ``requests'': [ \{ ``id'': ``0'', ``atomicityGroup'':
 ``name'': ``stuff'', ``description'': ``looser'' } }, \{ ``id'': ``1'',
 ``method'': ``get'', ``atomicityGroup'':``group2'', ``url'':
 ``Datastreams(1)'' } ] }
+
+.(Partial) logs batch patch
+[source,plain]
+----
+[2023-07-12 08:51:48,584][__main__][INFO] - Start batch patch query
+[2023-07-12 08:52:21,739][__main__][INFO] - End batch patch query
+[2023-07-12 08:52:21,739][__main__][INFO] - Counter({200: 17673})
+----
