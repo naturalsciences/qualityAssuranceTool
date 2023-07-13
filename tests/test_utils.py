@@ -19,6 +19,22 @@ def cfg() -> DictConfig:
     return conf
 
 
+class MockResponse():
+    def __init__(self):
+        self.status_code = 200
+        self.url = "testing.be"
+
+    def json(self):
+        return {"one": "two"}
+
+@pytest.fixture
+def mock_response(monkeypatch):
+
+    def mock_get(*args, **kwargs):
+        return MockResponse()
+
+    monkeypatch.setattr(u.Query, "get_with_retry", mock_get)
+
 class TestUtils:
     def test_hydra_is_loaded(self, cfg):
         assert cfg
@@ -37,3 +53,11 @@ class TestUtils:
             "Observations($count=true;$select=@iot.id;$top=0);"
             "$select=name,@iot.id,description,unitOfMeasurement/name,ObservedProperty)"
         )
+
+    def test_get_request(self, mock_response):
+        status_code, response = u.get_request("random")
+        assert (status_code, response) == (200, {"one": "two"})
+
+    @pytest.mark.skip(reason="What response to provide?")
+    def test_inspect_datastreams_thing(self, mock_response):
+        out = u.inspect_datastreams_thing(0)
