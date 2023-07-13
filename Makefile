@@ -12,7 +12,7 @@ run:
 create_venv:
 	test -d $(VENV_NAME) || virtualenv -p $(PYTHON_VERSION) $(VENV_NAME)
 	$(VENV_ACTIVATE);  pip install -Ur requirements.txt
-	echo $(pwd)/src/ >> $(VENV_NAME)/lib/$(PYTHON_VERSION)/site-packages/own.pth
+	echo $(CURDIR)/src/ >> $(VENV_NAME)/lib/$(PYTHON_VERSION)/site-packages/own.pth
 
 .PHONY: ipython
 ipython:
