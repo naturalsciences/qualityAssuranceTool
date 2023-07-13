@@ -75,7 +75,6 @@ class OrderOption(StrEnum):
 class Order(BaseQueryStrEnum):
     ORDERBY = "orderBy"
 
-    def __call__(self, property: BaseQueryStrEnum, option: str) -> str:
-        option_ = OrderOption(option) 
-        out: str = f"{str(self)}={property} {option_}"
+    def __call__(self, property: Properties, option: OrderOption) -> str:
+        out: str = f"{str(self)}={property} {option}"
         return out

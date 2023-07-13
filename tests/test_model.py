@@ -20,5 +20,5 @@ class TestEnums:
         assert out == "$filter=@iot.id>10"
 
     def test_order_call(self):
-        out = m.Order.ORDERBY(m.Properties.PHENOMENONTIME, "desc")
+        out = m.Order.ORDERBY(m.Properties.PHENOMENONTIME, m.OrderOption.DESC)
         assert out == "$orderBy=phenomenonTime desc"

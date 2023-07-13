@@ -5,7 +5,7 @@ import numpy as np
 from functools import reduce
 from requests import Response
 from stapy import Query, Entity
-from enums import Properties, Entities, Settings, Qactions
+from models.enums import Properties, Entities, Settings, Qactions
 
 
 log = logging.getLogger(__name__)

@@ -1,5 +1,5 @@
 import pytest
-import utils as u
+import utils.utils as u
 from hydra import (
     initialize,
     compose,
@@ -27,13 +27,20 @@ class MockResponse():
     def json(self):
         return {"one": "two"}
 
+    def get_data_sets(self):
+        return (0, list(range(10)))
+
 @pytest.fixture
 def mock_response(monkeypatch):
 
     def mock_get(*args, **kwargs):
         return MockResponse()
 
+    def mock_get_sets(*args, **kwars):
+        return MockResponse().get_data_sets()
+
     monkeypatch.setattr(u.Query, "get_with_retry", mock_get)
+    monkeypatch.setattr(u.Query, "get_data_sets", mock_get_sets)
 
 class TestUtils:
     def test_hydra_is_loaded(self, cfg):
