@@ -1,7 +1,6 @@
 import hydra
 import stapy
 from stapy import Query, Entity, Patch
-from functools import reduce
 import copy
 import json
 import numpy as np
@@ -18,7 +17,7 @@ import requests
 from collections import Counter
 import time
 
-from enums import Properties, Settings, Entities, Qactions, Filter, Order
+from enums import Properties, Settings, Entities, Qactions, Filter, Order, OrderOption
 
 
 # Type hinting often ignored
@@ -28,100 +27,6 @@ from enums import Properties, Settings, Entities, Qactions, Filter, Order
 
 iso_str_format = "%Y-%m-%dT%H:%M:%S.%fZ"
 iso_str_format2 = "%Y-%m-%dT%H:%M:%SZ"
-
-
-def inspect_datastreams_thing(entity_id: int) -> dict[str, list[dict[str, str | int]]]:
-    log.debug(f"Start inspecting entity {entity_id}.")
-    base_query = Query(Entity.Thing).entity_id(entity_id)
-    out_query = base_query.select(
-        Properties.NAME, Properties.IOT_ID, Entities.DATASTREAMS
-    )
-    additional_query = Qactions.EXPAND(
-        [
-            Entities.DATASTREAMS(
-                [
-                    Settings.COUNT("true"),
-                    Qactions.EXPAND(
-                        [
-                            Entities.OBSERVEDPROPERTY(
-                                [Qactions.SELECT([Properties.NAME, Properties.IOT_ID])]
-                            ),
-                            Entities.OBSERVATIONS(
-                                [
-                                    Settings.COUNT("true"),
-                                    Qactions.SELECT([Properties.IOT_ID]),
-                                    Settings.TOP(0),
-                                ]
-                            ),
-                        ]
-                    ),
-                    Qactions.SELECT(
-                        [
-                            Properties.NAME,
-                            Properties.IOT_ID,
-                            Properties.DESCRIPTION,
-                            Properties.UNITOFMEASUREMENT,
-                            Entities.OBSERVEDPROPERTY,
-                        ]
-                    ),
-                ]
-            )
-        ]
-    )
-    log.debug(f"Start getting query.")
-    request = json.loads(
-        out_query.get_with_retry(out_query.get_query() + "&" + additional_query).content
-    )
-    log.debug(f"Start reformatting query.")
-    observ_properties, observ_count = zip(
-        *[
-            (
-                ds.get(Entities.OBSERVEDPROPERTY).get(Properties.NAME),
-                ds.get("observations@iot.count"),
-            )
-            for ds in request.get(Entities.DATASTREAMS)
-        ]
-    )
-
-    # observ_count = [ds.get("OBSERVATIONS@iot.COUNT") for ds in request.get("DATASTREAMS")]
-    out = {k: request[k] for k in request.keys() if Entities.DATASTREAMS not in k}
-    out[Entities.OBSERVATIONS] = {
-        Settings.COUNT: sum(observ_count),
-        Entities.OBSERVATIONS: list(set(observ_properties)),
-    }
-
-    # only_results =
-
-    def update_datastreams(ds_dict, ds_new):
-        ds_out = copy.deepcopy(ds_dict)
-        if ds_new.get("observations@iot.count") > 0:
-            ds_name = f"{ds_new.get(Properties.NAME)} -- {ds_new.get(Entities.OBSERVEDPROPERTY, {}).get(Properties.NAME)}"
-            update_dsi_dict = {
-                Properties.IOT_ID: ds_out.get(ds_new[Properties.NAME], {}).get(
-                    Properties.IOT_ID, list()
-                )
-                + [ds_new.get(Properties.IOT_ID)],
-                "unitOfMeasurement": ds_out.get(ds_new[Properties.NAME], {}).get(
-                    "unitOfMeasurement", list()
-                )
-                + [ds_new.get("unitOfMeasurement").get(Properties.NAME)],
-                # "description": ds_out.get(ds_new['name'], {}).get("description", list()) + [
-                #     ds_new.get("description")],
-                # "OBSERVEDPROPERTY": ds_out.get(ds_new['name'], {}).get("OBSERVEDPROPERTY", list()) + [ds_new.get("OBSERVEDPROPERTY")],
-            }
-            update_ds_dict = {
-                ds_name: ds_dict.get(ds_new.get("name"), copy.deepcopy(update_dsi_dict))
-            }
-            update_ds_dict[ds_name].update(update_dsi_dict)
-            ds_out.update(update_ds_dict)
-        return ds_out
-
-    log.debug(f"Start reducing query.")
-    out[Entities.DATASTREAMS] = reduce(
-        update_datastreams, [{}] + request.get(Entities.DATASTREAMS)
-    )
-    log.debug(f"Return result inspection.")
-    return out
 
 
 def extend_summary_with_result_inspection(summary_dict: dict[str, list]):
@@ -377,7 +282,7 @@ def get_datetime_latest_observation():
     query = (
         Query(Entity.Observation).get_query()
         + "?"
-        + Order.ORDERBY(Properties.PHENOMENONTIME, "desc")  # type: ignore
+        + Order.ORDERBY(Properties.PHENOMENONTIME, OrderOptions.DESC)  # type: ignore
         + "&"
         + Settings.TOP(1)
         + "&"
