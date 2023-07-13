@@ -10,8 +10,8 @@ from omegaconf import DictConfig
 
 @pytest.fixture(scope="session")
 def cfg() -> DictConfig:
-    initialize(config_path="./conf", version_base="1.2")
-    conf = compose("conf_base.yaml")
+    with initialize(config_path="./conf", version_base="1.2"):
+        conf = compose("conf_base.yaml")
     stapy.set_sta_url(conf.data_api.base_url)
 
     return conf
@@ -49,7 +49,7 @@ class TestUtils:
         q = u.Query(u.Entity.Thing).entity_id(0)
         assert q.get_query() == "http://testing.com/v1.1/Things(0)"
 
-    def test_build_query_datastreams(self):
+    def test_build_query_datastreams(self, cfg):
         q = u.build_query_datastreams(entity_id=cfg.data_api.things.id)
         assert (
             q == "http://testing.com/v1.1/Things(1)"

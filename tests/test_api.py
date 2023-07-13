@@ -11,7 +11,7 @@ from api.observations_api import filter_cfg_to_query
 
 
 class TestObservationsApi:
-    def test_filter_cfg_to_query(self):
+    def test_filter_cfg_to_query(self, cfg):
         out = filter_cfg_to_query(cfg.data_api.get("filter", {}))
         assert (
             out == "phenomenonTime gt 1002-01-01T00:00:00.000000Z and "
