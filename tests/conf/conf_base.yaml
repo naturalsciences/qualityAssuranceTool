@@ -8,6 +8,12 @@ data_api:
     top: 10
   observations:
     top: 10000
+  filter:
+    phenomenonTime:
+      format: "%Y-%m"
+      range:
+        - 1002-01
+        - 3003-01
 other:
   pickle:
     path: ${hydra:runtime.cwd}/features.pkl

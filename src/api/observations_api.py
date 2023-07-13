@@ -4,10 +4,11 @@ from datetime import datetime
 import pandas as pd
 from stapy import Query, Entity
 import json
-from models.enums import Entities, Qactions, Settings, Filter
-from models.constants import ISO_STR_FORMAT
 
-from models.enums import Properties
+from models.enums import Entities, Properties, Qactions, Settings, Filter
+from models.constants import ISO_STR_FORMAT
+from utils.utils import get_request
+
 
 log = logging.getLogger(__name__)
 
@@ -26,12 +27,7 @@ def filter_cfg_to_query(filter_cfg) -> str:
         )
     return filter_condition
 
-
-def get_results_n_datastreams(n, skip, entity_id, top_observations, filter_cfg):
-    base_query = Query(Entity.Thing).entity_id(entity_id)
-    out_query = base_query.select(Entities.DATASTREAMS)
-    filter_condition = filter_cfg_to_query(filter_cfg)
-
+def get_results_n_datastreams_query(n, skip, top_observations, filter_condition):
     Q = Qactions.EXPAND(
         [
             Entities.DATASTREAMS(
@@ -82,10 +78,14 @@ def get_results_n_datastreams(n, skip, entity_id, top_observations, filter_cfg):
                 ]
             )
         ]
-    )
-    complete_query = out_query.get_query() + "&" + Q
+    ) 
+    return Q
+
+def get_results_n_datastreams(Q):
+    
     log.info("Start request")
-    request = json.loads(Query(Entity.Thing).get_with_retry(complete_query).content)
+    request = get_request(Q)
+    # request = json.loads(Query(Entity.Thing).get_with_retry(complete_query).content)
     log.info("End request")
 
     return request

@@ -14,8 +14,6 @@ def cfg() -> DictConfig:
     conf = compose("conf_base.yaml")
     stapy.set_sta_url(conf.data_api.base_url)
 
-    stapy.set_sta_url(conf.data_api.base_url)
-
     return conf
 
 
@@ -43,14 +41,15 @@ def mock_response(monkeypatch):
     monkeypatch.setattr(u.Query, "get_data_sets", mock_get_sets)
 
 class TestUtils:
-    def test_hydra_is_loaded(self, cfg):
+    def test_hydra_is_loaded(self):
+        print(cfg)
         assert cfg
 
-    def test_stapy_integration(self):
+    def test_stapy_integration(self, cfg):
         q = u.Query(u.Entity.Thing).entity_id(0)
         assert q.get_query() == "http://testing.com/v1.1/Things(0)"
 
-    def test_build_query_datastreams(self, cfg):
+    def test_build_query_datastreams(self):
         q = u.build_query_datastreams(entity_id=cfg.data_api.things.id)
         assert (
             q == "http://testing.com/v1.1/Things(1)"
