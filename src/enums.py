@@ -67,15 +67,15 @@ class Filter(BaseQueryStrEnum):
         return out
 
 
-class Order(BaseQueryStrEnum):
-    ORDERBY = "orderBy"
-
-    @nonmember
-    class OrderOption(StrEnum):
+class OrderOption(StrEnum):
         DESC = "desc"
         ASC = "asc"
 
+
+class Order(BaseQueryStrEnum):
+    ORDERBY = "orderBy"
+
     def __call__(self, property: BaseQueryStrEnum, option: str) -> str:
-        option_ = self.OrderOption(option)  # type: ignore
+        option_ = OrderOption(option) 
         out: str = f"{str(self)}={property} {option_}"
         return out
