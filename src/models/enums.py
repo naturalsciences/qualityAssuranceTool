@@ -1,4 +1,4 @@
-from enum import nonmember
+from enum import nonmember, Enum
 from strenum import StrEnum
 
 
@@ -78,3 +78,18 @@ class Order(BaseQueryStrEnum):
     def __call__(self, property: Properties, option: OrderOption) -> str:
         out: str = f"{str(self)}={property} {option}"
         return out
+
+class QualityFlags(Enum):
+    NO_QUALITY_control = 0	
+    GOOD = 1	
+    PROBABLY_GOOD = 2	
+    PROBABLY_BAD = 3	
+    BAD = 4	
+    CHANGED = 5	
+    BELOW_detection = 6	
+    IN_EXCESS = 7	
+    INTERPOLATED = 8	
+    MISSING = 9	
+    PHENOMENON_UNCERTAIN = "A"
+    NOMINAL = "B"
+    BELOW_LIMIT_OF_QUANTIFICATION = "Q"

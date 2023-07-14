@@ -27,7 +27,7 @@ def filter_cfg_to_query(filter_cfg) -> str:
         )
     return filter_condition
 
-def get_results_n_datastreams_query(n, skip, top_observations, filter_condition):
+def get_results_n_datastreams_query(entity_id, n, skip, top_observations, filter_condition):
     Q = Qactions.EXPAND(
         [
             Entities.DATASTREAMS(
@@ -79,7 +79,7 @@ def get_results_n_datastreams_query(n, skip, top_observations, filter_condition)
             )
         ]
     ) 
-    return Q
+    return Query(Entity.Thing).entity_id(entity_id).select(Entities.DATASTREAMS).get_query() + '&' + Q
 
 def get_results_n_datastreams(Q):
     

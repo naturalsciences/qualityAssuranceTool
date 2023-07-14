@@ -4,7 +4,7 @@ from typing import Tuple
 import numpy as np
 from functools import reduce
 from requests import Response
-from stapy import Query, Entity
+from stapy import Query, Entity, config
 from models.enums import Properties, Entities, Settings, Qactions
 
 

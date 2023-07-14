@@ -1,6 +1,6 @@
 import hydra
+from stapy import Query, Entity, Patch, config
 import stapy
-from stapy import Query, Entity, Patch
 import copy
 import json
 import numpy as np
@@ -25,18 +25,21 @@ from models.enums import (
     Filter,
     Order,
     OrderOption,
+    QualityFlags,
 )
 from models.constants import ISO_STR_FORMAT, ISO_STR_FORMAT2
-from api.observations_api import get_results_n_datastreams, filter_cfg_to_query, get_features_of_interest, get_results_n_datastreams_query
+from api.observations_api import (
+    get_results_n_datastreams,
+    filter_cfg_to_query,
+    get_features_of_interest,
+    get_results_n_datastreams_query,
+)
 
 
 # Type hinting often ignored
 # name and COUNT are probably *known* variables names of python property
 # might be solved with _name, _count, or NAME, COUNT. when all caps is used, the __str__ will need to be changed to lower
 # doesn't work because other ARE with camelcase
-
-iso_str_format = "%Y-%m-%dT%H:%M:%S.%fZ"
-iso_str_format2 = "%Y-%m-%dT%H:%M:%SZ"
 
 
 def min_max_check_values(values: pd.DataFrame, min_: float, max_: float):
@@ -48,8 +51,8 @@ def qc_df(df_in, function):
     # http://vocab.nerc.ac.uk/collection/L20/current/
     df_out = copy.deepcopy(df_in)
     df_out["bool"] = function(df_out["result"].array)
-    df_out.loc[df_out["bool"], "qc_flag"] = 2
-    df_out.loc[~df_out["bool"], "qc_flag"] = 3
+    df_out.loc[df_out["bool"], "qc_flag"] = QualityFlags.PROBABLY_GOOD
+    df_out.loc[~df_out["bool"], "qc_flag"] = QualityFlags.PROBABLY_BAD
     return df_out
 
 
@@ -225,16 +228,18 @@ def main(cfg):
     log.debug(f"{nb_datastreams=}")
     for i in range(ceil(nb_datastreams / nb_streams_per_call)):
         log.info(f"nb {i} of {ceil(nb_datastreams/nb_streams_per_call)}")
-        response = get_results_n_datastreams(
-            get_results_n_datastreams_query(n=nb_streams_per_call,
+        query = get_results_n_datastreams_query(
+            entity_id=thing_id,
+            n=nb_streams_per_call,
             skip=nb_streams_per_call * i,
             top_observations=top_observations,
-            filter_condition=filter_cfg
-            ))
-        for ds_i in response[Entities.DATASTREAMS]: #type:ignore
+            filter_condition=filter_cfg,
+        )
+        status_code, response = get_results_n_datastreams(query)
+        for ds_i in response[Entities.DATASTREAMS]:  # type:ignore
             if f"{Entities.OBSERVATIONS}@iot.nextLink" in ds_i:
                 log.warning("Not all observations are extracted!")  # TODO: follow link!
-        df_i = datastreams_request_to_df(response[Entities.DATASTREAMS]) #type: ignore
+        df_i = datastreams_request_to_df(response[Entities.DATASTREAMS])  # type: ignore
         log.debug(f"{df_i.shape[0]=}")
         df_all = pd.concat([df_all, df_i], ignore_index=True)
     log.debug(f"{df_all.shape=}")
