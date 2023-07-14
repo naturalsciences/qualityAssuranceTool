@@ -27,7 +27,51 @@ def filter_cfg_to_query(filter_cfg) -> str:
         )
     return filter_condition
 
-def get_results_n_datastreams_query(entity_id, n, skip, top_observations, filter_condition):
+
+def get_results_n_datastreams_query(
+    entity_id,
+    n,
+    skip,
+    top_observations,
+    filter_condition,
+    expand_feature_of_interest=False,
+):
+    # TODO: cleanup!!
+    idx_slice = 3
+    if expand_feature_of_interest:
+        idx_slice = 4
+    expand_list = [
+        Entities.OBSERVATIONS(
+            [
+                Filter.FILTER(filter_condition),
+                Settings.TOP(top_observations),
+                Qactions.SELECT(
+                    [
+                        Properties.IOT_ID,
+                        "result",
+                        Properties.PHENOMENONTIME,
+                    ]
+                ),
+                Qactions.EXPAND(
+                    [
+                        Entities.FEATUREOFINTEREST(
+                            [Qactions.SELECT([Properties.COORDINATES])]
+                        )
+                    ]
+                ),
+            ][:idx_slice]
+        ),
+        Entities.OBSERVEDPROPERTY(
+            [
+                Qactions.SELECT(
+                    [
+                        Properties.IOT_ID,
+                        Properties.NAME,
+                    ]
+                )
+            ]
+        ),
+    ]
     Q = Qactions.EXPAND(
         [
             Entities.DATASTREAMS(
@@ -41,48 +85,16 @@ def get_results_n_datastreams_query(entity_id, n, skip, top_observations, filter
                             Entities.OBSERVATIONS,
                         ]
                     ),
-                    Qactions.EXPAND(
-                        [
-                            Entities.OBSERVATIONS(
-                                [
-                                    Filter.FILTER(filter_condition),
-                                    Settings.TOP(top_observations),
-                                    Qactions.SELECT(
-                                        [
-                                            Properties.IOT_ID,
-                                            "result",
-                                            Properties.PHENOMENONTIME,
-                                        ]
-                                    ),
-                                    # Qactions.EXPAND([
-                                    #     Entities.FEATUREOFINTEREST([
-                                    #         Qactions.SELECT([
-                                    #             Properties.COORDINATES
-                                    #         ])
-                                    #     ])
-                                    # ])
-                                ]
-                            ),
-                            Entities.OBSERVEDPROPERTY(
-                                [
-                                    Qactions.SELECT(
-                                        [
-                                            Properties.IOT_ID,
-                                            Properties.NAME,
-                                        ]
-                                    )
-                                ]
-                            ),
-                        ]
-                    ),
+                    Qactions.EXPAND(expand_list),
                 ]
             )
         ]
-    ) 
-    return Query(Entity.Thing).entity_id(entity_id).select(Entities.DATASTREAMS).get_query() + '&' + Q
+    )
+    Q_out = Query(Entity.Thing).entity_id(entity_id).select(Entities.DATASTREAMS).get_query() + "&" +Q
+    return Q_out
+
 
 def get_results_n_datastreams(Q):
-    
     log.info("Start request")
     request = get_request(Q)
     # request = json.loads(Query(Entity.Thing).get_with_retry(complete_query).content)

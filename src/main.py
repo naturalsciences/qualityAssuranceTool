@@ -137,22 +137,9 @@ def features_to_global_df(
 log = logging.getLogger(__name__)
 
 
-def test_patch_single(id, value):
-    a = Patch.observation(entity_id=id, result_quality=str(value))
-    return a
-
-
-TEST_BATCH_JSON = {"requests": [{"id": "0", "method": "get", "url": "Things(1)"}]}
-
-
-def test_batch_patch():
-    res = requests.post(
-        headers={"Content-Type": "application/json"},
-        url="http://localhost:8080/FROST-Server/v1.1/$batch",
-        data=json.dumps(TEST_BATCH_JSON),
-    )
-    print(res)
-    pass
+# def test_patch_single(id, value):
+#     a = Patch.observation(entity_id=id, result_quality=str(value))
+#     return a
 
 
 def series_to_patch_dict(x, group_per_x=1000):
@@ -179,13 +166,7 @@ def compose_batch_qc_patch(df, col_id, col_qc):
 def main(cfg):
     log.info("Start")
     stapy.set_sta_url(cfg.data_api.base_url)
-    # TESTING STUFF FOR PATCH
-    #   start = time.time()
-    #   for i in range(1, 5 + 1):
-    #       test_patch_single(i, i)
-    #   end = time.time()
-    #   print(f"{end-start}")
-    #   test_batch_patch()
+
     thing_id = cfg.data_api.things.id
 
     nb_streams_per_call = cfg.data_api.datastreams.top
@@ -200,6 +181,7 @@ def main(cfg):
         if mod_time > latest_time:
             recreate_features_file = False
     if recreate_features_file:
+        # filter NOT USED!!
         feature_dict = get_features_of_interest(filter_cfg, top_observations)
         with open(features_file, "wb") as f:
             pickle.dump(feature_dict, f)
