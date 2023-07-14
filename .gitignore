@@ -3,3 +3,4 @@ outputs
 inspect.json
 features.pkl
 **__pycache__
+*.pkl
