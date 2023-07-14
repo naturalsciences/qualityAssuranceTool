@@ -1,15 +1,20 @@
+import json
 import pytest
 from pandas.api import types
 
 # from pandas.testing import
 # from numpy.testing import
 from test_utils import cfg, mock_response_full
-from api.observations_api import (
+from services.config import (
     filter_cfg_to_query,
-    get_results_n_datastreams_query,
-    get_results_n_datastreams,
 )
-from api.observations_api import datastreams_request_to_df
+from services.requests import (
+    build_query_datastreams,
+    datastreams_request_to_df,
+    get_request,
+    get_results_n_datastreams,
+    get_results_n_datastreams_query,
+)
 from models.enums import Entities, Properties
 
 #
@@ -20,13 +25,52 @@ from models.enums import Entities, Properties
 #         assert 1 == 1
 
 
-class TestObservationsApi:
+class TestServicesConfig:
     def test_filter_cfg_to_query(self, cfg):
         out = filter_cfg_to_query(cfg.data_api.get("filter", {}))
         assert (
             out == "phenomenonTime gt 1002-01-01T00:00:00.000000Z and "
             "phenomenonTime lt 3003-01-01T00:00:00.000000Z"
         )
+
+
+class TestServicesRequests:
+    def test_build_query_datastreams(self, cfg):
+        q = build_query_datastreams(entity_id=cfg.data_api.things.id)
+        assert (
+            q == "http://testing.com/v1.1/Things(1)"
+            "?$select=name,@iot.id,Datastreams"
+            "&$expand=Datastreams($count=true;"
+            "$expand=ObservedProperty($select=name,@iot.id),"
+            "Observations($count=true;$select=@iot.id;$top=0);"
+            "$select=name,@iot.id,description,unitOfMeasurement/name,ObservedProperty)"
+        )
+
+    def test_get_request(self, mock_response):
+        status_code, response = get_request("random")
+        assert (status_code, response) == (200, {"one": "two"})
+
+    # @pytest.mark.skip(reason="What response to provide?")
+    # def test_inspect_datastreams_thing(self, mock_response):
+    #     out = u.inspect_datastreams_thing(0)
+
+    def test_get_request_full(self, mock_response_full):
+        status_code, response = get_request("random")
+        with open("./tests/resources/test_response_wF.json") as f:
+            ref = json.load(f)
+        assert (status_code, response) == (200, ref)
+
+    def test_get_request_full_2(self, mock_response_full):
+        status_code, response = get_request("random")
+        assert (
+            Entities.FEATUREOFINTEREST
+            in response[Entities.DATASTREAMS][1][Entities.OBSERVATIONS][0].keys()
+        )
+
+    @pytest.mark.skip()
+    def test_get_request_full_3(self, mock_response_full):
+        status_code, response = get_request("random")
+        assert 0
 
     def test_get_results_n_datastreams_query(self, cfg):
         cfg_api = cfg.get("data_api", {})
@@ -64,6 +108,8 @@ class TestObservationsApi:
     def test_features_of_interest(self):
         assert False
 
+
+class TestDf:
     @pytest.mark.skip(reason="no features in fixture at the moment & should be moved!")
     def test_features_request_to_df(self):
         assert False

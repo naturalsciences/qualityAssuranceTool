@@ -2,8 +2,10 @@ import hydra
 import stapy
 import logging
 
-from api.observations_api import df_type_conversions, get_all_datastreams_data, qc_on_df
-from utils.utils import patch_qc_flags
+from services.df import df_type_conversions
+from services.qc import qc_on_df
+from services.requests import get_all_datastreams_data
+from services.requests import patch_qc_flags
 
 
 # Type hinting often ignored

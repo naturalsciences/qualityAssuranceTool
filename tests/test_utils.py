@@ -1,5 +1,6 @@
 import pytest
 import json
+import services.requests
 import utils.utils as u
 from hydra import (
     initialize,
@@ -35,7 +36,7 @@ class MockResponse:
 class MockResponseFull:
     def __init__(self):
         self.status_code = 200
-        
+
     def json(self):
         with open("./tests/resources/test_response_wF.json", "r") as f:
             out = json.load(f)
@@ -58,6 +59,7 @@ def mock_response(monkeypatch):
     monkeypatch.setattr(u.Query, "get_with_retry", mock_get)
     monkeypatch.setattr(u.Query, "get_data_sets", mock_get_sets)
 
+
 @pytest.fixture
 def mock_response_full(monkeypatch):
     def mock_get(*args, **kwargs):
@@ -74,39 +76,3 @@ class TestUtils:
     def test_stapy_integration(self, cfg):
         q = u.Query(u.Entity.Thing).entity_id(0)
         assert q.get_query() == "http://testing.com/v1.1/Things(0)"
-
-    def test_build_query_datastreams(self, cfg):
-        q = u.build_query_datastreams(entity_id=cfg.data_api.things.id)
-        assert (
-            q == "http://testing.com/v1.1/Things(1)"
-            "?$select=name,@iot.id,Datastreams"
-            "&$expand=Datastreams($count=true;"
-            "$expand=ObservedProperty($select=name,@iot.id),"
-            "Observations($count=true;$select=@iot.id;$top=0);"
-            "$select=name,@iot.id,description,unitOfMeasurement/name,ObservedProperty)"
-        )
-
-    def test_get_request(self, mock_response):
-        status_code, response = u.get_request("random")
-        assert (status_code, response) == (200, {"one": "two"})
-
-    @pytest.mark.skip(reason="What response to provide?")
-    def test_inspect_datastreams_thing(self, mock_response):
-        out = u.inspect_datastreams_thing(0)
-
-    def test_get_request_full(self, mock_response_full):
-        status_code, response = u.get_request("random")
-        with open("./tests/resources/test_response_wF.json") as f:
-            ref = json.load(f)
-        assert (status_code, response) == (200, ref)
-
-    def test_get_request_full_2(self, mock_response_full):
-        status_code, response = u.get_request("random")
-        assert Entities.FEATUREOFINTEREST in response[Entities.DATASTREAMS][1][Entities.OBSERVATIONS][0].keys()
-
-    @pytest.mark.skip()
-    def test_get_request_full_3(self, mock_response_full):
-        status_code, response = u.get_request("random")
-        assert 0
-
-    
