@@ -9,8 +9,7 @@ import logging
 from functools import partial
 from math import ceil
 from datetime import datetime
-import pickle
-import os.path
+from copy import deepcopy
 from pathlib import Path
 import requests
 from collections import Counter
@@ -25,7 +24,6 @@ from models.enums import (
 from models.constants import ISO_STR_FORMAT, ISO_STR_FORMAT2
 from api.observations_api import (
     get_results_n_datastreams,
-    get_features_of_interest,
     get_results_n_datastreams_query,
     datastreams_request_to_df
 )
@@ -62,17 +60,17 @@ def qc_df(df_in, function):
 
 
 
-def features_to_global_df(
-    features_dict: dict[int, list[int]], df: pd.DataFrame
-) -> pd.DataFrame:
-    df_out = df.set_index(Properties.IOT_ID)
-    i = 0
-    for k, v in features_dict.items():
-        log.info(f"{i}/{len(features_dict)}")
-        existing_indices = df_out.index.intersection(v)
-        # df_out.loc[existing_indices] = k
-        i += 1
-    return df_out
+# def features_to_global_df(
+#     features_dict: dict[int, list[int]], df: pd.DataFrame
+# ) -> pd.DataFrame:
+#     df_out = df.set_index(Properties.IOT_ID)
+#     i = 0
+#     for k, v in features_dict.items():
+#         log.info(f"{i}/{len(features_dict)}")
+#         existing_indices = df_out.index.intersection(v)
+#         # df_out.loc[existing_indices] = k
+#         i += 1
+#     return df_out
 
 
 log = logging.getLogger(__name__)
@@ -96,46 +94,11 @@ def series_to_patch_dict(x, group_per_x=1000):
     }
     return d_out
 
-
-def compose_batch_qc_patch(df, col_id, col_qc):
-    df_ = df[[col_id, col_qc]].convert_dtypes(convert_string=True)
-    body = json.dumps(df_.to_json(orient="records"))
-    pass
-
-
-@hydra.main(config_path="../conf", config_name="config.yaml", version_base="1.2")
-def main(cfg):
-    log.info("Start")
-    stapy.set_sta_url(cfg.data_api.base_url)
-
-    thing_id = cfg.data_api.things.id
-
-    nb_streams_per_call = cfg.data_api.datastreams.top
-    top_observations = cfg.data_api.observations.top
-    filter_cfg = cfg.data_api.get("filter", {})
-
-    features_file = Path(cfg.other.pickle.path)
-    recreate_features_file = True
-    if features_file.exists():
-        latest_time = get_datetime_latest_observation()
-        mod_time = datetime.fromtimestamp(os.path.getmtime(features_file))
-        if mod_time > latest_time:
-            recreate_features_file = False
-    if recreate_features_file:
-        # filter NOT USED!!
-        feature_dict = get_features_of_interest(filter_cfg, top_observations)
-        with open(features_file, "wb") as f:
-            pickle.dump(feature_dict, f)
-    else:
-        with open(features_file, "rb") as f:
-            feature_dict = pickle.load(f)
-
+    
+def get_nb_datastreams_of_thing(thing_id: int) -> int:
     base_query = (
-        Query(Entity.Thing).entity_id(thing_id).select("Datastreams/@iot.count")
+    Query(Entity.Thing).entity_id(thing_id).select("Datastreams/@iot.count")
     )
-    # summary = inspect_datastreams_thing(1)
-
-    df_all = pd.DataFrame()
     add_query_nb = Qactions.EXPAND(
         [
             Entities.DATASTREAMS(
@@ -144,10 +107,17 @@ def main(cfg):
         ]
     )
     nb_datastreams = json.loads(
-        Query(Entity.Datastream)
-        .get_with_retry(base_query.get_query() + "&" + add_query_nb)
-        .content
-    ).get("Datastreams@iot.count")
+            Query(Entity.Datastream)
+            .get_with_retry(base_query.get_query() + "&" + add_query_nb)
+            .content
+        ).get("Datastreams@iot.count")
+    return nb_datastreams
+
+
+def get_all_datastreams_data(thing_id, nb_streams_per_call, top_observations, filter_cfg) -> pd.DataFrame:
+    df_all = pd.DataFrame()
+    
+    nb_datastreams = get_nb_datastreams_of_thing(thing_id = thing_id)
     log.debug(f"{nb_datastreams=}")
     for i in range(ceil(nb_datastreams / nb_streams_per_call)):
         log.info(f"nb {i} of {ceil(nb_datastreams/nb_streams_per_call)}")
@@ -160,53 +130,55 @@ def main(cfg):
             # expand_feature_of_interest=True,
         )
         status_code, response = get_results_n_datastreams(query)
-        for ds_i in response[Entities.DATASTREAMS]:  # type:ignore
+        if status_code != 200:
+            raise IOError(f"Status code: {status_code}")
+        for ds_i in response[Entities.DATASTREAMS]:
             if f"{Entities.OBSERVATIONS}@iot.nextLink" in ds_i:
                 log.warning("Not all observations are extracted!")  # TODO: follow link!
-        df_i = datastreams_request_to_df(response[Entities.DATASTREAMS])  # type: ignore
+        df_i = datastreams_request_to_df(response[Entities.DATASTREAMS])  
         log.debug(f"{df_i.shape[0]=}")
-        df_all = pd.concat([df_all, df_i], ignore_index=True)
-    log.debug(f"{df_all.shape=}")
+        df_all = pd.concat([df_all, df_i], ignore_index=True) 
+    return df_all
 
-    log.debug("done with df_all")
-
-    log.info("Start features to global df")
-    df_out = features_to_global_df(feature_dict, df_all)
-    # df_all = features_to_global_df(feature_dict, df_all)
-    log.info("End features to global df")
-    df_all["bool"] = None
-    df_all["qc_flag"] = None
+    
+def qc_on_df(df: pd.DataFrame, cfg: dict[str, dict]) -> pd.DataFrame:
+    df_out = deepcopy(df)
+    df_out["bool"] = None
+    df_out["qc_flag"] = None
     for _, row in (
-        df_all[["datastream_id", "units", "observation_type"]]
+        df_out[["datastream_id", "units", "observation_type"]]
         .drop_duplicates()
         .iterrows()
     ):
         d_id_i, u_i, ot_i = row.values
-        df_sub = df_all.loc[df_all["datastream_id"] == d_id_i]
-        cfg_ds_i = cfg.get("QC").get(ot_i, {})
+        df_sub = df_out.loc[df_out["datastream_id"] == d_id_i]
+        cfg_ds_i = cfg.get("QC", {}).get(ot_i, {})
         if cfg_ds_i:
-            min_, max_ = cfg.get("QC").get(ot_i).get("range")
+            min_, max_ = cfg_ds_i.get("range") #type:ignore  Don't know why this is an issue
             function_i = partial(min_max_check_values, min_=min_, max_=max_)
             df_sub = qc_df(df_sub, function_i)
-            df_all.loc[df_sub.index] = df_sub
-    df_all["observation_type"] = df_all["observation_type"].astype("category")
-    df_all["units"] = df_all["units"].astype("category")
+            df_out.loc[df_sub.index] = df_sub 
+    return df_out
 
-    # TODO: limit mem usage by object references? using category is not possible, as dict is not hashable
-    # category wouldn't help, as the id is ALWAYS different
-    df_all["patch_dict"] = df_all[[Properties.IOT_ID, "qc_flag"]].apply(
+    
+def df_type_conversions(df):
+    df_out = deepcopy(df)
+    for ci in ["observation_type", "units", "qc_flag"]:
+        mu0 = df_out[[ci]].memory_usage().get(ci)
+        df_out[ci] = df_out[ci].astype("category")
+        mu1 = df_out[[ci]].memory_usage().get(ci)
+        if mu1 > mu0:
+            log.warning("df type conversion might not reduce the memory usage!")
+
+    return df_out
+
+    
+def patch_qc_flags(df: pd.DataFrame, url) -> Counter:
+    df["patch_dict"] = df[[Properties.IOT_ID, "qc_flag"]].apply(
         series_to_patch_dict, axis=1
     )
 
-    final_json = {"requests": df_all["patch_dict"].to_list()}
-
-    #  dict_jsons = {
-    #      "final_json_15000": {"requests": df_all["patch_dict"].iloc[:15000].to_list()},
-    #      "final_json_10000": {"requests": df_all["patch_dict"].iloc[:10000].to_list()},
-    #      "final_json_05000": {"requests": df_all["patch_dict"].iloc[:5000].to_list()},
-    #      "final_json_01000": {"requests": df_all["patch_dict"].iloc[:1000].to_list()},
-    #      "final_json_00500": {"requests": df_all["patch_dict"].iloc[:500].to_list()},
-    #  }
+    final_json = {"requests": df["patch_dict"].to_list()}
     log.info("Start batch patch query")
     response = requests.post(
         headers={"Content-Type": "application/json"},
@@ -216,42 +188,32 @@ def main(cfg):
     count_res = Counter([ri["status"] for ri in response.json()["responses"]])
     log.info("End batch patch query")
     log.info(f"{count_res}")
+    return count_res
 
-    #  for di in dict_jsons.keys():
-    #      log.info(f"Start batch {di}")
-    #      start_i = time.time()
-    #      response_i = requests.post(
-    #          headers={"Content-Type": "application/json"},
-    #          url="http://localhost:8080/FROST-Server/v1.1/$batch",
-    #          data=json.dumps(dict_jsons[di]),
-    #      )
-    #      end_i = time.time()
-    #      count_res_i = Counter([ri["status"] for ri in response_i.json()["responses"]])
+@hydra.main(config_path="../conf", config_name="config.yaml", version_base="1.2")
+def main(cfg):
+    log.info("Start")
+    stapy.set_sta_url(cfg.data_api.base_url)
 
-    #      log.info(f"End batch patch query {di}: {end_i-start_i}")
-    #      log.info(f"{count_res_i}")
+    thing_id = cfg.data_api.things.id
 
-    #  for gp_i in [100, 500, 1000, 1500, 5000, 10000, 15000]:
-    #      df_all["patch_dict"] = df_all[[Properties.IOT_ID, "qc_flag"]].apply(
-    #          partial(series_to_patch_dict, group_per_x=gp_i), axis=1
-    #      )
-    #      used_json = {"requests": df_all["patch_dict"].iloc[:15000].to_list()}
+    nb_streams_per_call = cfg.data_api.datastreams.top
+    top_observations = cfg.data_api.observations.top
+    filter_cfg = cfg.data_api.get("filter", {})
 
-    #      log.info(f"Start batch group_per_x: {gp_i}")
-    #      start_i = time.time()
-    #      response_i = requests.post(
-    #          headers={"Content-Type": "application/json"},
-    #          url="http://localhost:8080/FROST-Server/v1.1/$batch",
-    #          data=json.dumps(used_json),
-    #      )
-    #      end_i = time.time()
-    #      count_res_i = Counter([ri["status"] for ri in response_i.json()["responses"]])
+    
+    df_all = get_all_datastreams_data(thing_id=thing_id, nb_streams_per_call=nb_streams_per_call, top_observations=top_observations, filter_cfg=filter_cfg)
+   
+    df_all = qc_on_df(df_all, cfg=cfg)
 
-    #      log.info(f"End batch patch query {gp_i}: {end_i-start_i}")
-    #      log.info(f"{count_res_i}")
+    df_all = df_type_conversions(df_all)
+    
+    url="http://localhost:8080/FROST-Server/v1.1/$batch"
+    counter = patch_qc_flags(df_all, url=url)
 
-    #  # compose_batch_qc_patch(df_all.loc[0:10], Properties.IOT_ID, "qc_flag")
+    print(f"{counter=}")
     print(f"{df_all.shape=}")
+    print(f"{df_all.dtypes=}")
 
     log.info("End")
 
@@ -259,8 +221,3 @@ def main(cfg):
 if __name__ == "__main__":
     log.debug("testing...")
     main()
-
-
-# possibly faster?
-# https://sensors.naturalsciences.be/sta/v1.1/OBSERVATIONS?$FILTER=phenomenonTime%20gt%202022-03-01T00:00:00Z%20and%20phenomenonTime%20lt%202022-04-01T00:00:00Z&$EXPAND=FEATUREOFINTEREST($SELECT=feature/coordinates)&$SELECT=FEATUREOFINTEREST/feature/coordinates,result
-# https://sensors.naturalsciences.be/sta/v1.1/OBSERVATIONS?$FILTER=phenomenonTime%20gt%202022-03-01T00:00:00Z%20and%20phenomenonTime%20lt%202022-04-01T00:00:00Z&$EXPAND=FEATUREOFINTEREST($SELECT=feature/coordinates)&$SELECT=FEATUREOFINTEREST/feature/coordinates,result&$resultFormat=GeoJSON
