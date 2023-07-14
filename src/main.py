@@ -29,11 +29,14 @@ from models.enums import (
 )
 from models.constants import ISO_STR_FORMAT, ISO_STR_FORMAT2
 from api.observations_api import (
+    convert_to_datetime,
     get_results_n_datastreams,
     filter_cfg_to_query,
     get_features_of_interest,
     get_results_n_datastreams_query,
+    datastreams_request_to_df
 )
+from utils.utils import get_datetime_latest_observation
 
 
 # Type hinting often ignored
@@ -64,61 +67,6 @@ def qc_df(df_in, function):
 #     ).astype({Properties.IOT_ID: int, "result": float})
 #     return qc_df(df_, function)
 
-
-def convert_to_datetime(value):
-    try:
-        d_out = datetime.strptime(value, ISO_STR_FORMAT)
-    except ValueError:
-        d_out = datetime.strptime(value, ISO_STR_FORMAT2)
-    return d_out
-
-
-def datastreams_request_to_df(request_datastreams):
-    df = pd.DataFrame()
-    for di in request_datastreams:
-        data_coordinates = di.get(Entities.FEATUREOFINTEREST, {})
-        if data_coordinates:
-            del di[Entities.FEATUREOFINTEREST]
-        observations_list = di.get(Entities.OBSERVATIONS)
-        if observations_list:
-            df_i = pd.DataFrame(observations_list).astype(
-                {Properties.IOT_ID: int, "result": float}
-            )
-            df_i["datastream_id"] = int(di.get(Properties.IOT_ID))
-            df_i[Properties.PHENOMENONTIME] = df_i[Properties.PHENOMENONTIME].apply(
-                convert_to_datetime
-            )
-            df_i["observation_type"] = di.get(Entities.OBSERVEDPROPERTY).get(
-                Properties.NAME
-            )
-            df_i["observation_type"] = df_i["observation_type"].astype("category")
-            k1, k2 = Properties.UNITOFMEASUREMENT.split("/", 1)
-            df_i["units"] = di.get(k1).get(k2)
-            df_i["units"] = df_i["units"].astype("category")
-            # df_i[["long", "lat"]] = pd.DataFrame.from_records(df_i[str(Entities.FEATUREOFINTEREST)].apply(
-            #     lambda x: x.get('feature').get('coordinates')))
-            # df_i.drop(columns=str(Entities.FEATUREOFINTEREST))
-            df = pd.concat([df, df_i], ignore_index=True)
-
-    return df
-
-
-def get_datetime_latest_observation():
-    query = (
-        Query(Entity.Observation).get_query()
-        + "?"
-        + Order.ORDERBY(Properties.PHENOMENONTIME, OrderOption.DESC)  # type: ignore
-        + "&"
-        + Settings.TOP(1)
-        + "&"
-        + Qactions.SELECT([Properties.PHENOMENONTIME])
-    )  # type:ignore
-    request = json.loads(Query(Entity.Observation).get_with_retry(query).content)
-    # https://sensors.naturalsciences.be/sta/v1.1/OBSERVATIONS?$ORDERBY=phenomenonTime%20desc&$TOP=1&$SELECT=phenomenonTime
-    latest_phenomenonTime = convert_to_datetime(
-        request["value"][0].get(Properties.PHENOMENONTIME)
-    )
-    return latest_phenomenonTime
 
 
 def features_to_global_df(
@@ -216,6 +164,7 @@ def main(cfg):
             skip=nb_streams_per_call * i,
             top_observations=top_observations,
             filter_condition=filter_cfg,
+            # expand_feature_of_interest=True,
         )
         status_code, response = get_results_n_datastreams(query)
         for ds_i in response[Entities.DATASTREAMS]:  # type:ignore
@@ -230,6 +179,7 @@ def main(cfg):
 
     log.info("Start features to global df")
     df_out = features_to_global_df(feature_dict, df_all)
+    # df_all = features_to_global_df(feature_dict, df_all)
     log.info("End features to global df")
     df_all["bool"] = None
     df_all["qc_flag"] = None
@@ -249,65 +199,65 @@ def main(cfg):
     df_all["observation_type"] = df_all["observation_type"].astype("category")
     df_all["units"] = df_all["units"].astype("category")
 
-    df_all["patch_dict"] = None
-    df_all["path_dict"] = df_all["patch_dict"].astype("category")
+    # TODO: limit mem usage by object references? using category is not possible, as dict is not hashable
+    # category wouldn't help, as the id is ALWAYS different
     df_all["patch_dict"] = df_all[[Properties.IOT_ID, "qc_flag"]].apply(
         series_to_patch_dict, axis=1
     )
 
     final_json = {"requests": df_all["patch_dict"].to_list()}
 
-    dict_jsons = {
-        "final_json_15000": {"requests": df_all["patch_dict"].iloc[:15000].to_list()},
-        "final_json_10000": {"requests": df_all["patch_dict"].iloc[:10000].to_list()},
-        "final_json_05000": {"requests": df_all["patch_dict"].iloc[:5000].to_list()},
-        "final_json_01000": {"requests": df_all["patch_dict"].iloc[:1000].to_list()},
-        "final_json_00500": {"requests": df_all["patch_dict"].iloc[:500].to_list()},
-    }
-    # log.info("Start batch patch query")
-    # response = requests.post(
-    #     headers={"Content-Type": "application/json"},
-    #     url="http://localhost:8080/FROST-Server/v1.1/$batch",
-    #     data=json.dumps(final_json),
-    # )
-    # count_res = Counter([ri["status"] for ri in response.json()["responses"]])
-    # log.info("End batch patch query")
-    # log.info(f"{count_res}")
+    #  dict_jsons = {
+    #      "final_json_15000": {"requests": df_all["patch_dict"].iloc[:15000].to_list()},
+    #      "final_json_10000": {"requests": df_all["patch_dict"].iloc[:10000].to_list()},
+    #      "final_json_05000": {"requests": df_all["patch_dict"].iloc[:5000].to_list()},
+    #      "final_json_01000": {"requests": df_all["patch_dict"].iloc[:1000].to_list()},
+    #      "final_json_00500": {"requests": df_all["patch_dict"].iloc[:500].to_list()},
+    #  }
+    log.info("Start batch patch query")
+    response = requests.post(
+        headers={"Content-Type": "application/json"},
+        url="http://localhost:8080/FROST-Server/v1.1/$batch",
+        data=json.dumps(final_json),
+    )
+    count_res = Counter([ri["status"] for ri in response.json()["responses"]])
+    log.info("End batch patch query")
+    log.info(f"{count_res}")
 
-    for di in dict_jsons.keys():
-        log.info(f"Start batch {di}")
-        start_i = time.time()
-        response_i = requests.post(
-            headers={"Content-Type": "application/json"},
-            url="http://localhost:8080/FROST-Server/v1.1/$batch",
-            data=json.dumps(dict_jsons[di]),
-        )
-        end_i = time.time()
-        count_res_i = Counter([ri["status"] for ri in response_i.json()["responses"]])
+    #  for di in dict_jsons.keys():
+    #      log.info(f"Start batch {di}")
+    #      start_i = time.time()
+    #      response_i = requests.post(
+    #          headers={"Content-Type": "application/json"},
+    #          url="http://localhost:8080/FROST-Server/v1.1/$batch",
+    #          data=json.dumps(dict_jsons[di]),
+    #      )
+    #      end_i = time.time()
+    #      count_res_i = Counter([ri["status"] for ri in response_i.json()["responses"]])
 
-        log.info(f"End batch patch query {di}: {end_i-start_i}")
-        log.info(f"{count_res_i}")
+    #      log.info(f"End batch patch query {di}: {end_i-start_i}")
+    #      log.info(f"{count_res_i}")
 
-    for gp_i in [100, 500, 1000, 1500, 5000, 10000, 15000]:
-        df_all["patch_dict"] = df_all[[Properties.IOT_ID, "qc_flag"]].apply(
-            partial(series_to_patch_dict, group_per_x=gp_i), axis=1
-        )
-        used_json = {"requests": df_all["patch_dict"].iloc[:15000].to_list()}
+    #  for gp_i in [100, 500, 1000, 1500, 5000, 10000, 15000]:
+    #      df_all["patch_dict"] = df_all[[Properties.IOT_ID, "qc_flag"]].apply(
+    #          partial(series_to_patch_dict, group_per_x=gp_i), axis=1
+    #      )
+    #      used_json = {"requests": df_all["patch_dict"].iloc[:15000].to_list()}
 
-        log.info(f"Start batch group_per_x: {gp_i}")
-        start_i = time.time()
-        response_i = requests.post(
-            headers={"Content-Type": "application/json"},
-            url="http://localhost:8080/FROST-Server/v1.1/$batch",
-            data=json.dumps(used_json),
-        )
-        end_i = time.time()
-        count_res_i = Counter([ri["status"] for ri in response_i.json()["responses"]])
+    #      log.info(f"Start batch group_per_x: {gp_i}")
+    #      start_i = time.time()
+    #      response_i = requests.post(
+    #          headers={"Content-Type": "application/json"},
+    #          url="http://localhost:8080/FROST-Server/v1.1/$batch",
+    #          data=json.dumps(used_json),
+    #      )
+    #      end_i = time.time()
+    #      count_res_i = Counter([ri["status"] for ri in response_i.json()["responses"]])
 
-        log.info(f"End batch patch query {gp_i}: {end_i-start_i}")
-        log.info(f"{count_res_i}")
+    #      log.info(f"End batch patch query {gp_i}: {end_i-start_i}")
+    #      log.info(f"{count_res_i}")
 
-    # compose_batch_qc_patch(df_all.loc[0:10], Properties.IOT_ID, "qc_flag")
+    #  # compose_batch_qc_patch(df_all.loc[0:10], Properties.IOT_ID, "qc_flag")
     print(f"{df_all.shape=}")
 
     log.info("End")

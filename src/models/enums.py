@@ -93,3 +93,6 @@ class QualityFlags(Enum):
     PHENOMENON_UNCERTAIN = "A"
     NOMINAL = "B"
     BELOW_LIMIT_OF_QUANTIFICATION = "Q"
+
+    def __str__(self):
+        return f"{self.value}"

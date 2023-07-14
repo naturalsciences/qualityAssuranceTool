@@ -1,13 +1,13 @@
 import logging
-from typing import Tuple, cast
 from datetime import datetime
 import pandas as pd
 from stapy import Query, Entity
 import json
 
 from models.enums import Entities, Properties, Qactions, Settings, Filter
-from models.constants import ISO_STR_FORMAT
-from utils.utils import get_request
+from datetime import datetime
+from models.constants import ISO_STR_FORMAT, ISO_STR_FORMAT2
+from utils.utils import convert_to_datetime, get_request
 
 
 log = logging.getLogger(__name__)
@@ -34,7 +34,7 @@ def get_results_n_datastreams_query(
     skip,
     top_observations,
     filter_condition,
-    expand_feature_of_interest=False,
+    expand_feature_of_interest=True,
 ):
     # TODO: cleanup!!
     idx_slice = 3
@@ -90,7 +90,14 @@ def get_results_n_datastreams_query(
             )
         ]
     )
-    Q_out = Query(Entity.Thing).entity_id(entity_id).select(Entities.DATASTREAMS).get_query() + "&" +Q
+    Q_out = (
+        Query(Entity.Thing)
+        .entity_id(entity_id)
+        .select(Entities.DATASTREAMS)
+        .get_query()
+        + "&"
+        + Q
+    )
     return Q_out
 
 
@@ -156,6 +163,7 @@ def get_features_of_interest(filter_cfg, top_observations):
     return features_observations_dict
 
 
+## from typing import Tuple, cast
 # get_id_result_lists, get_datetime_latest_observation
 # def get_id_result_lists(iot_id: int) -> Tuple[int, list]:
 #     id_list: int
@@ -181,3 +189,36 @@ def get_features_of_interest(filter_cfg, top_observations):
 #         if property_name in dict_out:
 #             dict_out[property_name] += dsi.get(Properties.IOT_ID)
 #     return dict_out
+
+
+
+def datastreams_request_to_df(request_datastreams):
+    df = pd.DataFrame()
+    for di in request_datastreams:
+        observations_list = di.get(Entities.OBSERVATIONS)
+        if observations_list:
+            df_i = pd.DataFrame(observations_list).astype(
+                {Properties.IOT_ID: int, "result": float}
+            )
+            df_i["datastream_id"] = int(di.get(Properties.IOT_ID))
+            df_i[Properties.PHENOMENONTIME] = df_i[Properties.PHENOMENONTIME].apply(
+                convert_to_datetime
+            )
+            df_i["observation_type"] = di.get(Entities.OBSERVEDPROPERTY).get(
+                Properties.NAME
+            )
+            df_i["observation_type"] = df_i["observation_type"].astype("category")
+            k1, k2 = Properties.UNITOFMEASUREMENT.split("/", 1)
+            df_i["units"] = di.get(k1).get(k2)
+            df_i["units"] = df_i["units"].astype("category")
+
+            df_i[["long", "lat"]] = pd.DataFrame.from_records(
+                df_i[str(Entities.FEATUREOFINTEREST)].apply(
+                    lambda x: x.get("feature").get("coordinates")
+                )
+            )
+            del df_i[str(Entities.FEATUREOFINTEREST)]
+            # df_i.drop(columns=str(Entities.FEATUREOFINTEREST))
+            df = pd.concat([df, df_i], ignore_index=True)
+
+    return df

@@ -1,14 +1,26 @@
 import logging
 import copy
+import json
 from typing import Tuple
 import numpy as np
 from functools import reduce
 from requests import Response
 from stapy import Query, Entity, config
-from models.enums import Properties, Entities, Settings, Qactions
+from models.enums import Properties, Entities, Settings, Qactions, Order, OrderOption
+from datetime import datetime
+from models.constants import ISO_STR_FORMAT, ISO_STR_FORMAT2
+
 
 
 log = logging.getLogger(__name__)
+
+def convert_to_datetime(value):
+    try:
+        d_out = datetime.strptime(value, ISO_STR_FORMAT)
+    except ValueError:
+        d_out = datetime.strptime(value, ISO_STR_FORMAT2)
+    return d_out
+
 
 def build_query_datastreams(entity_id: int) -> str:
     base_query = Query(Entity.Thing).entity_id(entity_id)
@@ -147,3 +159,21 @@ def extend_summary_with_result_inspection(summary_dict: dict[str, list]):
         }
         summary_out.get(Entities.DATASTREAMS).get(dsi)["results"] = extended_sumary  # type: ignore
     return summary_out
+
+def get_datetime_latest_observation():
+    query = (
+        Query(Entity.Observation).get_query()
+        + "?"
+        + Order.ORDERBY(Properties.PHENOMENONTIME, OrderOption.DESC)  # type: ignore
+        + "&"
+        + Settings.TOP(1)
+        + "&"
+        + Qactions.SELECT([Properties.PHENOMENONTIME])
+    )  # type:ignore
+    request = json.loads(Query(Entity.Observation).get_with_retry(query).content)
+    # https://sensors.naturalsciences.be/sta/v1.1/OBSERVATIONS?$ORDERBY=phenomenonTime%20desc&$TOP=1&$SELECT=phenomenonTime
+    latest_phenomenonTime = convert_to_datetime(
+        request["value"][0].get(Properties.PHENOMENONTIME)
+    )
+    return latest_phenomenonTime
+

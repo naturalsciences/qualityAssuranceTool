@@ -1,11 +1,16 @@
 import pytest
+from pandas.api import types
+
+# from pandas.testing import
+# from numpy.testing import
 from test_utils import cfg, mock_response_full
 from api.observations_api import (
     filter_cfg_to_query,
     get_results_n_datastreams_query,
     get_results_n_datastreams,
 )
-from models.enums import Entities
+from api.observations_api import datastreams_request_to_df
+from models.enums import Entities, Properties
 
 #
 # class TestApi:
@@ -36,7 +41,7 @@ class TestObservationsApi:
             top_observations=top,
             skip=skip,
             filter_condition=filter_condition,
-            expand_feature_of_interest=False
+            expand_feature_of_interest=False,
         )
 
         assert (
@@ -50,10 +55,11 @@ class TestObservationsApi:
         )
 
     def test_get_results_n_datastreams(self, mock_response_full):
-        nb_datastreams = len(get_results_n_datastreams("random")[1][Entities.DATASTREAMS])
+        nb_datastreams = len(
+            get_results_n_datastreams("random")[1][Entities.DATASTREAMS]
+        )
         assert nb_datastreams == 10
 
-        
     @pytest.mark.skip(reason="no features in fixture at the moment")
     def test_features_of_interest(self):
         assert False
@@ -61,3 +67,26 @@ class TestObservationsApi:
     @pytest.mark.skip(reason="no features in fixture at the moment & should be moved!")
     def test_features_request_to_df(self):
         assert False
+
+    def test_features_datastreams_request_to_df(self, mock_reponse_full):
+        response_in = get_results_n_datastreams("random")[1]
+        datastreams_data = response_in[Entities.DATASTREAMS]
+        df = datastreams_request_to_df(datastreams_data)
+        assert not Entities.FEATUREOFINTEREST in df.keys()
+
+    # incomplete comparison
+    def test_shape_datastreams_request_to_df(self, mock_response_full):
+        response_in = get_results_n_datastreams("random")[1]
+        datastreams_data = response_in[Entities.DATASTREAMS]
+        df = datastreams_request_to_df(datastreams_data)
+        assert df.shape == (945, 8)
+
+    def test_num_dtypes_datastreams_request_to_df(self, mock_response_full):
+        response_in = get_results_n_datastreams("random")[1]
+        datastreams_data = response_in[Entities.DATASTREAMS]
+        df = datastreams_request_to_df(datastreams_data)
+
+        assert all(
+            types.is_numeric_dtype(df[ci])
+            for ci in [Properties.IOT_ID, "result", "datastream_id", "long", "lat"]
+        )
