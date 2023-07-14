@@ -1,6 +1,5 @@
 import pytest
 import json
-from functools import partial
 import utils.utils as u
 from hydra import (
     initialize,
@@ -9,7 +8,7 @@ from hydra import (
 import stapy
 from omegaconf import DictConfig
 
-from models.enums import Entities, Properties
+from models.enums import Entities
 
 
 @pytest.fixture(scope="session")

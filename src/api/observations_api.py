@@ -6,7 +6,7 @@ import json
 
 from models.enums import Entities, Properties, Qactions, Settings, Filter
 from datetime import datetime
-from models.constants import ISO_STR_FORMAT, ISO_STR_FORMAT2
+from models.constants import ISO_STR_FORMAT
 from utils.utils import convert_to_datetime, get_request
 
 

@@ -1,4 +1,4 @@
-from enum import nonmember, Enum
+from enum import Enum
 from strenum import StrEnum
 
 

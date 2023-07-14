@@ -1,5 +1,5 @@
 import hydra
-from stapy import Query, Entity, Patch, config
+from stapy import Query, Entity
 import stapy
 import copy
 import json
@@ -7,31 +7,24 @@ import numpy as np
 import pandas as pd
 import logging
 from functools import partial
-from typing import Callable
 from math import ceil
-from datetime import datetime, timedelta
+from datetime import datetime
 import pickle
 import os.path
 from pathlib import Path
 import requests
 from collections import Counter
-import time
 
 from models.enums import (
     Properties,
     Settings,
     Entities,
     Qactions,
-    Filter,
-    Order,
-    OrderOption,
     QualityFlags,
 )
 from models.constants import ISO_STR_FORMAT, ISO_STR_FORMAT2
 from api.observations_api import (
-    convert_to_datetime,
     get_results_n_datastreams,
-    filter_cfg_to_query,
     get_features_of_interest,
     get_results_n_datastreams_query,
     datastreams_request_to_df
