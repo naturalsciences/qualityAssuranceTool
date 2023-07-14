@@ -1,12 +1,18 @@
+from collections import Counter
+from copy import deepcopy
+from functools import partial
 import logging
 from datetime import datetime
 import pandas as pd
-from stapy import Query, Entity
+from math import ceil
 import json
 
-from models.enums import Entities, Properties, Qactions, Settings, Filter
+from stapy import Query, Entity
+
+from models.enums import Entities, Properties, Qactions, QualityFlags, Settings, Filter
 from datetime import datetime
 from models.constants import ISO_STR_FORMAT
+from qc_functions.functions import min_max_check_values
 from utils.utils import convert_to_datetime, get_request
 
 
@@ -191,7 +197,6 @@ def get_features_of_interest(filter_cfg, top_observations):
 #     return dict_out
 
 
-
 def datastreams_request_to_df(request_datastreams):
     df = pd.DataFrame()
     for di in request_datastreams:
@@ -222,3 +227,96 @@ def datastreams_request_to_df(request_datastreams):
             df = pd.concat([df, df_i], ignore_index=True)
 
     return df
+
+def get_nb_datastreams_of_thing(thing_id: int) -> int:
+    base_query = (
+        Query(Entity.Thing).entity_id(thing_id).select("Datastreams/@iot.count")
+    )
+    add_query_nb = Qactions.EXPAND(
+        [
+            Entities.DATASTREAMS(
+                [Settings.COUNT("true"), Qactions.SELECT([Properties.IOT_ID])]
+            )
+        ]
+    )
+    nb_datastreams = json.loads(
+        Query(Entity.Datastream)
+        .get_with_retry(base_query.get_query() + "&" + add_query_nb)
+        .content
+    ).get("Datastreams@iot.count")
+    return nb_datastreams
+
+
+def get_all_datastreams_data(
+    thing_id, nb_streams_per_call, top_observations, filter_cfg
+) -> pd.DataFrame:
+    df_all = pd.DataFrame()
+
+    nb_datastreams = get_nb_datastreams_of_thing(thing_id=thing_id)
+    log.debug(f"{nb_datastreams=}")
+    for i in range(ceil(nb_datastreams / nb_streams_per_call)):
+        log.info(f"nb {i} of {ceil(nb_datastreams/nb_streams_per_call)}")
+        query = get_results_n_datastreams_query(
+            entity_id=thing_id,
+            n=nb_streams_per_call,
+            skip=nb_streams_per_call * i,
+            top_observations=top_observations,
+            filter_condition=filter_cfg,
+            # expand_feature_of_interest=True,
+        )
+        status_code, response = get_results_n_datastreams(query)
+        if status_code != 200:
+            raise IOError(f"Status code: {status_code}")
+        for ds_i in response[Entities.DATASTREAMS]:
+            if f"{Entities.OBSERVATIONS}@iot.nextLink" in ds_i:
+                log.warning("Not all observations are extracted!")  # TODO: follow link!
+        df_i = datastreams_request_to_df(response[Entities.DATASTREAMS])
+        log.debug(f"{df_i.shape[0]=}")
+        df_all = pd.concat([df_all, df_i], ignore_index=True)
+    return df_all
+
+
+def qc_df(df_in, function):
+    # http://vocab.nerc.ac.uk/collection/L20/current/
+    df_out = deepcopy(df_in)
+    df_out["bool"] = function(df_out["result"].array)
+    df_out.loc[df_out["bool"], "qc_flag"] = QualityFlags.PROBABLY_GOOD
+    df_out.loc[~df_out["bool"], "qc_flag"] = QualityFlags.PROBABLY_BAD
+    return df_out
+
+
+def qc_on_df(df: pd.DataFrame, cfg: dict[str, dict]) -> pd.DataFrame:
+    df_out = deepcopy(df)
+    df_out["bool"] = None
+    df_out["qc_flag"] = None
+    for _, row in (
+        df_out[["datastream_id", "units", "observation_type"]]
+        .drop_duplicates()
+        .iterrows()
+    ):
+        d_id_i, u_i, ot_i = row.values
+        df_sub = df_out.loc[df_out["datastream_id"] == d_id_i]
+        cfg_ds_i = cfg.get("QC", {}).get(ot_i, {})
+        if cfg_ds_i:
+            min_, max_ = cfg_ds_i.get(
+                "range"
+            )  # type:ignore  Don't know why this is an issue
+            function_i = partial(min_max_check_values, min_=min_, max_=max_)
+            df_sub = qc_df(df_sub, function_i)
+            df_out.loc[df_sub.index] = df_sub
+    return df_out
+
+
+def df_type_conversions(df):
+    df_out = deepcopy(df)
+    for ci in ["observation_type", "units", "qc_flag"]:
+        mu0 = df_out[[ci]].memory_usage().get(ci)
+        df_out[ci] = df_out[ci].astype("category")
+        mu1 = df_out[[ci]].memory_usage().get(ci)
+        if mu1 > mu0:
+            log.warning("df type conversion might not reduce the memory usage!")
+
+    for ci in ["bool"]:
+        df_out[ci] = df_out[ci].astype("bool")
+
+    return df_out

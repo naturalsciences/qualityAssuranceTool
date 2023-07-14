@@ -1,18 +1,20 @@
+from collections import Counter
 import logging
 import copy
 import json
 from typing import Tuple
 import numpy as np
 from functools import reduce
-from requests import Response
+import pandas as pd
+from requests import Response, post
 from stapy import Query, Entity
 from models.enums import Properties, Entities, Settings, Qactions, Order, OrderOption
 from datetime import datetime
 from models.constants import ISO_STR_FORMAT, ISO_STR_FORMAT2
 
 
-
 log = logging.getLogger(__name__)
+
 
 def convert_to_datetime(value):
     try:
@@ -58,13 +60,15 @@ def build_query_datastreams(entity_id: int) -> str:
                 ]
             )
         ]
-    ) 
+    )
     return out_query.get_query() + "&" + additional_query
+
 
 def get_request(query: str) -> Tuple[int, dict]:
     request: Response = Query(Entity.Thing).entity_id(0).get_with_retry(query)
     request_out = request.json()
     return request.status_code, request_out
+
 
 def inspect_datastreams_thing(entity_id: int) -> dict:
     out_query = build_query_datastreams(entity_id=entity_id)
@@ -89,8 +93,8 @@ def inspect_datastreams_thing(entity_id: int) -> dict:
 
     # observ_count = [ds.get("OBSERVATIONS@iot.COUNT") for ds in request.get("DATASTREAMS")]
     out = {k: request[k] for k in request.keys() if Entities.DATASTREAMS not in k}
-    out[Entities.OBSERVATIONS] = { #type:ignore
-        Settings.COUNT: sum(observ_count), #type:ignore
+    out[Entities.OBSERVATIONS] = {  # type:ignore
+        Settings.COUNT: sum(observ_count),  # type:ignore
         Entities.OBSERVATIONS: list(set(observ_properties)),
     }
 
@@ -122,10 +126,11 @@ def inspect_datastreams_thing(entity_id: int) -> dict:
 
     log.debug(f"Start reducing query.")
     out[Entities.DATASTREAMS] = reduce(
-        update_datastreams, [{}] + request.get(Entities.DATASTREAMS) #type:ignore
+        update_datastreams, [{}] + request.get(Entities.DATASTREAMS)  # type:ignore
     )
     log.debug(f"Return result inspection.")
     return out
+
 
 def extend_summary_with_result_inspection(summary_dict: dict[str, list]):
     log.debug(f"Start extending summary.")
@@ -160,6 +165,7 @@ def extend_summary_with_result_inspection(summary_dict: dict[str, list]):
         summary_out.get(Entities.DATASTREAMS).get(dsi)["results"] = extended_sumary  # type: ignore
     return summary_out
 
+
 def get_datetime_latest_observation():
     query = (
         Query(Entity.Observation).get_query()
@@ -177,3 +183,34 @@ def get_datetime_latest_observation():
     )
     return latest_phenomenonTime
 
+
+def series_to_patch_dict(x, group_per_x=1000):
+    # qc_fla is hardcoded!
+    # atomicityGroup seems to improve performance, but amount of groups seems irrelevant (?)
+    # UNLESS multiple runs are done simultaneously?
+    d_out = {
+        "id": str(x.name + 1),
+        "atomicityGroup": f"Group{(int(x.name/group_per_x)+1)}",
+        "method": "patch",
+        "url": f"Observations({x.get(Properties.IOT_ID)})",
+        "body": {"resultQuality": str(x.get("qc_flag"))},
+    }
+    return d_out
+
+
+def patch_qc_flags(df: pd.DataFrame, url) -> Counter:
+    df["patch_dict"] = df[[Properties.IOT_ID, "qc_flag"]].apply(
+        series_to_patch_dict, axis=1
+    )
+
+    final_json = {"requests": df["patch_dict"].to_list()}
+    log.info("Start batch patch query")
+    response = post(
+        headers={"Content-Type": "application/json"},
+        url=url,
+        data=json.dumps(final_json),
+    )
+    count_res = Counter([ri["status"] for ri in response.json()["responses"]])
+    log.info("End batch patch query")
+    log.info(f"{count_res}")
+    return count_res
