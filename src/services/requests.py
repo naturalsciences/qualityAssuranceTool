@@ -8,13 +8,67 @@ from requests import Response, post
 
 from stapy import Entity, Query
 
-from models.enums import Entities, Filter, Order, OrderOption, Properties, Qactions, Settings
+from models.enums import (
+    Entities,
+    Filter,
+    Order,
+    OrderOption,
+    Properties,
+    Qactions,
+    Settings,
+)
 from services.config import filter_cfg_to_query
 from services.df import features_request_to_df
 from utils.utils import convert_to_datetime, log, series_to_patch_dict
 
 
 log = logging.getLogger(__name__)
+
+
+def build_query_datastreams(entity_id: int) -> str:
+    base_query = Query(Entity.Thing).entity_id(entity_id)
+    out_query = base_query.select(
+        Properties.NAME, Properties.IOT_ID, Entities.DATASTREAMS
+    )
+    additional_query = Qactions.EXPAND(
+        [
+            Entities.DATASTREAMS(
+                [
+                    Settings.COUNT("true"),
+                    Qactions.EXPAND(
+                        [
+                            Entities.OBSERVEDPROPERTY(
+                                [Qactions.SELECT([Properties.NAME, Properties.IOT_ID])]
+                            ),
+                            Entities.OBSERVATIONS(
+                                [
+                                    Settings.COUNT("true"),
+                                    Qactions.SELECT([Properties.IOT_ID]),
+                                    Settings.TOP(0),
+                                ]
+                            ),
+                        ]
+                    ),
+                    Qactions.SELECT(
+                        [
+                            Properties.NAME,
+                            Properties.IOT_ID,
+                            Properties.DESCRIPTION,
+                            Properties.UNITOFMEASUREMENT,
+                            Entities.OBSERVEDPROPERTY,
+                        ]
+                    ),
+                ]
+            )
+        ]
+    )
+    return out_query.get_query() + "&" + additional_query
+
+
+def get_request(query: str) -> Tuple[int, dict]:
+    request: Response = Query(Entity.Thing).entity_id(0).get_with_retry(query)
+    request_out = request.json()
+    return request.status_code, request_out
 
 
 def get_results_n_datastreams_query(
@@ -90,6 +144,15 @@ def get_results_n_datastreams_query(
     return Q_out
 
 
+def get_results_n_datastreams(Q):
+    log.info("Start request")
+    request = get_request(Q)
+    # request = json.loads(Query(Entity.Thing).get_with_retry(complete_query).content)
+    log.info("End request")
+
+    return request
+
+
 def get_nb_datastreams_of_thing(thing_id: int) -> int:
     base_query = (
         Query(Entity.Thing).entity_id(thing_id).select("Datastreams/@iot.count")
@@ -101,34 +164,33 @@ def get_nb_datastreams_of_thing(thing_id: int) -> int:
             )
         ]
     )
-    nb_datastreams = json.loads(
-        Query(Entity.Datastream)
-        .get_with_retry(base_query.get_query() + "&" + add_query_nb)
-        .content
-    ).get("Datastreams@iot.count")
+    nb_datastreams = (
+        (
+            Query(Entity.Datastream).get_with_retry(
+                base_query.get_query() + "&" + add_query_nb
+            )
+        )
+        .json()
+        .get("Datastreams@iot.count")
+    )
     return nb_datastreams
 
 
-def get_request(query: str) -> Tuple[int, dict]:
-    request: Response = Query(Entity.Thing).entity_id(0).get_with_retry(query)
-    request_out = request.json()
-    return request.status_code, request_out
-
-
-def get_results_n_datastreams(Q):
-    log.info("Start request")
-    request = get_request(Q)
-    # request = json.loads(Query(Entity.Thing).get_with_retry(complete_query).content)
-    log.info("End request")
-
-    return request
+def response_datastreams_to_df(response: dict) -> pd.DataFrame:
+    df_out = pd.DataFrame()
+    for ds_i in response[Entities.DATASTREAMS]:
+        if f"{Entities.OBSERVATIONS}@iot.nextLink" in ds_i:
+            log.warning("Not all observations are extracted!")  # TODO: follow link!
+        df_i = datastreams_request_to_df(response[Entities.DATASTREAMS])
+        log.debug(f"{df_i.shape[0]=}")
+        df_out = pd.concat([df_out, df_i], ignore_index=True)
+    return df_out
 
 
 def get_all_datastreams_data(
     thing_id, nb_streams_per_call, top_observations, filter_cfg
 ) -> pd.DataFrame:
     df_all = pd.DataFrame()
-
     nb_datastreams = get_nb_datastreams_of_thing(thing_id=thing_id)
     log.debug(f"{nb_datastreams=}")
     for i in range(ceil(nb_datastreams / nb_streams_per_call)):
@@ -144,12 +206,13 @@ def get_all_datastreams_data(
         status_code, response = get_results_n_datastreams(query)
         if status_code != 200:
             raise IOError(f"Status code: {status_code}")
-        for ds_i in response[Entities.DATASTREAMS]:
-            if f"{Entities.OBSERVATIONS}@iot.nextLink" in ds_i:
-                log.warning("Not all observations are extracted!")  # TODO: follow link!
-        df_i = datastreams_request_to_df(response[Entities.DATASTREAMS])
-        log.debug(f"{df_i.shape[0]=}")
-        df_all = pd.concat([df_all, df_i], ignore_index=True)
+        df_all = response_datastreams_to_df(response)
+        # for ds_i in response[Entities.DATASTREAMS]:
+        #     if f"{Entities.OBSERVATIONS}@iot.nextLink" in ds_i:
+        #         log.warning("Not all observations are extracted!")  # TODO: follow link!
+        # df_i = datastreams_request_to_df(response[Entities.DATASTREAMS])
+        # log.debug(f"{df_i.shape[0]=}")
+        # df_all = pd.concat([df_all, df_i], ignore_index=True)
     return df_all
 
 
@@ -224,46 +287,6 @@ def datastreams_request_to_df(request_datastreams):
             df = pd.concat([df, df_i], ignore_index=True)
 
     return df
-
-
-def build_query_datastreams(entity_id: int) -> str:
-    base_query = Query(Entity.Thing).entity_id(entity_id)
-    out_query = base_query.select(
-        Properties.NAME, Properties.IOT_ID, Entities.DATASTREAMS
-    )
-    additional_query = Qactions.EXPAND(
-        [
-            Entities.DATASTREAMS(
-                [
-                    Settings.COUNT("true"),
-                    Qactions.EXPAND(
-                        [
-                            Entities.OBSERVEDPROPERTY(
-                                [Qactions.SELECT([Properties.NAME, Properties.IOT_ID])]
-                            ),
-                            Entities.OBSERVATIONS(
-                                [
-                                    Settings.COUNT("true"),
-                                    Qactions.SELECT([Properties.IOT_ID]),
-                                    Settings.TOP(0),
-                                ]
-                            ),
-                        ]
-                    ),
-                    Qactions.SELECT(
-                        [
-                            Properties.NAME,
-                            Properties.IOT_ID,
-                            Properties.DESCRIPTION,
-                            Properties.UNITOFMEASUREMENT,
-                            Entities.OBSERVEDPROPERTY,
-                        ]
-                    ),
-                ]
-            )
-        ]
-    )
-    return out_query.get_query() + "&" + additional_query
 
 
 def get_datetime_latest_observation():

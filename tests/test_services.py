@@ -4,13 +4,14 @@ from pandas.api import types
 
 # from pandas.testing import
 # from numpy.testing import
-from test_utils import cfg, mock_response_full
+from test_utils import cfg, mock_response_full, mock_response
 from services.config import (
     filter_cfg_to_query,
 )
+from services.df import response_single_datastream_to_df
 from services.requests import (
     build_query_datastreams,
-    datastreams_request_to_df,
+    get_nb_datastreams_of_thing,
     get_request,
     get_results_n_datastreams,
     get_results_n_datastreams_query,
@@ -104,6 +105,10 @@ class TestServicesRequests:
         )
         assert nb_datastreams == 10
 
+    def test_get_nb_datastreams_of_thing(self, mock_response_full):
+        nb_datastreams = get_nb_datastreams_of_thing(1)
+        assert nb_datastreams == 125
+
     @pytest.mark.skip(reason="no features in fixture at the moment")
     def test_features_of_interest(self):
         assert False
@@ -114,23 +119,23 @@ class TestDf:
     def test_features_request_to_df(self):
         assert False
 
-    def test_features_datastreams_request_to_df(self, mock_reponse_full):
+    def test_features_datastreams_request_to_df(self, mock_response_full):
         response_in = get_results_n_datastreams("random")[1]
         datastreams_data = response_in[Entities.DATASTREAMS]
-        df = datastreams_request_to_df(datastreams_data)
+        df = response_single_datastream_to_df(datastreams_data)
         assert not Entities.FEATUREOFINTEREST in df.keys()
 
     # incomplete comparison
     def test_shape_datastreams_request_to_df(self, mock_response_full):
         response_in = get_results_n_datastreams("random")[1]
         datastreams_data = response_in[Entities.DATASTREAMS]
-        df = datastreams_request_to_df(datastreams_data)
+        df = response_single_datastream_to_df(datastreams_data)
         assert df.shape == (945, 8)
 
     def test_num_dtypes_datastreams_request_to_df(self, mock_response_full):
         response_in = get_results_n_datastreams("random")[1]
         datastreams_data = response_in[Entities.DATASTREAMS]
-        df = datastreams_request_to_df(datastreams_data)
+        df = response_single_datastream_to_df(datastreams_data)
 
         assert all(
             types.is_numeric_dtype(df[ci])
