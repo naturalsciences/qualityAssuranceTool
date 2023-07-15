@@ -91,3 +91,7 @@ with test.json: \{ ``requests'': [ \{ ``id'': ``0'', ``atomicityGroup'':
 [2023-07-12 08:52:21,739][__main__][INFO] - End batch patch query
 [2023-07-12 08:52:21,739][__main__][INFO] - Counter({200: 17673})
 ----
+
+== geo
+
+https://rda.ucar.edu/datasets/ds759.3/dataaccess/
