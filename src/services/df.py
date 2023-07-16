@@ -78,3 +78,35 @@ def response_datastreams_to_df(response: dict) -> pd.DataFrame:
         log.debug(f"{df_i.shape[0]=}")
         df_out = pd.concat([df_out, df_i], ignore_index=True)
     return df_out
+
+
+def datastreams_response_to_df(response_datastreams):
+    df = pd.DataFrame()
+    for di in response_datastreams:
+        observations_list = di.get(Entities.OBSERVATIONS)
+        if observations_list:
+            df_i = pd.DataFrame(observations_list).astype(
+                {Properties.IOT_ID: int, "result": float}
+            )
+            df_i["datastream_id"] = int(di.get(Properties.IOT_ID))
+            df_i[Properties.PHENOMENONTIME] = df_i[Properties.PHENOMENONTIME].apply(
+                convert_to_datetime
+            )
+            df_i["observation_type"] = di.get(Entities.OBSERVEDPROPERTY).get(
+                Properties.NAME
+            )
+            df_i["observation_type"] = df_i["observation_type"].astype("category")
+            k1, k2 = Properties.UNITOFMEASUREMENT.split("/", 1)
+            df_i["units"] = di.get(k1).get(k2)
+            df_i["units"] = df_i["units"].astype("category")
+
+            df_i[["long", "lat"]] = pd.DataFrame.from_records(
+                df_i[str(Entities.FEATUREOFINTEREST)].apply(
+                    lambda x: x.get("feature").get("coordinates")
+                )
+            )
+            del df_i[str(Entities.FEATUREOFINTEREST)]
+            # df_i.drop(columns=str(Entities.FEATUREOFINTEREST))
+            df = pd.concat([df, df_i], ignore_index=True)
+
+    return df

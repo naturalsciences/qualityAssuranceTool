@@ -18,7 +18,7 @@ from models.enums import (
     Settings,
 )
 from services.config import filter_cfg_to_query
-from services.df import features_request_to_df
+from services.df import datastreams_response_to_df, features_request_to_df
 from utils.utils import convert_to_datetime, log, series_to_patch_dict
 
 
@@ -181,7 +181,7 @@ def response_datastreams_to_df(response: dict) -> pd.DataFrame:
     for ds_i in response[Entities.DATASTREAMS]:
         if f"{Entities.OBSERVATIONS}@iot.nextLink" in ds_i:
             log.warning("Not all observations are extracted!")  # TODO: follow link!
-        df_i = datastreams_request_to_df(response[Entities.DATASTREAMS])
+        df_i = datastreams_response_to_df(response[Entities.DATASTREAMS])
         log.debug(f"{df_i.shape[0]=}")
         df_out = pd.concat([df_out, df_i], ignore_index=True)
     return df_out
@@ -255,38 +255,6 @@ def get_features_of_interest(filter_cfg, top_observations):
     # possible to write to pickle?
     # how to test if needed or not?
     return features_observations_dict
-
-
-def datastreams_request_to_df(request_datastreams):
-    df = pd.DataFrame()
-    for di in request_datastreams:
-        observations_list = di.get(Entities.OBSERVATIONS)
-        if observations_list:
-            df_i = pd.DataFrame(observations_list).astype(
-                {Properties.IOT_ID: int, "result": float}
-            )
-            df_i["datastream_id"] = int(di.get(Properties.IOT_ID))
-            df_i[Properties.PHENOMENONTIME] = df_i[Properties.PHENOMENONTIME].apply(
-                convert_to_datetime
-            )
-            df_i["observation_type"] = di.get(Entities.OBSERVEDPROPERTY).get(
-                Properties.NAME
-            )
-            df_i["observation_type"] = df_i["observation_type"].astype("category")
-            k1, k2 = Properties.UNITOFMEASUREMENT.split("/", 1)
-            df_i["units"] = di.get(k1).get(k2)
-            df_i["units"] = df_i["units"].astype("category")
-
-            df_i[["long", "lat"]] = pd.DataFrame.from_records(
-                df_i[str(Entities.FEATUREOFINTEREST)].apply(
-                    lambda x: x.get("feature").get("coordinates")
-                )
-            )
-            del df_i[str(Entities.FEATUREOFINTEREST)]
-            # df_i.drop(columns=str(Entities.FEATUREOFINTEREST))
-            df = pd.concat([df, df_i], ignore_index=True)
-
-    return df
 
 
 def get_datetime_latest_observation():
