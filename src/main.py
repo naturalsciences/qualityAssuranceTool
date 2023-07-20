@@ -14,7 +14,8 @@ from services.requests import patch_qc_flags
 from shapely import distance, Point, set_srid
 from shapely.wkt import loads
 
-
+from shapely.ops import nearest_points
+from shapely.geometry import MultiPoint
 # Type hinting often ignored
 # name and COUNT are probably *known* variables names of python property
 # might be solved with _name, _count, or NAME, COUNT. when all caps is used, the __str__ will need to be changed to lower
@@ -70,25 +71,30 @@ def main(cfg):
     )
     df_all = df_type_conversions(df_all)
 
-    # points_q = build_points_query(df_all[["long", "lat"]].to_numpy().tolist()[:1])
-    # query = build_query_points(table="seavox_sea_areas", points_query=points_q, select="region, sub_region, ST_AsText(geom)")
-    # with connect() as c:
-    #     with c.cursor() as cursor:
-    #         results = []
-    #         cursor.execute(query)
-    #         res = cursor.fetchall()
-    #         
-    # log.debug("starting points to Points")
-    # Points = df_all[["long", "lat"]].apply(lambda x: Point(x["long"], x["lat"]),axis=1)
+    points_q = build_points_query(df_all[["long", "lat"]].to_numpy().tolist()[:1])
+    query = build_query_points(table="seavox_sea_areas", points_query=points_q, select="region, sub_region, ST_AsText(geom)")
+    with connect() as c:
+        with c.cursor() as cursor:
+            results = []
+            cursor.execute(query)
+            res = cursor.fetchall()
+            
+    log.debug("starting points to Points")
+    Points = df_all[["long", "lat"]].apply(lambda x: Point(x["long"], x["lat"]),axis=1)
     # log.debug("Start distance calc")
-    # g_ref = loads(res[0][2])
-    # df_p = pd.DataFrame()
-    # df_p["Points"] = Points
-    # df_p["distance"] = df_p["Points"].apply(lambda x: distance(x, g_ref))
-    # # distance_to_p = [distance(pi, g_ref) for pi in Points]
-    # log.debug("transform to bool")
-    # # bool_zone = [dpi == 0. for dpi in distance_to_p]
-    # log.debug("set in df")
+    g_ref = loads(res[0][2])
+    df_p = pd.DataFrame()
+    df_p["Points"] = Points
+    # df_p["distance"] = df_p["Points"].apply(lambda x: distance(g_ref, x))
+    # distance_to_p = [distance(pi, g_ref) for pi in Points]
+    log.debug("multipoint nearest")
+    mp = MultiPoint(Points)
+    a = list(nearest_points(mp, g_ref))
+    included_ = df_p[df_p["Points"].isin(a)]
+    log.debug(f"does this included work? {included_.shape}")
+    log.debug("transform to bool")
+    # bool_zone = [dpi == 0. for dpi in distance_to_p]
+    log.debug("set in df")
     # log.debug(f"{Counter((df_p['distance'] == 0.))}")
     # df_all.loc[df_p["distance"] == 0.,["Region", "Sub-region"]] = res[0][:2]
             
@@ -105,15 +111,15 @@ def main(cfg):
     log.debug("end seavox shizzle")
 
 
-    df_all = pd.concat([df_all, df_seavox], axis=1)
-    log.debug("done with df_all")
+    # df_all = pd.concat([df_all, df_seavox], axis=1)
+    # log.debug("done with df_all")
 
     # df_all = df_type_conversions(df_all)
 
     # df_all = qc_on_df(df_all, cfg=cfg)
 
     # url = "http://localhost:8080/FROST-Server/v1.1/$batch"
-    # counter = patch_qc_flags(df_all, url=url)
+    #counter = patch_qc_flags(df_all, url=url)
 
     # print(f"{counter=}")
     # print(f"{df_all.shape=}")
