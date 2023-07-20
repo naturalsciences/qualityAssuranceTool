@@ -48,6 +48,18 @@ class MockResponseFull:
         return out
 
 
+class MockResponseFullObs:
+    def __init__(self):
+        self.status_code = 200
+
+    def json(self):
+        with open("./tests/resources/test_response_obs_wF.json", "r") as f:
+            out = json.load(f)
+
+        return out
+
+
+
 @pytest.fixture
 def mock_response(monkeypatch):
     def mock_get(*args, **kwargs):
@@ -64,6 +76,13 @@ def mock_response(monkeypatch):
 def mock_response_full(monkeypatch):
     def mock_get(*args, **kwargs):
         return MockResponseFull()
+
+    monkeypatch.setattr(u.Query, "get_with_retry", mock_get)
+
+@pytest.fixture
+def mock_response_full_obs(monkeypatch):
+    def mock_get(*args, **kwargs):
+        return MockResponseFullObs()
 
     monkeypatch.setattr(u.Query, "get_with_retry", mock_get)
 

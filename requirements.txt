@@ -11,3 +11,5 @@ datetime
 geopy
 pytest
 netCDF4
+psycopg2
+shapely

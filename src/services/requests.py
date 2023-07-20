@@ -2,9 +2,9 @@ from collections import Counter
 import logging
 from math import ceil
 import json
-from typing import Tuple
+from typing import Tuple, Literal
 import pandas as pd
-from requests import Response, post
+from requests import post
 
 from stapy import Entity, Query
 
@@ -18,7 +18,7 @@ from models.enums import (
     Settings,
 )
 from services.config import filter_cfg_to_query
-from services.df import datastreams_response_to_df, features_request_to_df
+from services.df import datastreams_response_to_df, features_request_to_df, response_single_datastream_to_df
 from utils.utils import convert_to_datetime, log, series_to_patch_dict
 
 
@@ -66,21 +66,53 @@ def build_query_datastreams(entity_id: int) -> str:
 
 
 def get_request(query: str) -> Tuple[int, dict]:
-    request: Response = Query(Entity.Thing).entity_id(0).get_with_retry(query)
+    request = Query(Entity.Thing).entity_id(0).get_with_retry(query)
     request_out = request.json()
     return request.status_code, request_out
 
 
+def build_query_observations(
+    filter_conditions: str | None,
+    top_observations: int,
+    expand_feature_of_interest: bool = True,
+) -> Literal:
+    Q_filter = ""
+    if filter_conditions:
+        Q_filter = "&" + Filter.FILTER(filter_conditions)
+    Q_select = "&" + Qactions.SELECT(
+        [
+            Properties.IOT_ID,
+            "result",
+            Properties.PHENOMENONTIME,
+            Entities.FEATUREOFINTEREST,
+        ]
+    )
+    Q_exp = ""
+    if expand_feature_of_interest:
+        Q_exp = "&" + Qactions.EXPAND([Entities.FEATUREOFINTEREST])
+
+    Q_out = (
+        Query(Entity.Observation)
+        .limit(top_observations)
+        .select(Entities.FEATUREOFINTEREST)
+        .get_query()
+        + Q_filter
+        + Q_select
+        + Q_exp
+    )
+    return Q_out
+
+
 def get_results_n_datastreams_query(
-    entity_id,
-    n,
-    skip,
-    top_observations,
-    filter_condition,
-    expand_feature_of_interest=True,
-):
+    entity_id: int,
+    n: int,
+    skip: int,
+    top_observations: int,
+    filter_condition: str,
+    expand_feature_of_interest: bool = True,
+) -> Literal:
     # TODO: cleanup!!
-    idx_slice = 3
+    idx_slice: int = 3
     if expand_feature_of_interest:
         idx_slice = 4
     expand_list = [
@@ -176,13 +208,19 @@ def get_nb_datastreams_of_thing(thing_id: int) -> int:
     return nb_datastreams
 
 
+def response_observations_to_df(response: dict) -> pd.DataFrame:
+    df_out = pd.DataFrame()
+    
+    return df_out
+
+
 def response_datastreams_to_df(response: dict) -> pd.DataFrame:
     df_out = pd.DataFrame()
     for ds_i in response[Entities.DATASTREAMS]:
         if f"{Entities.OBSERVATIONS}@iot.nextLink" in ds_i:
             log.warning("Not all observations are extracted!")  # TODO: follow link!
-        df_i = datastreams_response_to_df(response[Entities.DATASTREAMS])
-        log.debug(f"{df_i.shape[0]=}")
+        # df_i = datastreams_response_to_df(ds_i)
+        df_i = response_single_datastream_to_df(ds_i)
         df_out = pd.concat([df_out, df_i], ignore_index=True)
     return df_out
 
@@ -192,7 +230,7 @@ def get_all_datastreams_data(
 ) -> pd.DataFrame:
     df_all = pd.DataFrame()
     nb_datastreams = get_nb_datastreams_of_thing(thing_id=thing_id)
-    log.debug(f"{nb_datastreams=}")
+    log.info(f"{nb_datastreams=}")
     for i in range(ceil(nb_datastreams / nb_streams_per_call)):
         log.info(f"nb {i} of {ceil(nb_datastreams/nb_streams_per_call)}")
         query = get_results_n_datastreams_query(
@@ -206,7 +244,9 @@ def get_all_datastreams_data(
         status_code, response = get_results_n_datastreams(query)
         if status_code != 200:
             raise IOError(f"Status code: {status_code}")
-        df_all = response_datastreams_to_df(response)
+        df_response = response_datastreams_to_df(response)
+        df_all = pd.concat([df_all, df_response], ignore_index=True)
+        log.info(f"DF_ALL shape {df_all.shape}")
         # for ds_i in response[Entities.DATASTREAMS]:
         #     if f"{Entities.OBSERVATIONS}@iot.nextLink" in ds_i:
         #         log.warning("Not all observations are extracted!")  # TODO: follow link!
