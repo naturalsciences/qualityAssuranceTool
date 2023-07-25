@@ -1,5 +1,6 @@
 import pandas as pd
 import geopandas as gpd
+import numpy as np
 from copy import deepcopy
 from functools import partial
 
@@ -48,3 +49,21 @@ def qc_region(df: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     df_out.loc[bool_mainland, "qc_flag"] = QualityFlags.BAD # type: ignore
 
     return df_out
+
+
+def qc_gradient(df, groupby):
+    def grad_function(group):
+        g = np.gradient(group.result, group.phenomenonTime.astype('datetime64[s]').astype('int64'))
+        group["grad"] = g
+        return group
+    # np.gradient(df_idexed.result.values, df_idexed.index.get_level_values("phenomenonTime").astype('datetime64[s]').astype('int64'))
+
+    # df_idexed.result.groupby(level=["datastream_id"], group_keys=False).apply(lambda x: pd.DataFrame(np.gradient(x, x.index.get_level_values("phenomenonTime").astype("datetime64[s]").astype('int64'), axis=0)))
+    
+    # df['wc'].groupby(level = ['model'], group_keys=False)
+    #   .apply(lambda x: #do all the columns at once, specifying the axis in gradient
+    #          pd.DataFrame(np.gradient(x, x.index.get_level_values(0), axis=0), 
+    #                       columns=x.columns, index=x.index))
+    
+    # df_all.groupby(["datastream_id"], group_keys=False).apply(func)
+    pass
