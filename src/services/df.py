@@ -1,10 +1,13 @@
 import logging
 from typing import Sequence
+import numpy as np
 import pandas as pd
+from shapely.wkt import loads
 from models.enums import Entities, Properties
 
 
 from copy import deepcopy
+from services.regions_query import build_points_query, build_query_points, connect
 
 from utils.utils import convert_to_datetime
 
@@ -139,5 +142,60 @@ def seavox_to_df(response_seavox: Sequence[Sequence[str]]) -> pd.DataFrame:
     df[["Region", "Sub-region"]] = pd.DataFrame.from_records(response_seavox)
 
     return df
+
+
+# def test_patch_single(id, value):
+#     a = Patch.observation(entity_id=id, result_quality=str(value))
+#     return a
+
+def query_region_from_xy(coords):
+    points_q = build_points_query(coords)
+    query = build_query_points(table="seavox_sea_areas", points_query=points_q, select="region, sub_region, ST_AsText(geom)")
+    with connect() as c:
+        with c.cursor() as cursor:
+            results = []
+            cursor.execute(query)
+            res = cursor.fetchall()
+
+    return res
+
+
+def query_all_nan_regions(df):
+    idx_nan = df.Region.isnull()
+    points_nan = df.loc[idx_nan, ["long", "lat"]].to_numpy().tolist()
+    res = query_region_from_xy(points_nan)
+
+    df_seavox = seavox_to_df([res_i[:2] for res_i in res])
+    df.loc[idx_nan, ["Region", "Sub-region"]] = df_seavox
+
+    return df
+
+
+def intersect_df_region(df, max_queries, max_query_points):
+    df_out = deepcopy(df)
+    n = 0
+
+    si = df.sindex
+
+    while True:
+        point_i = (
+            df_out.loc[df_out.Region.isnull(), ["long", "lat"]].to_numpy().tolist()[:1]
+        )
+        res = query_region_from_xy(point_i)
+
+        g_ref = loads(res[0][2])
+
+        idx_gref = si.query(g_ref, predicate="intersects").tolist()
+
+        df_out.loc[idx_gref, ["Region", "Sub-region"]] = res[0][:2]
+
+        n += 1
+        count_dict = df_out.Region.value_counts(dropna=False).to_dict()
+        nb_nan = sum([count_dict.get(ki, 0) for ki in [None, np.nan]])
+        if nb_nan <= max_query_points or n >= max_queries:
+            break
+
+    df_out = query_all_nan_regions(df_out)
+    return df_out
 
 
