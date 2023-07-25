@@ -1,5 +1,6 @@
 hydra:
-  verbose: True
+  # verbose: True
+  verbose: __main__
 data_api:
   # base_url: https://sensors.naturalsciences.be/sta/v1.1
   base_url: http://localhost:8080/FROST-Server/v1.1

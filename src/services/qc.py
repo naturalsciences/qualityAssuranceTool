@@ -1,4 +1,5 @@
 import pandas as pd
+import geopandas as gpd
 from copy import deepcopy
 from functools import partial
 
@@ -17,8 +18,8 @@ def qc_df(df_in, function):
 
 def qc_on_df(df: pd.DataFrame, cfg: dict[str, dict]) -> pd.DataFrame:
     df_out = deepcopy(df)
-    df_out["bool"] = None
-    df_out["qc_flag"] = None
+    # df_out["bool"] = None
+    # df_out["qc_flag"] = None
     for _, row in (
         df_out[["datastream_id", "units", "observation_type"]]
         .drop_duplicates()
@@ -34,4 +35,16 @@ def qc_on_df(df: pd.DataFrame, cfg: dict[str, dict]) -> pd.DataFrame:
             function_i = partial(min_max_check_values, min_=min_, max_=max_)
             df_sub = qc_df(df_sub, function_i)
             df_out.loc[df_sub.index] = df_sub
+    return df_out
+
+
+def qc_region(df: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    df_out = deepcopy(df)
+
+    bool_nan = df_out.Region.isnull()
+    df_out.loc[bool_nan, "qc_flag"] = QualityFlags.PROBABLY_BAD # type: ignore
+
+    bool_mainland = df_out.Region.str.lower().str.contains("mainland").fillna(False)
+    df_out.loc[bool_mainland, "qc_flag"] = QualityFlags.BAD # type: ignore
+
     return df_out

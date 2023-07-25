@@ -163,10 +163,11 @@ def query_region_from_xy(coords):
 def query_all_nan_regions(df):
     idx_nan = df.Region.isnull()
     points_nan = df.loc[idx_nan, ["long", "lat"]].to_numpy().tolist()
-    res = query_region_from_xy(points_nan)
+    if points_nan: 
+        res = query_region_from_xy(points_nan)
 
-    df_seavox = seavox_to_df([res_i[:2] for res_i in res])
-    df.loc[idx_nan, ["Region", "Sub-region"]] = df_seavox
+        df_seavox = seavox_to_df([res_i[:2] for res_i in res])
+        df.loc[idx_nan, ["Region", "Sub-region"]] = df_seavox
 
     return df
 

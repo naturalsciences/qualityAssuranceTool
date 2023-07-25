@@ -5,7 +5,8 @@ from services.config import filter_cfg_to_query
 
 from services.df import df_type_conversions
 from services.df import intersect_df_region
-from services.requests import get_all_datastreams_data
+from services.qc import qc_on_df, qc_region
+from services.requests import get_all_datastreams_data, patch_qc_flags
 
 import geopandas as gpd
 
@@ -30,12 +31,16 @@ def main(cfg):
         top_observations=top_observations,
         filter_cfg=filter_cfg,
     )
-    df_all = df_type_conversions(df_all)
 
     df_all = gpd.GeoDataFrame(df_all, geometry=gpd.points_from_xy(df_all.long, df_all.lat), crs="EPSG:4326")  # type: ignore
 
     df_all[["Region", "Sub-region"]] = None
     df_all = intersect_df_region(df_all, max_queries=2, max_query_points=100)
+    df_all = df_type_conversions(df_all)
+    df_all = qc_region(df_all)
+    df_all = qc_on_df(df_all, cfg=cfg)
+    url = "http://localhost:8080/FROST-Server/v1.1/$batch"
+    counter = patch_qc_flags(df_all, url=url)
     log.info("End")
 
 
