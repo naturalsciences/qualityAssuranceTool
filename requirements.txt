@@ -13,3 +13,4 @@ pytest
 netCDF4
 psycopg2
 shapely
+geopandas

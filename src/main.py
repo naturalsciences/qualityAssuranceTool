@@ -16,6 +16,8 @@ from shapely.wkt import loads
 
 from shapely.ops import nearest_points
 from shapely.geometry import MultiPoint
+
+import geopandas as gpd
 # Type hinting often ignored
 # name and COUNT are probably *known* variables names of python property
 # might be solved with _name, _count, or NAME, COUNT. when all caps is used, the __str__ will need to be changed to lower
@@ -51,6 +53,17 @@ log = logging.getLogger(__name__)
 #     a = Patch.observation(entity_id=id, result_quality=str(value))
 #     return a
 
+def query_region_single_point(coords):
+    points_q = build_points_query(coords)
+    query = build_query_points(table="seavox_sea_areas", points_query=points_q, select="region, sub_region, ST_AsText(geom)")
+    with connect() as c:
+        with c.cursor() as cursor:
+            results = []
+            cursor.execute(query)
+            res = cursor.fetchall()
+
+    return res
+ 
 
 @hydra.main(config_path="../conf", config_name="config.yaml", version_base="1.2")
 def main(cfg):
@@ -71,18 +84,37 @@ def main(cfg):
     )
     df_all = df_type_conversions(df_all)
 
-    points_q = build_points_query(df_all[["long", "lat"]].to_numpy().tolist()[:1])
-    query = build_query_points(table="seavox_sea_areas", points_query=points_q, select="region, sub_region, ST_AsText(geom)")
-    with connect() as c:
-        with c.cursor() as cursor:
-            results = []
-            cursor.execute(query)
-            res = cursor.fetchall()
-            
+    res = query_region_single_point(df_all[["long", "lat"]].to_numpy().tolist()[:1])
+    # points_q = build_points_query(df_all[["long", "lat"]].to_numpy().tolist()[:1])
+    # query = build_query_points(table="seavox_sea_areas", points_query=points_q, select="region, sub_region, ST_AsText(geom)")
+    # with connect() as c:
+    #     with c.cursor() as cursor:
+    #         results = []
+    #         cursor.execute(query)
+    #         res = cursor.fetchall()
+   
     log.debug("starting points to Points")
     Points = df_all[["long", "lat"]].apply(lambda x: Point(x["long"], x["lat"]),axis=1)
     # log.debug("Start distance calc")
     g_ref = loads(res[0][2])
+
+    log.debug("geopandas")
+    gdf = gpd.GeoDataFrame(df_all.to_dict())
+    gdf["Points"] = gpd.GeoSeries.from_xy(gdf["long"], gdf["lat"], crs=4326)
+    gdf = gdf.set_geometry("Points")
+    si = gdf.sindex
+    idx_gref = si.query(g_ref, predicate="intersects").tolist()
+    gdf.loc[idx_gref, ["Region", "Sub-region"]] = res[0][:2]
+    log.debug("sindex")
+    res = query_region_single_point(gdf.loc[gdf.Region.isnull(), ["long", "lat"]].to_numpy().tolist()[:1])
+    g_ref = loads(res[0][2])
+
+    idx_gref = si.query(g_ref, predicate="intersects").tolist()
+
+    gdf.loc[idx_gref, ["Region", "Sub-region"]] = res[0][:2]
+    log.debug("sindex")
+
+
     df_p = pd.DataFrame()
     df_p["Points"] = Points
     # df_p["distance"] = df_p["Points"].apply(lambda x: distance(g_ref, x))
@@ -108,8 +140,11 @@ def main(cfg):
             res = cursor.fetchall()
 
     df_seavox = seavox_to_df(res)
+    log.debug(f"{df_seavox.value_counts(dropna=False)}")
     log.debug("end seavox shizzle")
+    log.debug("log to break")
 
+    
 
     # df_all = pd.concat([df_all, df_seavox], axis=1)
     # log.debug("done with df_all")
