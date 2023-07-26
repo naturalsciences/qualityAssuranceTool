@@ -2,7 +2,7 @@ from collections import Counter
 import logging
 from math import ceil
 import json
-from typing import Tuple, Literal
+from typing import Sequence, Tuple, Literal
 import pandas as pd
 from requests import post
 
@@ -208,12 +208,6 @@ def get_nb_datastreams_of_thing(thing_id: int) -> int:
     return nb_datastreams
 
 
-def response_observations_to_df(response: dict) -> pd.DataFrame:
-    df_out = pd.DataFrame()
-    
-    return df_out
-
-
 def response_datastreams_to_df(response: dict) -> pd.DataFrame:
     df_out = pd.DataFrame()
     for ds_i in response[Entities.DATASTREAMS]:
@@ -223,6 +217,19 @@ def response_datastreams_to_df(response: dict) -> pd.DataFrame:
         df_i = response_single_datastream_to_df(ds_i)
         df_out = pd.concat([df_out, df_i], ignore_index=True)
     return df_out
+
+
+# def get_datastream_based_observations_batch(datastreams: Sequence) -> pd.DataFrame:
+#     df_out = pd.DataFrame()
+#     id = 1
+#     request = ""
+#     d_batch = {
+#         "id": id,
+#         "atomicityGroup": f"Get_{id}",
+#         "method": "get",
+#         "url": request,
+#     }
+#     return df_out
 
 
 def get_all_datastreams_data(
