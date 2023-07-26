@@ -51,7 +51,7 @@ def qc_region(df: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     return df_out
 
 
-def qc_gradient(df, groupby):
+def calc_gradient_results(df, groupby):
     def grad_function(group):
         g = np.gradient(group.result, group.phenomenonTime.astype('datetime64[s]').astype('int64'))
         group["grad"] = g
@@ -65,5 +65,5 @@ def qc_gradient(df, groupby):
     #          pd.DataFrame(np.gradient(x, x.index.get_level_values(0), axis=0), 
     #                       columns=x.columns, index=x.index))
     
-    # df_all.groupby(["datastream_id"], group_keys=False).apply(func)
-    pass
+    df_out = df.groupby([groupby], group_keys=False).apply(grad_function)
+    return df_out

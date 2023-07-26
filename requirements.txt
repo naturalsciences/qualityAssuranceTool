@@ -1,6 +1,7 @@
 hydra-core
 pandas
 numpy
+scipy
 matplotlib
 stapy
 python-Levenshtein
@@ -9,8 +10,10 @@ strenum
 frost_sta_client
 datetime
 geopy
-pytest
 netCDF4
 psycopg2
 shapely
 geopandas
+
+pytest
+pytest-cov

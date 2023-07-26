@@ -1,10 +1,10 @@
 import logging
 import psycopg2
 import psycopg2.extensions
-from shapely import Point, intersects, geometrycollections
-from shapely import MultiPolygon, distance, contains, get_srid, set_srid
+from shapely import Point, intersects
+from shapely import distance, set_srid
 from shapely.wkt import loads
-from typing import Iterable, Sequence
+from typing import Sequence
 import time
 
 # from services.df import seavox_to_df
@@ -27,18 +27,6 @@ def connect() -> psycopg2.extensions.connection:
     except psycopg2.Error as e:
         print("Error connecting to the database:", e)
         raise
-
-
-def build_query(table_name: str, point: Sequence[float]) -> str:
-    log.debug("start building query")
-    # long, lat
-    point_geom_sql = f"ST_SetSRID(ST_MakePoint({point[0]},{point[1]}, 4326))"
-    query = f"""
-    SELECT region, sub_region
-    FROM {table_name}
-    WHERE ST_Intersects(geom, {point_geom_sql});
-    """
-    return query
 
 
 def build_query_points(table: str, points_query: str, select: str) -> str:
