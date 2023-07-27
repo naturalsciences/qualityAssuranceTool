@@ -1,14 +1,15 @@
 import hydra
 import stapy
+import geopandas as gpd
 import logging
-from services.config import filter_cfg_to_query
+import time
 
+from services.config import filter_cfg_to_query
 from services.df import df_type_conversions
 from services.df import intersect_df_region
 from services.qc import qc_on_df, qc_region
 from services.requests import get_all_data, get_all_datastreams_data, patch_qc_flags
 
-import geopandas as gpd
 
 
 log = logging.getLogger(__name__)
@@ -16,6 +17,7 @@ log = logging.getLogger(__name__)
 
 @hydra.main(config_path="../conf", config_name="config.yaml", version_base="1.2")
 def main(cfg):
+    t0 = time.time()
     log.info("Start")
     stapy.set_sta_url(cfg.data_api.base_url)
 
@@ -42,6 +44,8 @@ def main(cfg):
     df_all = qc_on_df(df_all, cfg=cfg)
     url = "http://localhost:8080/FROST-Server/v1.1/$batch"
     counter = patch_qc_flags(df_all, url=url)
+    t1 = time.time()
+    log.info(f"Total time: {t1-t0}")
     log.info("End")
 
 

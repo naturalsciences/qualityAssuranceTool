@@ -177,10 +177,9 @@ def get_results_n_datastreams_query(
 
 
 def get_results_n_datastreams(Q):
-    log.info("Start request")
+    log.debug(f"Request {Q}")
     request = get_request(Q)
     # request = json.loads(Query(Entity.Thing).get_with_retry(complete_query).content)
-    log.info("End request")
 
     return request
 
@@ -233,6 +232,7 @@ def response_datastreams_to_df(response: dict) -> pd.DataFrame:
 
 
 def get_all_data(thing_id: int, filter_cfg: str):
+    log.debug("Get all data of thing {thing_id} with filter {filter_cfg}")
     status_code, response = 0, {}
     query = get_results_n_datastreams_query(entity_id=thing_id,
                                                 filter_condition=filter_cfg)
@@ -261,6 +261,7 @@ def get_all_data(thing_id: int, filter_cfg: str):
             ds_i[Entities.OBSERVATIONS + "@iot.nextLink"] = query
 
     df_out =  response_datastreams_to_df(response)
+    log.info(f"Constructed dataframe of thing {thing_id}: {df_out.shape=}")
     return df_out       
 
 
@@ -285,7 +286,7 @@ def get_all_datastreams_data(
             raise IOError(f"Status code: {status_code}")
         df_response = response_datastreams_to_df(response)
         df_all = pd.concat([df_all, df_response], ignore_index=True)
-        log.info(f"DF_ALL shape {df_all.shape}")
+        log.debug(f"DF_ALL shape {df_all.shape}")
         # for ds_i in response[Entities.DATASTREAMS]:
         #     if f"{Entities.OBSERVATIONS}@iot.nextLink" in ds_i:
         #         log.warning("Not all observations are extracted!")  # TODO: follow link!
