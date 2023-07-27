@@ -95,3 +95,27 @@ class TestUtils:
     def test_stapy_integration(self, cfg):
         q = u.Query(u.Entity.Thing).entity_id(0)
         assert q.get_query() == "http://testing.com/v1.1/Things(0)"
+
+    def test_update_response(self):
+        d = {
+            "one": "this",
+            "two": "two",
+            "three": "threeee",
+            "four": "four",
+            "list": list(range(5))
+        }
+        update = {
+            "one": "that",
+            "two": "two",
+            "list": list(range(5,11))
+        }
+        d = u.update_response(d, update)
+
+        ref = {
+            "one": "that",
+            "two": "two",
+            "three": "threeee",
+            "four": "four",
+            "list": list(range(11))
+        }
+        assert d == ref

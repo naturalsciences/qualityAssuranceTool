@@ -19,7 +19,7 @@ from models.enums import (
 )
 from services.config import filter_cfg_to_query
 from services.df import datastreams_response_to_df, features_request_to_df, response_single_datastream_to_df
-from utils.utils import convert_to_datetime, log, series_to_patch_dict
+from utils.utils import convert_to_datetime, log, series_to_patch_dict, update_response
 
 
 log = logging.getLogger(__name__)
@@ -211,7 +211,7 @@ def get_nb_datastreams_of_thing(thing_id: int) -> int:
 def response_datastreams_to_df(response: dict) -> pd.DataFrame:
     df_out = pd.DataFrame()
     for ds_i in response[Entities.DATASTREAMS]:
-        if f"{Entities.OBSERVATIONS}@iot.nextLink" in ds_i:
+        if ds_i.get("{Entities.OBSERVATIONS}@iot.nextLink", None):
             log.warning("Not all observations are extracted!")  # TODO: follow link!
         # df_i = datastreams_response_to_df(ds_i)
         df_i = response_single_datastream_to_df(ds_i)
@@ -230,6 +230,38 @@ def response_datastreams_to_df(response: dict) -> pd.DataFrame:
 #         "url": request,
 #     }
 #     return df_out
+
+
+def get_all_data(thing_id: int, filter_cfg: str):
+    status_code, response = 0, {}
+    query = get_results_n_datastreams_query(entity_id=thing_id,
+                                                filter_condition=filter_cfg)
+
+    status_code, response_i = get_results_n_datastreams(query)
+    response = update_response(response, response_i)
+    query = response_i.get(Entities.DATASTREAMS + "@iot.nextLink", None)
+
+    while query:
+        status_code, response_i = get_results_n_datastreams(query)
+        if status_code != 200.:
+            raise RuntimeError(f"response with status code {status_code}.")
+        # response[Entities.DATASTREAMS] = update_response(response.get(Entities.DATASTREAMS, []), response_i)
+        response[Entities.DATASTREAMS] = response.get(Entities.DATASTREAMS, []) + response_i["value"]
+        
+        query = response_i.get("@iot.nextLink", None)
+        response[Entities.DATASTREAMS + "@iot.nextLink"] = str(query)
+        
+    for ds_i in response.get(Entities.DATASTREAMS, {}): # type: ignore
+        query = ds_i.get(Entities.OBSERVATIONS + "@iot.nextLink", None)
+        while query:
+            status_code, response_i = get_results_n_datastreams(query)
+        
+            ds_i[Entities.OBSERVATIONS] = ds_i.get(Entities.OBSERVATIONS, []) + response_i["value"]
+            query = response_i.get("@iot.nextLink", None)
+            ds_i[Entities.OBSERVATIONS + "@iot.nextLink"] = query
+
+    df_out =  response_datastreams_to_df(response)
+    return df_out       
 
 
 def get_all_datastreams_data(

@@ -6,7 +6,7 @@ from services.config import filter_cfg_to_query
 from services.df import df_type_conversions
 from services.df import intersect_df_region
 from services.qc import qc_on_df, qc_region
-from services.requests import get_all_datastreams_data, patch_qc_flags
+from services.requests import get_all_data, get_all_datastreams_data, patch_qc_flags
 
 import geopandas as gpd
 
@@ -25,12 +25,13 @@ def main(cfg):
     top_observations = cfg.data_api.observations.top
     filter_cfg = filter_cfg_to_query(cfg.data_api.get("filter", {}))
 
-    df_all = get_all_datastreams_data(
-        thing_id=thing_id,
-        nb_streams_per_call=nb_streams_per_call,
-        top_observations=top_observations,
-        filter_cfg=filter_cfg,
-    )
+    df_all = get_all_data(thing_id=thing_id, filter_cfg=filter_cfg)
+    # df_all = get_all_datastreams_data(
+    #     thing_id=thing_id,
+    #     nb_streams_per_call=nb_streams_per_call,
+    #     top_observations=top_observations,
+    #     filter_cfg=filter_cfg,
+    # )
 
     df_all = gpd.GeoDataFrame(df_all, geometry=gpd.points_from_xy(df_all.long, df_all.lat), crs="EPSG:4326")  # type: ignore
 

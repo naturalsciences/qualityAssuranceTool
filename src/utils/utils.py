@@ -6,7 +6,6 @@ from models.enums import Properties, Entities, Settings
 from datetime import datetime
 from models.constants import ISO_STR_FORMAT, ISO_STR_FORMAT2
 
-
 log = logging.getLogger(__name__)
 
 
@@ -64,3 +63,18 @@ def series_to_patch_dict(x, group_per_x=1000):
         "body": {"resultQuality": str(x.get("qc_flag"))},
     }
     return d_out
+
+
+def update_response(
+    d: dict[str, int | float | str | list], u: dict[str, str | list]
+) -> dict[str, int | float | str | list]:
+    common_keys = set(d.keys()).intersection(u.keys())
+
+    assert all([type(d[k]) == type(u[k]) for k in common_keys])
+
+    for k, v in u.items():
+        if isinstance(v, list) and k in d.keys():
+            d[k] = sum([d[k], v], [])
+        else:
+            d[k] = v
+    return d
