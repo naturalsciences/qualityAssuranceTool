@@ -21,8 +21,11 @@ class Settings(BaseQueryStrEnum):
     SKIP = "skip"
     COUNT = "count"
 
-    def __call__(self, value):
-        return f"{self}={str(value)}"
+    def __call__(self, value=None):
+        if value is None:
+            return ""
+        else:
+            return f"{self}={str(value)}"
 
 
 class Entities(StrEnum):

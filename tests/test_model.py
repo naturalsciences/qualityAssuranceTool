@@ -1,5 +1,5 @@
 import pytest
-from models.enums import Entities, Properties, OrderOption, Qactions, Filter, Order
+from models.enums import Entities, Properties, OrderOption, Qactions, Filter, Order, Settings
 
 
 class TestEnums:
@@ -22,3 +22,15 @@ class TestEnums:
     def test_order_call(self):
         out = Order.ORDERBY(Properties.PHENOMENONTIME, OrderOption.DESC)
         assert out == "$orderBy=phenomenonTime desc"
+
+    def test_settings_call_argument(self):
+        out = Settings.TOP(10)
+        assert out == "$top=10"
+
+    def test_settings_call_argument_none(self):
+        out = Settings.TOP(None)
+        assert out == ""
+
+    def test_settings_call_empty_argument_none(self):
+        out = Settings.TOP()
+        assert out == ""

@@ -105,10 +105,10 @@ def build_query_observations(
 
 def get_results_n_datastreams_query(
     entity_id: int,
-    n: int,
-    skip: int,
-    top_observations: int,
-    filter_condition: str,
+    n: int | None = None,
+    skip: int | None = None,
+    top_observations: int | None = None,
+    filter_condition: str = "",
     expand_feature_of_interest: bool = True,
 ) -> Literal:
     # TODO: cleanup!!
