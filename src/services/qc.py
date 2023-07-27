@@ -11,6 +11,7 @@ from qc_functions.functions import min_max_check_values
 log = logging.getLogger(__name__)
 
 
+# TODO: refactor 
 def qc_df(df_in, function):
     # http://vocab.nerc.ac.uk/collection/L20/current/
     df_out = deepcopy(df_in)
@@ -20,6 +21,7 @@ def qc_df(df_in, function):
     return df_out
 
 
+# TODO: refactor 
 def qc_on_df(df: pd.DataFrame, cfg: dict[str, dict]) -> pd.DataFrame:
     df_out = deepcopy(df)
     # df_out["bool"] = None
@@ -34,8 +36,8 @@ def qc_on_df(df: pd.DataFrame, cfg: dict[str, dict]) -> pd.DataFrame:
         cfg_ds_i = cfg.get("QC", {}).get(ot_i, {})
         if cfg_ds_i:
             min_, max_ = cfg_ds_i.get(
-                "range"
-            )  # type:ignore  Don't know why this is an issue
+                "range", (0,0)
+            )
             function_i = partial(min_max_check_values, min_=min_, max_=max_)
             df_sub = qc_df(df_sub, function_i)
             df_out.loc[df_sub.index] = df_sub

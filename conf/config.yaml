@@ -24,6 +24,9 @@ QC:
     range:
       - 0.
       - 10000.
+    gradient:
+      - -1e5
+      - 1e5
 
   bottom hardness:
     range:
