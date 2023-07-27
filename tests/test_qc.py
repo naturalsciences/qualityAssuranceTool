@@ -92,7 +92,7 @@ def test_qc_region_to_flag(df_testing):
 
 def test_qc_gradient_cacl_zero(df_testing):
     df_testing["phenomenonTime"] = pd.Timestamp("now") + pd.timedelta_range(
-        start=0, periods=df_testing.shape[0], freq="S", unit="s"
+        start=0, periods=df_testing.shape[0], freq="S", unit="s" # type: ignore
     )
     df_testing["result"] = 1.0
     df = calc_gradient_results(df_testing, "datastream_id")
@@ -103,7 +103,7 @@ def test_qc_gradient_cacl_zero(df_testing):
 
 def test_qc_gradient_cacl_one(df_testing):
     df_testing["phenomenonTime"] = pd.Timestamp("now") + pd.timedelta_range(
-        start=0, periods=df_testing.shape[0], freq="S", unit="s"
+        start=0, periods=df_testing.shape[0], freq="S", unit="s" # type: ignore
     )
     df_testing["result"] = pd.Series(range(df_testing.shape[0]), dtype="float")
     df = calc_gradient_results(df_testing, "datastream_id")
@@ -114,7 +114,7 @@ def test_qc_gradient_cacl_one(df_testing):
 
 def test_qc_gradient_cacl_neg_one(df_testing):
     df_testing["phenomenonTime"] = pd.Timestamp("now") + pd.timedelta_range(
-        start=0, periods=df_testing.shape[0], freq="S", unit="s"
+        start=0, periods=df_testing.shape[0], freq="S", unit="s" # type: ignore
     )
     df_testing["result"] = pd.Series(range(df_testing.shape[0], 0, -1), dtype="float")
     df = calc_gradient_results(df_testing, "datastream_id")
@@ -127,7 +127,7 @@ def test_qc_gradient_cacl_vardt_pos(df_testing):
     for ds_i in df_testing.datastream_id.unique():
         df_slice = df_testing.loc[df_testing.datastream_id == ds_i]
         df_slice["phenomenonTime"] = pd.Timestamp("now") + pd.timedelta_range(
-            start=0, periods=df_slice.shape[0], freq="S", unit="s"
+            start=0, periods=df_slice.shape[0], freq="S", unit="s" # type: ignore
         ) * list(range(df_slice.shape[0]))
         df_slice["result"] = pd.Series(range(df_slice.shape[0]), dtype="float")
         df = calc_gradient_results(df_slice, "datastream_id")
@@ -147,7 +147,7 @@ def test_qc_gradient_cacl_vardt_neg(df_testing):
     for ds_i in df_testing.datastream_id.unique():
         df_slice = df_testing.loc[df_testing.datastream_id == ds_i]
         df_slice["phenomenonTime"] = pd.Timestamp("now") + pd.timedelta_range(
-            start=0, periods=df_slice.shape[0], freq="S", unit="s"
+            start=0, periods=df_slice.shape[0], freq="S", unit="s" # type: ignore
         ) * list(range(df_slice.shape[0]))
         df_slice["result"] = pd.Series(range(df_slice.shape[0], 0, -1), dtype="float")
         df = calc_gradient_results(df_slice, "datastream_id")
@@ -170,7 +170,7 @@ def test_qc_gradient_cacl_vardx_pos(df_testing):
     for ds_i in df_testing.datastream_id.unique():
         df_slice = df_testing.loc[df_testing.datastream_id == ds_i]
         df_slice["phenomenonTime"] = pd.Timestamp("now") + pd.timedelta_range(
-            start=0, periods=df_slice.shape[0], freq="S", unit="s"
+            start=0, periods=df_slice.shape[0], freq="S", unit="s" # type: ignore
         )
 
         df_slice["result"] = pd.Series(
@@ -203,7 +203,7 @@ def test_qc_gradient_cacl_vardx_neg(df_testing):
     for ds_i in df_testing.datastream_id.unique():
         df_slice = df_testing.loc[df_testing.datastream_id == ds_i]
         df_slice["phenomenonTime"] = pd.Timestamp("now") + pd.timedelta_range(
-            start=0, periods=df_slice.shape[0], freq="S", unit="s"
+            start=0, periods=df_slice.shape[0], freq="S", unit="s" # type: ignore
         )
 
         df_slice["result"] = pd.Series(
