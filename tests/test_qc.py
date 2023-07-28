@@ -97,7 +97,7 @@ def test_qc_gradient_cacl_zero(df_testing):
     df_testing["result"] = 1.0
     df = calc_gradient_results(df_testing, "datastream_id")
     pdt.assert_series_equal(
-        df.grad, pd.Series(np.zeros_like(df_testing.result), name="grad")
+        df.grad, pd.Series(np.zeros_like(df_testing.result), name="gradient")
     )
 
 
@@ -108,7 +108,7 @@ def test_qc_gradient_cacl_one(df_testing):
     df_testing["result"] = pd.Series(range(df_testing.shape[0]), dtype="float")
     df = calc_gradient_results(df_testing, "datastream_id")
     pdt.assert_series_equal(
-        df.grad, pd.Series(np.ones_like(df_testing.result), name="grad")
+        df.grad, pd.Series(np.ones_like(df_testing.result), name="gradient")
     )
 
 
@@ -119,7 +119,7 @@ def test_qc_gradient_cacl_neg_one(df_testing):
     df_testing["result"] = pd.Series(range(df_testing.shape[0], 0, -1), dtype="float")
     df = calc_gradient_results(df_testing, "datastream_id")
     pdt.assert_series_equal(
-        df.grad, pd.Series(np.ones_like(df_testing.result) * -1, name="grad")
+        df.grad, pd.Series(np.ones_like(df_testing.result) * -1, name="gradient")
     )
 
 
@@ -137,7 +137,7 @@ def test_qc_gradient_cacl_vardt_pos(df_testing):
                 np.gradient(
                     df_slice.result, [(1 * i**2) for i in range(df_slice.shape[0])]
                 ),
-                name="grad",
+                name="gradient",
             ),
             check_index=False,
         )
@@ -157,7 +157,7 @@ def test_qc_gradient_cacl_vardt_neg(df_testing):
                 np.gradient(
                     df_slice.result, [(1 * i**2) for i in range(df_slice.shape[0])]
                 ),
-                name="grad",
+                name="gradient",
             ),
             check_index=False,
         )

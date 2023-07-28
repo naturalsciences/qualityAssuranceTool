@@ -63,7 +63,7 @@ def calc_gradient_results(df, groupby):
         g = np.gradient(
             group.result, group.phenomenonTime.astype("datetime64[s]").astype("int64")
         )
-        group["grad"] = g
+        group["gradient"] = g
         return group
 
     # np.gradient(df_idexed.result.values, df_idexed.index.get_level_values("phenomenonTime").astype('datetime64[s]').astype('int64'))

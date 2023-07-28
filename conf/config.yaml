@@ -19,6 +19,19 @@ data_api:
 other:
   pickle:
     path: ${hydra:runtime.cwd}/features.pkl
+# example, not yet implemented
+QC_dependent:
+  Water flow in the scientific seawater circuit:
+    dependent:
+      - salinity
+    QC:
+      range:
+        - 5.
+        - 10.
+    # the dependent quantities
+    # the qc check and range
+
+
 QC:
   seabed depth:
     range:
@@ -27,7 +40,6 @@ QC:
     gradient:
       - -1e5
       - 1e5
-
   bottom hardness:
     range:
       - -100
