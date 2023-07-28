@@ -4,6 +4,7 @@ import pandas as pd
 import pandas.testing as pdt
 import numpy as np
 import pytest
+from operator import add
 from models.enums import QualityFlags
 from services.qc import calc_gradient_results, qc_region
 from services.regions_query import build_points_query, build_query_points
@@ -24,6 +25,7 @@ def points_testing() -> Sequence[Sequence[float]]:
 @pytest.fixture
 def df_testing() -> gpd.GeoDataFrame:
     multipl_factor: int = 2
+    results_factor: float = 2.345
     base_list_region: list = [
         "NORTH SEA",
         "MAINLAND EUROPE",
@@ -31,27 +33,60 @@ def df_testing() -> gpd.GeoDataFrame:
         None,
         np.nan,
     ]
+    base_list_phenomenonTime: list[np.datetime64] = list(
+        pd.Timestamp("now")
+        + pd.timedelta_range(
+            start=0, periods=len(base_list_region), freq="S", unit="s"  # type: ignore
+        )
+    )
+    base_results: list[float] = [
+        fi * results_factor for fi in range(len(base_list_region))
+    ]
+    qc_ref_base = [
+        np.NaN,
+        QualityFlags.BAD,
+        QualityFlags.BAD,
+        QualityFlags.PROBABLY_BAD,
+        QualityFlags.PROBABLY_BAD,
+    ]
+    base_observation_type: list[str] = [
+        "salinity",
+        "Water flow in the scientific seawater circuit",
+        "seabed depth",
+        "random1",
+        "random2",
+    ]
 
+    datastream_id_series: pd.Series = pd.Series(
+        list(
+            sum(  # to convert list of tuples to flat list
+                zip(*([list(range(multipl_factor))] * len(base_list_region))), ()
+            )
+        )
+    )
     df_out = gpd.GeoDataFrame(
         {
+            "@iot.id": pd.Series(range(len(qc_ref_base) * multipl_factor)),
             "Region": pd.Series(base_list_region * multipl_factor, dtype="string"),
-            "qc_ref": pd.Series(
-                [
-                    np.NaN,
-                    QualityFlags.BAD,
-                    QualityFlags.BAD,
-                    QualityFlags.PROBABLY_BAD,
-                    QualityFlags.PROBABLY_BAD,
-                ]
-                * multipl_factor,
-            ),
+            "qc_ref": pd.Series(qc_ref_base * multipl_factor),
             "datastream_id": pd.Series(
                 list(
-                    sum(  # to convert lis tof tuples to flat list
+                    sum(  # to convert list of tuples to flat list
                         zip(*([list(range(multipl_factor))] * len(base_list_region))),
                         (),
                     )
                 )
+            ),
+            "phenomenonTime": pd.Series(base_list_phenomenonTime * multipl_factor),
+            "results": pd.Series(
+                map(
+                    add,
+                    base_results * multipl_factor,
+                    [i * 10 for i in datastream_id_series.to_list()],
+                )
+            ),
+            "observation_type": pd.Series(
+                base_observation_type * multipl_factor, dtype="category"
             ),
         }
     )
@@ -92,34 +127,34 @@ def test_qc_region_to_flag(df_testing):
 
 def test_qc_gradient_cacl_zero(df_testing):
     df_testing["phenomenonTime"] = pd.Timestamp("now") + pd.timedelta_range(
-        start=0, periods=df_testing.shape[0], freq="S", unit="s" # type: ignore
+        start=0, periods=df_testing.shape[0], freq="S", unit="s"  # type: ignore
     )
     df_testing["result"] = 1.0
     df = calc_gradient_results(df_testing, "datastream_id")
     pdt.assert_series_equal(
-        df.grad, pd.Series(np.zeros_like(df_testing.result), name="gradient")
+        df.gradient, pd.Series(np.zeros_like(df_testing.result), name="gradient")
     )
 
 
 def test_qc_gradient_cacl_one(df_testing):
     df_testing["phenomenonTime"] = pd.Timestamp("now") + pd.timedelta_range(
-        start=0, periods=df_testing.shape[0], freq="S", unit="s" # type: ignore
+        start=0, periods=df_testing.shape[0], freq="S", unit="s"  # type: ignore
     )
     df_testing["result"] = pd.Series(range(df_testing.shape[0]), dtype="float")
     df = calc_gradient_results(df_testing, "datastream_id")
     pdt.assert_series_equal(
-        df.grad, pd.Series(np.ones_like(df_testing.result), name="gradient")
+        df.gradient, pd.Series(np.ones_like(df_testing.result), name="gradient")
     )
 
 
 def test_qc_gradient_cacl_neg_one(df_testing):
     df_testing["phenomenonTime"] = pd.Timestamp("now") + pd.timedelta_range(
-        start=0, periods=df_testing.shape[0], freq="S", unit="s" # type: ignore
+        start=0, periods=df_testing.shape[0], freq="S", unit="s"  # type: ignore
     )
     df_testing["result"] = pd.Series(range(df_testing.shape[0], 0, -1), dtype="float")
     df = calc_gradient_results(df_testing, "datastream_id")
     pdt.assert_series_equal(
-        df.grad, pd.Series(np.ones_like(df_testing.result) * -1, name="gradient")
+        df.gradient, pd.Series(np.ones_like(df_testing.result) * -1, name="gradient")
     )
 
 
@@ -127,12 +162,12 @@ def test_qc_gradient_cacl_vardt_pos(df_testing):
     for ds_i in df_testing.datastream_id.unique():
         df_slice = df_testing.loc[df_testing.datastream_id == ds_i]
         df_slice["phenomenonTime"] = pd.Timestamp("now") + pd.timedelta_range(
-            start=0, periods=df_slice.shape[0], freq="S", unit="s" # type: ignore
+            start=0, periods=df_slice.shape[0], freq="S", unit="s"  # type: ignore
         ) * list(range(df_slice.shape[0]))
         df_slice["result"] = pd.Series(range(df_slice.shape[0]), dtype="float")
         df = calc_gradient_results(df_slice, "datastream_id")
         pdt.assert_series_equal(
-            df.grad,
+            df.gradient,
             pd.Series(
                 np.gradient(
                     df_slice.result, [(1 * i**2) for i in range(df_slice.shape[0])]
@@ -147,12 +182,12 @@ def test_qc_gradient_cacl_vardt_neg(df_testing):
     for ds_i in df_testing.datastream_id.unique():
         df_slice = df_testing.loc[df_testing.datastream_id == ds_i]
         df_slice["phenomenonTime"] = pd.Timestamp("now") + pd.timedelta_range(
-            start=0, periods=df_slice.shape[0], freq="S", unit="s" # type: ignore
+            start=0, periods=df_slice.shape[0], freq="S", unit="s"  # type: ignore
         ) * list(range(df_slice.shape[0]))
         df_slice["result"] = pd.Series(range(df_slice.shape[0], 0, -1), dtype="float")
         df = calc_gradient_results(df_slice, "datastream_id")
         pdt.assert_series_equal(
-            df.grad,
+            df.gradient,
             pd.Series(
                 np.gradient(
                     df_slice.result, [(1 * i**2) for i in range(df_slice.shape[0])]
@@ -170,7 +205,7 @@ def test_qc_gradient_cacl_vardx_pos(df_testing):
     for ds_i in df_testing.datastream_id.unique():
         df_slice = df_testing.loc[df_testing.datastream_id == ds_i]
         df_slice["phenomenonTime"] = pd.Timestamp("now") + pd.timedelta_range(
-            start=0, periods=df_slice.shape[0], freq="S", unit="s" # type: ignore
+            start=0, periods=df_slice.shape[0], freq="S", unit="s"  # type: ignore
         )
 
         df_slice["result"] = pd.Series(
@@ -189,7 +224,7 @@ def test_qc_gradient_cacl_vardx_pos(df_testing):
         )
 
         pdt.assert_series_equal(
-            df.grad,
+            df.gradient,
             grad_ref,
             check_index=False,
             check_names=False,
@@ -203,7 +238,7 @@ def test_qc_gradient_cacl_vardx_neg(df_testing):
     for ds_i in df_testing.datastream_id.unique():
         df_slice = df_testing.loc[df_testing.datastream_id == ds_i]
         df_slice["phenomenonTime"] = pd.Timestamp("now") + pd.timedelta_range(
-            start=0, periods=df_slice.shape[0], freq="S", unit="s" # type: ignore
+            start=0, periods=df_slice.shape[0], freq="S", unit="s"  # type: ignore
         )
 
         df_slice["result"] = pd.Series(
@@ -223,8 +258,50 @@ def test_qc_gradient_cacl_vardx_neg(df_testing):
         )
 
         pdt.assert_series_equal(
-            df.grad,
+            df.gradient,
             grad_ref,
             check_index=False,
             check_names=False,
         )
+
+
+def test_example_pivot_and_reverse():
+    df = pd.DataFrame(
+        {
+            "type": [0, 0, 1, 1],
+            "time": [1.1, 2.2, 1.1, 2.2],
+            "result": list(range(4)),
+            "flag": [str(i) for i in range(4)],
+        }
+    )
+    df_p = df.pivot(index=["time"], columns=["type"], values=["result", "flag"])
+    df_p_undone = (
+        df_p.stack()
+        .reset_index()
+        .sort_values("type")
+        .reset_index(drop=True)
+        .sort_index(axis=1)
+    )
+    df_p_undone.result = df_p_undone.result.astype(int)
+    pdt.assert_frame_equal(df_p_undone.sort_index(axis=1), df.sort_index(axis=1))
+
+
+# @pytest.mark.skip()
+def test_qc_dependent_quantities(df_testing):
+    qc_flag_count_ref = {"0": df_testing.shape[0]-2, "4":2}
+    df_testing["qc_flag"] = "0"
+
+    idx_ = df_testing.loc[df_testing["datastream_id"] == 0].index[2]
+    df_testing.loc[idx_, "qc_flag"] = "4"
+    df_pivot = df_testing.pivot(
+        index=["phenomenonTime"],
+        columns=["datastream_id"],
+        values=["results", "qc_flag", "observation_type", "@iot.id"],
+    )
+    mask = (~df_pivot["qc_flag", 0].isin(["0", "1", "2"]))
+    df_pivot.loc[mask, ("qc_flag", 1)] = df_pivot.loc[mask, ("qc_flag", 0)]
+
+    df_unpivot = df_pivot.stack().reset_index().set_index("@iot.id")
+    df_testing = df_testing.set_index("@iot.id")
+    df_testing.loc[df_unpivot.index, "qc_flag"] = df_unpivot["qc_flag"]
+    assert df_testing.qc_flag.value_counts().to_dict() == qc_flag_count_ref

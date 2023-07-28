@@ -22,3 +22,11 @@ QC:
     range:
       - 0.
       - 10000.
+  salinity:
+    range:
+      - 29.
+      - 36.
+  Water flow in the scientific seawater circuit:
+    range:
+      - 0.
+      - 10.

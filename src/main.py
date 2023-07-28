@@ -71,6 +71,9 @@ def main(cfg):
 
     t2 = time.time()
 
+    # attempt dependent qc checks
+    
+
     log.info(f"time merge shizzle {t2-t1}")
 
     # df_all = qc_region(df_all)
