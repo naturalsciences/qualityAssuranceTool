@@ -9,6 +9,8 @@ import pandas as pd
 from models.enums import QualityFlags
 from qc_functions.functions import min_max_check_values
 
+from models.enums import Df
+
 log = logging.getLogger(__name__)
 
 
@@ -39,41 +41,41 @@ def get_bool_range(df: pd.DataFrame, qc_on: str | tuple, qc_type: str) -> pd.Ser
 def qc_df(df_in, function):
     # http://vocab.nerc.ac.uk/collection/L20/current/
     df_out = deepcopy(df_in)
-    df_out["bool"] = function(df_out["result"].array)
-    df_out.loc[df_out["bool"], "qc_flag"] = QualityFlags.PROBABLY_GOOD
-    df_out.loc[~df_out["bool"], "qc_flag"] = QualityFlags.PROBABLY_BAD
+    df_out["bool"] = function(df_out[Df.RESULT].array)
+    df_out.loc[df_out["bool"], Df.QC_FLAG] = QualityFlags.PROBABLY_GOOD
+    df_out.loc[~df_out["bool"], Df.QC_FLAG] = QualityFlags.PROBABLY_BAD
     return df_out
 
 
-# TODO: refactor
-def qc_on_df(df: pd.DataFrame, cfg: dict[str, dict]) -> pd.DataFrame:
-    df_out = deepcopy(df)
-    # df_out["bool"] = None
-    # df_out["qc_flag"] = None
-    for _, row in (
-        df_out[["datastream_id", "units", "observation_type"]]
-        .drop_duplicates()
-        .iterrows()
-    ):
-        d_id_i, u_i, ot_i = row.values
-        df_sub = df_out.loc[df_out["datastream_id"] == d_id_i]
-        cfg_ds_i = cfg.get("QC", {}).get(ot_i, {})
-        if cfg_ds_i:
-            min_, max_ = cfg_ds_i.get("range", (0, 0))
-            function_i = partial(min_max_check_values, min_=min_, max_=max_)
-            df_sub = qc_df(df_sub, function_i)
-            df_out.loc[df_sub.index] = df_sub
-    return df_out
+##  TODO: refactor
+# def qc_on_df(df: pd.DataFrame, cfg: dict[Df, dict]) -> pd.DataFrame:
+#     df_out = deepcopy(df)
+#     # df_out["bool"] = None
+#     # df_out[Df.QC_FLAG] = None
+#     for _, row in (
+#         df_out[[Df.DATASTREAM_ID, Df.UNITS, Df.OBSERVATION_TYPE]]
+#         .drop_duplicates()
+#         .iterrows()
+#     ):
+#         d_id_i, u_i, ot_i = row.values
+#         df_sub = df_out.loc[df_out[Df.DATASTREAM_ID] == d_id_i]
+#         cfg_ds_i = cfg.get("QC", {}).get(ot_i, {})
+#         if cfg_ds_i:
+#             min_, max_ = cfg_ds_i.get("range", (0, 0))
+#             function_i = partial(min_max_check_values, min_=min_, max_=max_)
+#             df_sub = qc_df(df_sub, function_i)
+#             df_out.loc[df_sub.index] = df_sub
+#     return df_out
 
 
 def qc_region(df: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     df_out = deepcopy(df)
 
     bool_nan = df_out.Region.isnull()
-    df_out.loc[bool_nan, "qc_flag"] = QualityFlags.PROBABLY_BAD  # type: ignore
+    df_out.loc[bool_nan, Df.QC_FLAG] = QualityFlags.PROBABLY_BAD  # type: ignore
 
     bool_mainland = df_out.Region.str.lower().str.contains("mainland").fillna(False)
-    df_out.loc[bool_mainland, "qc_flag"] = QualityFlags.BAD  # type: ignore
+    df_out.loc[bool_mainland, Df.QC_FLAG] = QualityFlags.BAD  # type: ignore
 
     return df_out
 
@@ -88,9 +90,9 @@ def calc_gradient_results(df, groupby):
         group["gradient"] = g
         return group
 
-    # np.gradient(df_idexed.result.values, df_idexed.index.get_level_values("phenomenonTime").astype('datetime64[s]').astype('int64'))
+    # np.gradient(df_idexed.result.values, df_idexed.index.get_level_values(Df.TIME).astype('datetime64[s]').astype('int64'))
 
-    # df_idexed.result.groupby(level=["datastream_id"], group_keys=False).apply(lambda x: pd.DataFrame(np.gradient(x, x.index.get_level_values("phenomenonTime").astype("datetime64[s]").astype('int64'), axis=0)))
+    # df_idexed.result.groupby(level=[Df.DATASTREAM_ID], group_keys=False).apply(lambda x: pd.DataFrame(np.gradient(x, x.index.get_level_values(Df.TIME).astype("datetime64[s]").astype('int64'), axis=0)))
 
     # df['wc'].groupby(level = ['model'], group_keys=False)
     #   .apply(lambda x: #do all the columns at once, specifying the axis in gradient
@@ -103,18 +105,18 @@ def calc_gradient_results(df, groupby):
 
 def qc_dependent_quantity_base(df: pd.DataFrame, independent: int, dependent: int):
     df_pivot = df.pivot(
-        index=["phenomenonTime"],
-        columns=["datastream_id"],
-        values=["result", "qc_flag", "observation_type", "@iot.id"],
+        index=[Df.TIME],
+        columns=[Df.DATASTREAM_ID],
+        values=[Df.RESULT, Df.QC_FLAG, Df.OBSERVATION_TYPE, Df.IOT_ID],
     )
-    mask = ~df_pivot["qc_flag", independent].isin(["0", "1", "2"])
-    df_pivot.loc[mask, ("qc_flag", dependent)] = df_pivot[mask][
-        ("qc_flag", independent)
+    mask = ~df_pivot[Df.QC_FLAG, independent].isin(["0", "1", "2"])
+    df_pivot.loc[mask, (Df.QC_FLAG, dependent)] = df_pivot[mask][
+        (Df.QC_FLAG, independent)
     ]
 
-    df_unpivot = df_pivot.stack().reset_index().set_index("@iot.id")
-    df = df.set_index("@iot.id")
-    df.loc[df_unpivot.index, "qc_flag"] = df_unpivot["qc_flag"]
+    df_unpivot = df_pivot.stack().reset_index().set_index(Df.IOT_ID)
+    df = df.set_index(Df.IOT_ID)
+    df.loc[df_unpivot.index, Df.QC_FLAG] = df_unpivot[Df.QC_FLAG]
     return df
 
 
@@ -122,17 +124,17 @@ def qc_dependent_quantity_secondary(
     df: pd.DataFrame, independent: int, dependent: int, range_: tuple[float, float]
 ):
     df_pivot = df.pivot(
-        index=["phenomenonTime"],
-        columns=["datastream_id"],
-        values=["result", "qc_flag", "observation_type", "@iot.id"],
+        index=[Df.TIME],
+        columns=[Df.DATASTREAM_ID],
+        values=[Df.RESULT, Df.QC_FLAG, Df.OBSERVATION_TYPE, Df.IOT_ID],
     )
 
     df_pivot[["qc_drange_min", "qc_drange_max"]] = range_
-    bool_qc = get_bool_range(df_pivot, ("result", independent), qc_type="drange")
-    df_pivot.loc[~bool_qc, ("qc_flag", dependent)] = QualityFlags.BAD #type: ignore Don"t know how to fix this 
+    bool_qc = get_bool_range(df_pivot, (Df.RESULT, independent), qc_type="drange")
+    df_pivot.loc[~bool_qc, (Df.QC_FLAG, dependent)] = QualityFlags.BAD #type: ignore Don"t know how to fix this 
 
     df_pivot = df_pivot.drop(["qc_drange_min", "qc_drange_max"], axis=1)
-    df_unpivot = df_pivot.stack().reset_index().set_index("@iot.id")
-    df = df.set_index("@iot.id")
-    df.loc[df_unpivot.index, "qc_flag"] = df_unpivot["qc_flag"]
+    df_unpivot = df_pivot.stack().reset_index().set_index(Df.IOT_ID)
+    df = df.set_index(Df.IOT_ID)
+    df.loc[df_unpivot.index, Df.QC_FLAG] = df_unpivot[Df.QC_FLAG]
     return df

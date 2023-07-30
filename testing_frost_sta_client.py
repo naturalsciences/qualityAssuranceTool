@@ -11,7 +11,7 @@ def callback_func(loaded_entities):
 
 
 t0 = time.time()
-# observations = service.observations().query().select("Datastream", "result").expand("Datastream").list(callback=callback_func, step_size=1000)
+# observations = service.observations().query().select("Datastream", Df.RESULT).expand("Datastream").list(callback=callback_func, step_size=1000)
 observations = (
     service.observations()
     .query()

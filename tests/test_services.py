@@ -8,7 +8,7 @@ from stapy import Entity, Query
 from test_utils import (cfg, mock_response, mock_response_full,
                         mock_response_full_obs)
 
-from models.enums import Entities, Properties
+from models.enums import Df, Entities, Properties
 from services.config import filter_cfg_to_query
 from services.df import (response_datastreams_to_df, response_obs_to_df,
                          response_single_datastream_to_df)
@@ -187,5 +187,5 @@ class TestDf:
 
         assert all(
             types.is_numeric_dtype(df[ci])
-            for ci in [Properties.IOT_ID, "result", "datastream_id", "long", "lat"]
+            for ci in [Properties.IOT_ID, Df.RESULT, Df.DATASTREAM_ID, Df.LONG, Df.LAT]
         )

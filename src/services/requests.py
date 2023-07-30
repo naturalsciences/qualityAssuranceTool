@@ -1,17 +1,16 @@
 import json
 import logging
 from collections import Counter
-from math import ceil
-from typing import Literal, Sequence, Tuple
+from typing import Literal, Tuple
 
 import pandas as pd
 from requests import post
 from stapy import Entity, Query
 
-from models.enums import (Entities, Filter, Order, OrderOption, Properties,
+from models.enums import (Df, Entities, Filter, Order, OrderOption, Properties,
                           Qactions, Settings)
 from services.config import filter_cfg_to_query
-from services.df import (datastreams_response_to_df, features_request_to_df,
+from services.df import (features_request_to_df,
                          response_single_datastream_to_df)
 from utils.utils import (convert_to_datetime, log, series_to_patch_dict,
                          update_response)
@@ -65,6 +64,7 @@ def get_request(query: str) -> Tuple[int, dict]:
     return request.status_code, request_out
 
 
+# not used
 def build_query_observations(
     filter_conditions: str | None,
     top_observations: int,
@@ -76,7 +76,7 @@ def build_query_observations(
     Q_select = "&" + Qactions.SELECT(
         [
             Properties.IOT_ID,
-            "result",
+            Properties.RESULT,
             Properties.PHENOMENONTIME,
             Entities.FEATUREOFINTEREST,
         ]
@@ -117,7 +117,7 @@ def get_results_n_datastreams_query(
                 Qactions.SELECT(
                     [
                         Properties.IOT_ID,
-                        "result",
+                        Properties.RESULT,
                         Properties.PHENOMENONTIME,
                     ]
                 ),
@@ -355,7 +355,7 @@ def get_datetime_latest_observation():
 
 
 def patch_qc_flags(df: pd.DataFrame, url) -> Counter:
-    df["patch_dict"] = df[[Properties.IOT_ID, "qc_flag"]].apply(
+    df["patch_dict"] = df[[Df.IOT_ID, Df.QC_FLAG]].apply(
         series_to_patch_dict, axis=1
     )
 

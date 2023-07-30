@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from shapely.wkt import loads
 
-from models.enums import Entities, Properties
+from models.enums import Df, Entities, Properties
 from services.regions_query import (build_points_query, build_query_points,
                                     connect)
 from utils.utils import convert_to_datetime
@@ -16,7 +16,7 @@ log = logging.getLogger(__name__)
 
 def df_type_conversions(df):
     df_out = deepcopy(df)
-    list_columns = ["observation_type", "units", "qc_flag", "Region", "Sub-region"]
+    list_columns = [Df.OBSERVATION_TYPE, Df.UNITS, Df.QC_FLAG, Df.REGION, Df.SUB_REGION]
     for ci in set(list_columns).intersection(df.columns):
         mu0 = df_out[[ci]].memory_usage().get(ci)
         df_out[ci] = df_out[ci].astype("category")
@@ -38,7 +38,7 @@ def features_request_to_df(request_features):
         idx = [oi.get(Properties.IOT_ID) for oi in fi.get(Entities.OBSERVATIONS)]
         for idx_i in idx:
             data.append([idx_i, v, long, lat])
-    df = pd.DataFrame(data, columns=["observation_id", "feature_id", "long", "lat"])
+    df = pd.DataFrame(data, columns=[Df.IOT_ID, "feature_id", Df.LONG, Df.LAT])
     return df
 
 
@@ -46,13 +46,13 @@ def response_obs_to_df(response_obs: dict) -> pd.DataFrame:
     # MISSING UNITS, TYPE, ...
     df = pd.DataFrame()
     df = pd.DataFrame(response_obs["value"]).astype(
-        {Properties.IOT_ID: int, "result": float}
+        {Properties.IOT_ID: int, Df.RESULT: float}
     )
     df[Properties.PHENOMENONTIME] = df[Properties.PHENOMENONTIME].apply(
         convert_to_datetime
     )
 
-    df[["long", "lat"]] = pd.DataFrame.from_records(
+    df[[Df.LONG, Df.LAT]] = pd.DataFrame.from_records(
         df[str(Entities.FEATUREOFINTEREST)].apply(
             lambda x: x.get("feature").get("coordinates")
         )
@@ -67,21 +67,21 @@ def response_single_datastream_to_df(response_datastream: dict) -> pd.DataFrame:
     observations_list = response_datastream.get(Entities.OBSERVATIONS, [])
     if observations_list:
         df_i = pd.DataFrame(observations_list).astype(
-            {Properties.IOT_ID: int, "result": float}
+            {Properties.IOT_ID: int, Df.RESULT: float}
         )
-        df_i["datastream_id"] = int(response_datastream.get(Properties.IOT_ID, -1))
+        df_i[Df.DATASTREAM_ID] = int(response_datastream.get(Properties.IOT_ID, -1))
         df_i[Properties.PHENOMENONTIME] = df_i[Properties.PHENOMENONTIME].apply(
             convert_to_datetime
         )
-        df_i["observation_type"] = response_datastream.get(Entities.OBSERVEDPROPERTY, {}).get(
+        df_i[Df.OBSERVATION_TYPE] = response_datastream.get(Entities.OBSERVEDPROPERTY, {}).get(
             Properties.NAME
         )
-        df_i["observation_type"] = df_i["observation_type"].astype("category")
+        df_i[Df.OBSERVATION_TYPE] = df_i[Df.OBSERVATION_TYPE].astype("category")
         k1, k2 = Properties.UNITOFMEASUREMENT.split("/", 1)
-        df_i["units"] = response_datastream.get(k1, {}).get(k2)
-        df_i["units"] = df_i["units"].astype("category")
+        df_i[Df.UNITS] = response_datastream.get(k1, {}).get(k2)
+        df_i[Df.UNITS] = df_i[Df.UNITS].astype("category")
 
-        df_i[["long", "lat"]] = pd.DataFrame.from_records(
+        df_i[[Df.LONG, Df.LAT]] = pd.DataFrame.from_records(
             df_i[str(Entities.FEATUREOFINTEREST)].apply(
                 lambda x: x.get("feature").get("coordinates")
             )
@@ -110,21 +110,21 @@ def datastreams_response_to_df(response_datastreams):
         observations_list = di.get(Entities.OBSERVATIONS)
         if observations_list:
             df_i = pd.DataFrame(observations_list).astype(
-                {Properties.IOT_ID: int, "result": float}
+                {Properties.IOT_ID: int, Df.RESULT: float}
             )
-            df_i["datastream_id"] = int(di.get(Properties.IOT_ID))
+            df_i[Df.DATASTREAM_ID] = int(di.get(Properties.IOT_ID))
             df_i[Properties.PHENOMENONTIME] = df_i[Properties.PHENOMENONTIME].apply(
                 convert_to_datetime
             )
-            df_i["observation_type"] = di.get(Entities.OBSERVEDPROPERTY).get(
+            df_i[Df.OBSERVATION_TYPE] = di.get(Entities.OBSERVEDPROPERTY).get(
                 Properties.NAME
             )
-            df_i["observation_type"] = df_i["observation_type"].astype("category")
+            df_i[Df.OBSERVATION_TYPE] = df_i[Df.OBSERVATION_TYPE].astype("category")
             k1, k2 = Properties.UNITOFMEASUREMENT.split("/", 1)
-            df_i["units"] = di.get(k1).get(k2)
-            df_i["units"] = df_i["units"].astype("category")
+            df_i[Df.UNITS] = di.get(k1).get(k2)
+            df_i[Df.UNITS] = df_i[Df.UNITS].astype("category")
 
-            df_i[["long", "lat"]] = pd.DataFrame.from_records(
+            df_i[[Df.LONG, Df.LAT]] = pd.DataFrame.from_records(
                 df_i[str(Entities.FEATUREOFINTEREST)].apply(
                     lambda x: x.get("feature").get("coordinates")
                 )
@@ -138,7 +138,7 @@ def datastreams_response_to_df(response_datastreams):
 
 def seavox_to_df(response_seavox: Sequence[Sequence[str]]) -> pd.DataFrame:
     df = pd.DataFrame()
-    df[["Region", "Sub-region"]] = pd.DataFrame.from_records(response_seavox)
+    df[[Df.REGION, Df.SUB_REGION]] = pd.DataFrame.from_records(response_seavox)
 
     return df
 
@@ -161,12 +161,12 @@ def query_region_from_xy(coords):
 
 def query_all_nan_regions(df):
     idx_nan = df.Region.isnull()
-    points_nan = df.loc[idx_nan, ["long", "lat"]].to_numpy().tolist()
+    points_nan = df.loc[idx_nan, [Df.LONG, Df.LAT]].to_numpy().tolist()
     if points_nan: 
         res = query_region_from_xy(points_nan)
 
         df_seavox = seavox_to_df([res_i[:2] for res_i in res])
-        df.loc[idx_nan, ["Region", "Sub-region"]] = df_seavox
+        df.loc[idx_nan, [Df.REGION, Df.SUB_REGION]] = df_seavox
 
     return df
 
@@ -179,7 +179,7 @@ def intersect_df_region(df, max_queries, max_query_points):
 
     while True:
         point_i = (
-            df_out.loc[df_out.Region.isnull(), ["long", "lat"]].to_numpy().tolist()[:1]
+            df_out.loc[df_out.Region.isnull(), [Df.LONG, Df.LAT]].to_numpy().tolist()[:1]
         )
         res = query_region_from_xy(point_i)
 
@@ -187,7 +187,7 @@ def intersect_df_region(df, max_queries, max_query_points):
 
         idx_gref = si.query(g_ref, predicate="intersects").tolist()
 
-        df_out.loc[idx_gref, ["Region", "Sub-region"]] = res[0][:2]
+        df_out.loc[idx_gref, [Df.REGION, Df.SUB_REGION]] = res[0][:2]
 
         n += 1
         count_dict = df_out.Region.value_counts(dropna=False).to_dict()

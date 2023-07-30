@@ -15,6 +15,7 @@ class Properties(StrEnum):
     IOT_ID = "@iot.id"
     COORDINATES = "feature/coordinates"
     PHENOMENONTIME = "phenomenonTime"
+    RESULT = "result"
 
 
 class Settings(BaseQueryStrEnum):
@@ -100,3 +101,18 @@ class QualityFlags(Enum):
 
     def __str__(self):
         return f"{self.value}"
+
+
+class Df(StrEnum):
+    IOT_ID = Properties.IOT_ID
+    DATASTREAM_ID = "datastream_id"
+    UNITS = "units"
+    OBSERVATION_TYPE = "observation_type"
+    QC_FLAG= "qc_flag"
+    GRADIENT = "gradient"
+    TIME = "phenomenonTime"
+    RESULT = Properties.RESULT
+    REGION = "Region"
+    SUB_REGION = "Sub-region"
+    LONG= "long"
+    LAT = "lat"

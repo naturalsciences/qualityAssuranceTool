@@ -6,7 +6,7 @@ import numpy as np
 from stapy import Entity, Query
 
 from models.constants import ISO_STR_FORMAT, ISO_STR_FORMAT2
-from models.enums import Entities, Properties, Settings
+from models.enums import Df, Entities, Properties
 
 log = logging.getLogger(__name__)
 
@@ -32,7 +32,7 @@ def extend_summary_with_result_inspection(summary_dict: dict[str, list]):
                 Query(Entity.Datastream)
                 .entity_id(iot_id_i)
                 .sub_entity(Entity.Observation)
-                .select("result")
+                .select(Properties.RESULT)
                 .get_data_sets()
             )
             results = np.concatenate([results, results_])
@@ -49,7 +49,7 @@ def extend_summary_with_result_inspection(summary_dict: dict[str, list]):
             "median": median,
             "nb": nb,
         }
-        summary_out.get(Entities.DATASTREAMS).get(dsi)["results"] = extended_sumary  # type: ignore
+        summary_out.get(Entities.DATASTREAMS).get(dsi)[Properties.RESULT] = extended_sumary  # type: ignore
     return summary_out
 
 
@@ -62,7 +62,7 @@ def series_to_patch_dict(x, group_per_x=1000):
         "atomicityGroup": f"Group{(int(x.name/group_per_x)+1)}",
         "method": "patch",
         "url": f"Observations({x.get(Properties.IOT_ID)})",
-        "body": {"resultQuality": str(x.get("qc_flag"))},
+        "body": {"resultQuality": str(x.get(Df.QC_FLAG))},
     }
     return d_out
 
