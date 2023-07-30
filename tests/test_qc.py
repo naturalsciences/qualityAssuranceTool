@@ -7,7 +7,10 @@ import pytest
 from operator import add
 from models.enums import QualityFlags
 from services.qc import calc_gradient_results, qc_region
+from services.qc import qc_dependent_quantity_base
+from services.qc import qc_dependent_quantity_secondary
 from services.regions_query import build_points_query, build_query_points
+import random
 
 
 @pytest.fixture
@@ -22,17 +25,20 @@ def points_testing() -> Sequence[Sequence[float]]:
     return points
 
 
+base_list_region: list = [
+    "NORTH SEA",
+    "MAINLAND EUROPE",
+    "MAINLAND random",
+    None,
+    np.nan,
+]
+
+
 @pytest.fixture
 def df_testing() -> gpd.GeoDataFrame:
     multipl_factor: int = 2
     results_factor: float = 2.345
-    base_list_region: list = [
-        "NORTH SEA",
-        "MAINLAND EUROPE",
-        "MAINLAND random",
-        None,
-        np.nan,
-    ]
+
     base_list_phenomenonTime: list[np.datetime64] = list(
         pd.Timestamp("now")
         + pd.timedelta_range(
@@ -78,7 +84,7 @@ def df_testing() -> gpd.GeoDataFrame:
                 )
             ),
             "phenomenonTime": pd.Series(base_list_phenomenonTime * multipl_factor),
-            "results": pd.Series(
+            "result": pd.Series(
                 map(
                     add,
                     base_results * multipl_factor,
@@ -286,22 +292,44 @@ def test_example_pivot_and_reverse():
     pdt.assert_frame_equal(df_p_undone.sort_index(axis=1), df.sort_index(axis=1))
 
 
-# @pytest.mark.skip()
-def test_qc_dependent_quantities(df_testing):
-    qc_flag_count_ref = {"0": df_testing.shape[0]-2, "4":2}
-    df_testing["qc_flag"] = "0"
+@pytest.mark.parametrize("n", tuple(range(len(base_list_region))))
+def test_qc_dependent_quantities(df_testing, n):
+    # setup ref count
+    qc_flag_count_ref = {
+        QualityFlags.GOOD: df_testing.shape[0] - 2,
+        QualityFlags.BAD: 2,
+    }
 
-    idx_ = df_testing.loc[df_testing["datastream_id"] == 0].index[2]
-    df_testing.loc[idx_, "qc_flag"] = "4"
-    df_pivot = df_testing.pivot(
-        index=["phenomenonTime"],
-        columns=["datastream_id"],
-        values=["results", "qc_flag", "observation_type", "@iot.id"],
-    )
-    mask = (~df_pivot["qc_flag", 0].isin(["0", "1", "2"]))
-    df_pivot.loc[mask, ("qc_flag", 1)] = df_pivot.loc[mask, ("qc_flag", 0)]
+    # setup df
+    df_testing["qc_flag"] = QualityFlags.GOOD
 
-    df_unpivot = df_pivot.stack().reset_index().set_index("@iot.id")
-    df_testing = df_testing.set_index("@iot.id")
-    df_testing.loc[df_unpivot.index, "qc_flag"] = df_unpivot["qc_flag"]
+    idx_ = df_testing.loc[df_testing["datastream_id"] == 0].index[n]
+    df_testing.loc[idx_, "qc_flag"] = QualityFlags.BAD
+
+    # perform qc check
+    df_testing = qc_dependent_quantity_base(df_testing, independent=0, dependent=1)
+    # assert
     assert df_testing.qc_flag.value_counts().to_dict() == qc_flag_count_ref
+
+
+@pytest.mark.parametrize("bad_value", (100.0, -100, 11, -1))
+@pytest.mark.parametrize("n", random.sample(tuple(range(len(base_list_region))), 2))
+def test_qc_dependent_quantities_secondary_fct(df_testing, bad_value, n):
+    qc_flag_count_ref = {
+        QualityFlags.GOOD: df_testing.shape[0] - 1,
+        QualityFlags.BAD: 1,
+    }
+    df_testing["qc_flag"] = QualityFlags.GOOD
+
+    idx_ = df_testing[df_testing["datastream_id"] == 0].index[n]
+    df_testing.loc[idx_, "result"] = bad_value
+
+    df_testing = qc_dependent_quantity_secondary(df_testing, 0, 1, range_=(0.0, 10.0))
+    assert df_testing.qc_flag.value_counts().to_dict() == qc_flag_count_ref
+    assert (
+        df_testing.loc[
+            idx_ + int(df_testing.shape[0] / len(df_testing.datastream_id.unique())),
+            "qc_flag",
+        ]
+        == QualityFlags.BAD
+    )

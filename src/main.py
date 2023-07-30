@@ -8,7 +8,7 @@ import time
 from services.config import filter_cfg_to_query
 from services.df import df_type_conversions
 from services.df import intersect_df_region
-from services.qc import calc_gradient_results, qc_on_df, qc_region
+from services.qc import calc_gradient_results, get_bool_range, get_null_mask, qc_on_df, qc_region
 from services.requests import get_all_data, get_all_datastreams_data, patch_qc_flags
 
 
@@ -53,15 +53,6 @@ def main(cfg):
     
     df_indexed = df_all.set_index(["observation_type", "@iot.id"])
     df_merge = df_indexed.merge(qc_df, on="observation_type", how="left")
-
-    def get_null_mask(df: pd.DataFrame, qc_type: str) -> pd.Series:
-        mask_out = ~df[[f"qc_{'_'.join([qc_type, i])}" for i in ["min", "max"]]].isnull().any(axis=1)
-        return mask_out
-
-    def get_bool_range(df: pd.DataFrame, qc_on: str, qc_type: str) -> pd.Series:
-        s_bool_out = ((df[qc_on] < df[f"qc_{qc_type}_max"]) & (df[qc_on] > df[f"qc_{qc_type}_min"]))
-        return s_bool_out
-
 
     mask = get_null_mask(df_merge, "range")
     df_merge.loc[mask,"qc_flags"] = get_bool_range(df_merge.loc[mask], qc_on="result", qc_type="range")
