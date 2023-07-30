@@ -245,49 +245,54 @@ def get_all_data(thing_id: int, filter_cfg: str):
         query = response_i.get("@iot.nextLink", None)
         response[Entities.DATASTREAMS + "@iot.nextLink"] = str(query)
         
+    count_observations = 0
     for ds_i in response.get(Entities.DATASTREAMS, {}): # type: ignore
         query = ds_i.get(Entities.OBSERVATIONS + "@iot.nextLink", None)
         while query:
+            log.debug(f"Number of observations: {count_observations + len(ds_i[Entities.OBSERVATIONS])}")
             status_code, response_i = get_results_n_datastreams(query)
         
             ds_i[Entities.OBSERVATIONS] = ds_i.get(Entities.OBSERVATIONS, []) + response_i["value"]
             query = response_i.get("@iot.nextLink", None)
             ds_i[Entities.OBSERVATIONS + "@iot.nextLink"] = query
+        count_observations += len(ds_i[Entities.OBSERVATIONS])
+        if len(ds_i[Entities.OBSERVATIONS]) > 0:
+            log.info(f"Number of observations: {count_observations}")
 
     df_out =  response_datastreams_to_df(response)
     log.info(f"Constructed dataframe of thing {thing_id}: {df_out.shape=}")
     return df_out       
 
 
-def get_all_datastreams_data(
-    thing_id, nb_streams_per_call, top_observations, filter_cfg
-) -> pd.DataFrame:
-    df_all = pd.DataFrame()
-    nb_datastreams = get_nb_datastreams_of_thing(thing_id=thing_id)
-    log.info(f"{nb_datastreams=}")
-    for i in range(ceil(nb_datastreams / nb_streams_per_call)):
-        log.info(f"nb {i} of {ceil(nb_datastreams/nb_streams_per_call)}")
-        query = get_results_n_datastreams_query(
-            entity_id=thing_id,
-            n=nb_streams_per_call,
-            skip=nb_streams_per_call * i,
-            top_observations=top_observations,
-            filter_condition=filter_cfg,
-            # expand_feature_of_interest=True,
-        )
-        status_code, response = get_results_n_datastreams(query)
-        if status_code != 200:
-            raise IOError(f"Status code: {status_code}")
-        df_response = response_datastreams_to_df(response)
-        df_all = pd.concat([df_all, df_response], ignore_index=True)
-        log.debug(f"DF_ALL shape {df_all.shape}")
-        # for ds_i in response[Entities.DATASTREAMS]:
-        #     if f"{Entities.OBSERVATIONS}@iot.nextLink" in ds_i:
-        #         log.warning("Not all observations are extracted!")  # TODO: follow link!
-        # df_i = datastreams_request_to_df(response[Entities.DATASTREAMS])
-        # log.debug(f"{df_i.shape[0]=}")
-        # df_all = pd.concat([df_all, df_i], ignore_index=True)
-    return df_all
+# def get_all_datastreams_data(
+#     thing_id, nb_streams_per_call, top_observations, filter_cfg
+# ) -> pd.DataFrame:
+#     df_all = pd.DataFrame()
+#     nb_datastreams = get_nb_datastreams_of_thing(thing_id=thing_id)
+#     log.info(f"{nb_datastreams=}")
+#     for i in range(ceil(nb_datastreams / nb_streams_per_call)):
+#         log.info(f"nb {i} of {ceil(nb_datastreams/nb_streams_per_call)}")
+#         query = get_results_n_datastreams_query(
+#             entity_id=thing_id,
+#             n=nb_streams_per_call,
+#             skip=nb_streams_per_call * i,
+#             top_observations=top_observations,
+#             filter_condition=filter_cfg,
+#             # expand_feature_of_interest=True,
+#         )
+#         status_code, response = get_results_n_datastreams(query)
+#         if status_code != 200:
+#             raise IOError(f"Status code: {status_code}")
+#         df_response = response_datastreams_to_df(response)
+#         df_all = pd.concat([df_all, df_response], ignore_index=True)
+#         log.debug(f"DF_ALL shape {df_all.shape}")
+#         # for ds_i in response[Entities.DATASTREAMS]:
+#         #     if f"{Entities.OBSERVATIONS}@iot.nextLink" in ds_i:
+#         #         log.warning("Not all observations are extracted!")  # TODO: follow link!
+#         # df_i = datastreams_request_to_df(response[Entities.DATASTREAMS])
+#         # log.debug(f"{df_i.shape[0]=}")
+#         # df_all = pd.concat([df_all, df_i], ignore_index=True)
+#     return df_all
 
 
 def get_features_of_interest(filter_cfg, top_observations):
