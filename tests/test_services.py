@@ -1,25 +1,22 @@
 import json
+
 import pytest
 from pandas.api import types
-
+from stapy import Entity, Query
 # from pandas.testing import
 # from numpy.testing import
-from test_utils import cfg, mock_response_full, mock_response, mock_response_full_obs
-from services.config import (
-    filter_cfg_to_query,
-)
-from services.df import response_datastreams_to_df, response_obs_to_df, response_single_datastream_to_df
-from services.requests import (
-    build_query_datastreams,
-    build_query_observations,
-    get_nb_datastreams_of_thing,
-    get_request,
-    get_results_n_datastreams,
-    get_results_n_datastreams_query,
-)
-from models.enums import Entities, Properties
+from test_utils import (cfg, mock_response, mock_response_full,
+                        mock_response_full_obs)
 
-from stapy import Query, Entity
+from models.enums import Entities, Properties
+from services.config import filter_cfg_to_query
+from services.df import (response_datastreams_to_df, response_obs_to_df,
+                         response_single_datastream_to_df)
+from services.requests import (build_query_datastreams,
+                               build_query_observations,
+                               get_nb_datastreams_of_thing, get_request,
+                               get_results_n_datastreams,
+                               get_results_n_datastreams_query)
 
 #
 # class TestApi:

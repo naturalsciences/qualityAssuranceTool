@@ -1,26 +1,20 @@
-from collections import Counter
-import logging
-from math import ceil
 import json
-from typing import Sequence, Tuple, Literal
+import logging
+from collections import Counter
+from math import ceil
+from typing import Literal, Sequence, Tuple
+
 import pandas as pd
 from requests import post
-
 from stapy import Entity, Query
 
-from models.enums import (
-    Entities,
-    Filter,
-    Order,
-    OrderOption,
-    Properties,
-    Qactions,
-    Settings,
-)
+from models.enums import (Entities, Filter, Order, OrderOption, Properties,
+                          Qactions, Settings)
 from services.config import filter_cfg_to_query
-from services.df import datastreams_response_to_df, features_request_to_df, response_single_datastream_to_df
-from utils.utils import convert_to_datetime, log, series_to_patch_dict, update_response
-
+from services.df import (datastreams_response_to_df, features_request_to_df,
+                         response_single_datastream_to_df)
+from utils.utils import (convert_to_datetime, log, series_to_patch_dict,
+                         update_response)
 
 log = logging.getLogger(__name__)
 

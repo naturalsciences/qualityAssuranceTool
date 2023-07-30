@@ -1,10 +1,12 @@
-import logging
 import copy
-import numpy as np
-from stapy import Query, Entity
-from models.enums import Properties, Entities, Settings
+import logging
 from datetime import datetime
+
+import numpy as np
+from stapy import Entity, Query
+
 from models.constants import ISO_STR_FORMAT, ISO_STR_FORMAT2
+from models.enums import Entities, Properties, Settings
 
 log = logging.getLogger(__name__)
 

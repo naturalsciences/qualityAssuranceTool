@@ -1,17 +1,17 @@
-import hydra
-import pandas as pd
-import stapy
-import geopandas as gpd
 import logging
 import time
 
+import geopandas as gpd
+import hydra
+import pandas as pd
+import stapy
+
 from services.config import filter_cfg_to_query
-from services.df import df_type_conversions
-from services.df import intersect_df_region
-from services.qc import calc_gradient_results, get_bool_range, get_null_mask, qc_on_df, qc_region
-from services.requests import get_all_data, get_all_datastreams_data, patch_qc_flags
-
-
+from services.df import df_type_conversions, intersect_df_region
+from services.qc import (calc_gradient_results, get_bool_range, get_null_mask,
+                         qc_on_df, qc_region)
+from services.requests import (get_all_data, get_all_datastreams_data,
+                               patch_qc_flags)
 
 log = logging.getLogger(__name__)
 

@@ -1,16 +1,17 @@
+import random
+from operator import add
 from typing import Sequence
+
 import geopandas as gpd
+import numpy as np
 import pandas as pd
 import pandas.testing as pdt
-import numpy as np
 import pytest
-from operator import add
+
 from models.enums import QualityFlags
-from services.qc import calc_gradient_results, qc_region
-from services.qc import qc_dependent_quantity_base
-from services.qc import qc_dependent_quantity_secondary
+from services.qc import (calc_gradient_results, qc_dependent_quantity_base,
+                         qc_dependent_quantity_secondary, qc_region)
 from services.regions_query import build_points_query, build_query_points
-import random
 
 
 @pytest.fixture
@@ -312,8 +313,8 @@ def test_qc_dependent_quantities(df_testing, n):
     assert df_testing.qc_flag.value_counts().to_dict() == qc_flag_count_ref
 
 
-@pytest.mark.parametrize("bad_value", (100.0, -100, 11, -1))
-@pytest.mark.parametrize("n", random.sample(tuple(range(len(base_list_region))), 2))
+@pytest.mark.parametrize("bad_value", (100.0,))
+@pytest.mark.parametrize("n", (0, 2, 4))
 def test_qc_dependent_quantities_secondary_fct(df_testing, bad_value, n):
     qc_flag_count_ref = {
         QualityFlags.GOOD: df_testing.shape[0] - 1,

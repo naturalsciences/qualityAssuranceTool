@@ -1,11 +1,11 @@
 import logging
+import time
+from typing import Sequence
+
 import psycopg2
 import psycopg2.extensions
-from shapely import Point, intersects
-from shapely import distance, set_srid
+from shapely import Point, distance, intersects, set_srid
 from shapely.wkt import loads
-from typing import Sequence
-import time
 
 # from services.df import seavox_to_df
 

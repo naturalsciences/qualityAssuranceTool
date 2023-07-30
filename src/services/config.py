@@ -1,8 +1,7 @@
+from datetime import datetime
+
 from models.constants import ISO_STR_FORMAT
 from models.enums import Properties
-
-
-from datetime import datetime
 
 
 def filter_cfg_to_query(filter_cfg) -> str:

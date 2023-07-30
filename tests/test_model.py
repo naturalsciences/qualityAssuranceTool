@@ -1,5 +1,7 @@
 import pytest
-from models.enums import Entities, Properties, OrderOption, Qactions, Filter, Order, Settings
+
+from models.enums import (Entities, Filter, Order, OrderOption, Properties,
+                          Qactions, Settings)
 
 
 class TestEnums:

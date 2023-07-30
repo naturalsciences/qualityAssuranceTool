@@ -1,16 +1,15 @@
 import logging
+from copy import deepcopy
 from typing import Sequence
+
 import numpy as np
 import pandas as pd
 from shapely.wkt import loads
+
 from models.enums import Entities, Properties
-
-
-from copy import deepcopy
-from services.regions_query import build_points_query, build_query_points, connect
-
+from services.regions_query import (build_points_query, build_query_points,
+                                    connect)
 from utils.utils import convert_to_datetime
-
 
 log = logging.getLogger(__name__)
 

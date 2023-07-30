@@ -1,14 +1,12 @@
-import pytest
 import json
-import services.requests
-import utils.utils as u
-from hydra import (
-    initialize,
-    compose,
-)
+
+import pytest
 import stapy
+from hydra import compose, initialize
 from omegaconf import DictConfig
 
+import services.requests
+import utils.utils as u
 from models.enums import Entities
 
 
