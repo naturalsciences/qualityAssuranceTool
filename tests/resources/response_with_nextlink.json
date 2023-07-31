@@ -25,6 +25,7 @@
                     "@iot.id": 1,
                     "result": 0.22,
                     "phenomenonTime": "2023-07-05T09:39:06Z",
+                    "resultQuality": 0,
                     "FeatureOfInterest": {
                         "feature": {
                             "coordinates": [
@@ -38,6 +39,7 @@
                     "@iot.id": 2,
                     "result": 0.25,
                     "phenomenonTime": "2023-07-05T09:40:10Z",
+                    "resultQuality": 0,
                     "FeatureOfInterest": {
                         "feature": {
                             "coordinates": [
@@ -51,6 +53,7 @@
                     "@iot.id": 3,
                     "result": 0.32,
                     "phenomenonTime": "2023-07-05T09:49:10Z",
+                    "resultQuality": 0,
                     "FeatureOfInterest": {
                         "feature": {
                             "coordinates": [
@@ -64,6 +67,7 @@
                     "@iot.id": 4,
                     "result": 0.1,
                     "phenomenonTime": "2023-07-05T09:50:04Z",
+                    "resultQuality": 0,
                     "FeatureOfInterest": {
                         "feature": {
                             "coordinates": [
@@ -77,6 +81,7 @@
                     "@iot.id": 5,
                     "result": 0.2,
                     "phenomenonTime": "2023-07-05T09:59:03Z",
+                    "resultQuality": 0,
                     "FeatureOfInterest": {
                         "feature": {
                             "coordinates": [
@@ -90,6 +95,7 @@
                     "@iot.id": 6,
                     "result": 0.05,
                     "phenomenonTime": "2023-07-05T10:00:09Z",
+                    "resultQuality": 0,
                     "FeatureOfInterest": {
                         "feature": {
                             "coordinates": [
@@ -103,6 +109,7 @@
                     "@iot.id": 7,
                     "result": 3.37,
                     "phenomenonTime": "2023-07-05T10:09:09Z",
+                    "resultQuality": 0,
                     "FeatureOfInterest": {
                         "feature": {
                             "coordinates": [
@@ -116,6 +123,7 @@
                     "@iot.id": 8,
                     "result": 2.69,
                     "phenomenonTime": "2023-07-05T10:10:02Z",
+                    "resultQuality": 0,
                     "FeatureOfInterest": {
                         "feature": {
                             "coordinates": [
@@ -129,6 +137,7 @@
                     "@iot.id": 9,
                     "result": 0.05,
                     "phenomenonTime": "2023-07-05T10:19:03Z",
+                    "resultQuality": 0,
                     "FeatureOfInterest": {
                         "feature": {
                             "coordinates": [
@@ -142,6 +151,7 @@
                     "@iot.id": 10,
                     "result": 0.08,
                     "phenomenonTime": "2023-07-05T10:20:09Z",
+                    "resultQuality": 0,
                     "FeatureOfInterest": {
                         "feature": {
                             "coordinates": [

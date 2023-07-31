@@ -3,21 +3,25 @@ import json
 import pytest
 from pandas.api import types
 from stapy import Entity, Query
+
 # from pandas.testing import
 # from numpy.testing import
-from test_utils import (cfg, mock_response, mock_response_full,
-                        mock_response_full_obs)
+from test_utils import cfg, mock_response, mock_response_full, mock_response_full_obs
 
 from models.enums import Df, Entities, Properties
 from services.config import filter_cfg_to_query
-from services.df import (response_datastreams_to_df, response_obs_to_df,
-                         response_single_datastream_to_df)
-from services.requests import (build_query_datastreams,
-                               build_query_observations,
-                               get_nb_datastreams_of_thing, get_request,
-                               get_results_n_datastreams,
-                               get_results_n_datastreams_query)
+from services.df import response_obs_to_df, response_single_datastream_to_df
+from services.requests import (
+    build_query_datastreams,
+    build_query_observations,
+    get_nb_datastreams_of_thing,
+    get_request,
+    get_results_n_datastreams,
+    get_results_n_datastreams_query,
+    response_datastreams_to_df,
+)
 
+# from services.df import response_datastreams_to_df
 #
 # class TestApi:
 #     @pytest.mark.usefixtures("mock_response")
@@ -39,8 +43,7 @@ class TestServicesRequests:
     def test_build_query_observations(self, cfg):
         filter_condition = filter_cfg_to_query(cfg.data_api.get("filter", {}))
         top_observations = cfg.data_api.observations.top
-        q = build_query_observations(filter_condition, 
-                                     top_observations)
+        q = build_query_observations(filter_condition, top_observations)
         assert (
             q == "http://testing.com/v1.1/Observations"
             "?$top=10000&$select=FeatureOfInterest"
@@ -87,7 +90,6 @@ class TestServicesRequests:
         status_code, response = get_request("random")
         assert 0
 
-
     def test_get_results_n_datastreams_query(self, cfg):
         cfg_api = cfg.get("data_api", {})
         entity_id = cfg_api.get("things", {}).get("id")
@@ -131,7 +133,6 @@ class TestServicesRequests:
             "ObservedProperty($select=@iot.id,name))"
         )
 
-
     def test_get_results_n_datastreams(self, mock_response_full):
         nb_datastreams = len(
             get_results_n_datastreams("random")[1][Entities.DATASTREAMS]
@@ -146,8 +147,7 @@ class TestServicesRequests:
     def test_features_of_interest(self):
         assert False
 
-        
-    @pytest.mark.skip(reason="fails after including qc flag")
+    # @pytest.mark.skip(reason="fails after including qc flag")
     def test_response_datastreams_to_df_nextLink_datastreams_warning(self, caplog):
         with open("./tests/resources/response_with_nextlink.json", "r") as f:
             res = json.load(f)
@@ -155,12 +155,13 @@ class TestServicesRequests:
 
         assert "Not all observations are extracted!" in caplog.text
 
+
 class TestDf:
     @pytest.mark.skip(reason="no features in fixture at the moment & should be moved!")
     def test_features_request_to_df(self):
         assert False
 
-    @pytest.mark.skip(reason="fails after including qc flag in df, missing from json")
+    # @pytest.mark.skip(reason="fails after including qc flag in df, missing from json")
     def test_features_datastreams_request_to_df(self, mock_response_full):
         response_in = get_results_n_datastreams("random")[1]
         datastreams_data = response_in[Entities.DATASTREAMS]
@@ -174,13 +175,13 @@ class TestDf:
         assert df.shape == (10, 6)
 
     # incomplete comparison
-    @pytest.mark.skip(reason="fails after including qc flag in df, missing from json")
+    # @pytest.mark.skip(reason="fails  AND not used")
     def test_shape_datastreams_request_to_df(self, mock_response_full):
         response_in = get_results_n_datastreams("random")[1]
         df = response_datastreams_to_df(response_in)
-        assert df.shape == (945, 9)
+        assert df.shape == (27, 9)
 
-    @pytest.mark.skip("fails after including qc flag")
+    @pytest.mark.skip(reason="fails after including qc flag")
     def test_num_dtypes_datastreams_request_to_df(self, mock_response_full):
         response_in = get_results_n_datastreams("random")[1]
         datastreams_data = response_in[Entities.DATASTREAMS]

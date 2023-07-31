@@ -8,13 +8,23 @@ from pandas.api.types import CategoricalDtype
 from requests import post
 from stapy import Entity, Query
 
-from models.enums import (Df, Entities, Filter, Order, OrderOption, Properties,
-                          Qactions, Settings)
+from models.enums import (
+    Df,
+    Entities,
+    Filter,
+    Order,
+    OrderOption,
+    Properties,
+    Qactions,
+    Settings,
+)
 from services.config import filter_cfg_to_query
-from services.df import (df_type_conversions, features_request_to_df,
-                         response_single_datastream_to_df)
-from utils.utils import (convert_to_datetime, log, series_to_patch_dict,
-                         update_response)
+from services.df import (
+    df_type_conversions,
+    features_request_to_df,
+    response_single_datastream_to_df,
+)
+from utils.utils import convert_to_datetime, log, series_to_patch_dict, update_response
 
 log = logging.getLogger(__name__)
 
@@ -206,7 +216,8 @@ def get_nb_datastreams_of_thing(thing_id: int) -> int:
 def response_datastreams_to_df(response: dict) -> pd.DataFrame:
     df_out = pd.DataFrame()
     for ds_i in response[Entities.DATASTREAMS]:
-        if ds_i.get("{Entities.OBSERVATIONS}@iot.nextLink", None):
+        nextLink = ds_i.get(f"{Entities.OBSERVATIONS}@iot.nextLink", None)
+        if nextLink:
             log.warning("Not all observations are extracted!")  # TODO: follow link!
         # df_i = datastreams_response_to_df(ds_i)
         df_i = response_single_datastream_to_df(ds_i)
@@ -230,8 +241,9 @@ def response_datastreams_to_df(response: dict) -> pd.DataFrame:
 def get_all_data(thing_id: int, filter_cfg: str):
     log.debug("Get all data of thing {thing_id} with filter {filter_cfg}")
     status_code, response = 0, {}
-    query = get_results_n_datastreams_query(entity_id=thing_id,
-                                                filter_condition=filter_cfg)
+    query = get_results_n_datastreams_query(
+        entity_id=thing_id, filter_condition=filter_cfg
+    )
 
     status_code, response_i = get_results_n_datastreams(query)
     response = update_response(response, response_i)
@@ -239,31 +251,37 @@ def get_all_data(thing_id: int, filter_cfg: str):
 
     while query:
         status_code, response_i = get_results_n_datastreams(query)
-        if status_code != 200.:
+        if status_code != 200.0:
             raise RuntimeError(f"response with status code {status_code}.")
         # response[Entities.DATASTREAMS] = update_response(response.get(Entities.DATASTREAMS, []), response_i)
-        response[Entities.DATASTREAMS] = response.get(Entities.DATASTREAMS, []) + response_i["value"]
-        
+        response[Entities.DATASTREAMS] = (
+            response.get(Entities.DATASTREAMS, []) + response_i["value"]
+        )
+
         query = response_i.get("@iot.nextLink", None)
         response[Entities.DATASTREAMS + "@iot.nextLink"] = str(query)
-        
+
     count_observations = 0
-    for ds_i in response.get(Entities.DATASTREAMS, {}): # type: ignore
+    for ds_i in response.get(Entities.DATASTREAMS, {}):  # type: ignore
         query = ds_i.get(Entities.OBSERVATIONS + "@iot.nextLink", None)
         while query:
-            log.debug(f"Number of observations: {count_observations + len(ds_i[Entities.OBSERVATIONS])}")
+            log.debug(
+                f"Number of observations: {count_observations + len(ds_i[Entities.OBSERVATIONS])}"
+            )
             status_code, response_i = get_results_n_datastreams(query)
-        
-            ds_i[Entities.OBSERVATIONS] = ds_i.get(Entities.OBSERVATIONS, []) + response_i["value"]
+
+            ds_i[Entities.OBSERVATIONS] = (
+                ds_i.get(Entities.OBSERVATIONS, []) + response_i["value"]
+            )
             query = response_i.get("@iot.nextLink", None)
             ds_i[Entities.OBSERVATIONS + "@iot.nextLink"] = query
         count_observations += len(ds_i[Entities.OBSERVATIONS])
         if len(ds_i[Entities.OBSERVATIONS]) > 0:
             log.info(f"Number of observations: {count_observations}")
 
-    df_out =  response_datastreams_to_df(response)
+    df_out = response_datastreams_to_df(response)
     log.info(f"Constructed dataframe of thing {thing_id}: {df_out.shape=}")
-    return df_out       
+    return df_out
 
 
 # def get_all_datastreams_data(
@@ -357,9 +375,7 @@ def get_datetime_latest_observation():
 
 
 def patch_qc_flags(df: pd.DataFrame, url) -> Counter:
-    df["patch_dict"] = df[[Df.IOT_ID, Df.QC_FLAG]].apply(
-        series_to_patch_dict, axis=1
-    )
+    df["patch_dict"] = df[[Df.IOT_ID, Df.QC_FLAG]].apply(series_to_patch_dict, axis=1)
 
     final_json = {"requests": df["patch_dict"].to_list()}
     log.info("Start batch patch query")

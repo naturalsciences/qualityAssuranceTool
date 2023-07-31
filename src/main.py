@@ -9,8 +9,8 @@ import stapy
 from models.enums import Df, QualityFlags
 from services.config import filter_cfg_to_query
 from services.df import df_type_conversions, intersect_df_region
-from services.qc import calc_gradient_results, qc_region
-from services.qc import set_qc_flag_range_check
+from services.qc import (calc_gradient_results, qc_region,
+                         set_qc_flag_range_check)
 from services.requests import get_all_data, patch_qc_flags
 
 log = logging.getLogger(__name__)
@@ -55,8 +55,12 @@ def main(cfg):
 
     assert nb_observations == df_merge.shape[0]
 
-    df_merge = set_qc_flag_range_check(df_merge, qc_type="range", qc_on=Df.RESULT, flag_on_fail=QualityFlags.BAD)
-    df_merge = set_qc_flag_range_check(df_merge, qc_type="range", qc_on=Df.GRADIENT, flag_on_fail=QualityFlags.BAD)
+    df_merge = set_qc_flag_range_check(
+        df_merge, qc_type="range", qc_on=Df.RESULT, flag_on_fail=QualityFlags.BAD
+    )
+    df_merge = set_qc_flag_range_check(
+        df_merge, qc_type="range", qc_on=Df.GRADIENT, flag_on_fail=QualityFlags.BAD
+    )
 
     t2 = time.time()
 

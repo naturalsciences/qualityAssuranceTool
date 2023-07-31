@@ -7,11 +7,11 @@ import pandas as pd
 from shapely.wkt import loads
 
 from models.enums import Df, Entities, Properties, QualityFlags
+from services.qc import CAT_TYPE
 from services.regions_query import (build_points_query, build_query_points,
                                     connect)
 from utils.utils import convert_to_datetime
 
-from services.qc import CAT_TYPE
 log = logging.getLogger(__name__)
 
 
@@ -72,14 +72,14 @@ def response_single_datastream_to_df(response_datastream: dict) -> pd.DataFrame:
         df_i = pd.DataFrame(observations_list).astype(
             {Properties.IOT_ID: int, Df.RESULT: float}
         )
-        df_i[Df.QC_FLAG] = df_i[Df.QC_FLAG].astype(int).apply(QualityFlags).astype(CAT_TYPE)
+        df_i[Df.QC_FLAG] = df_i[Df.QC_FLAG].astype(int).apply(QualityFlags).astype(CAT_TYPE)  # type: ignore
         df_i[Df.DATASTREAM_ID] = int(response_datastream.get(Properties.IOT_ID, -1))
         df_i[Properties.PHENOMENONTIME] = df_i[Properties.PHENOMENONTIME].apply(
             convert_to_datetime
         )
-        df_i[Df.OBSERVATION_TYPE] = response_datastream.get(Entities.OBSERVEDPROPERTY, {}).get(
-            Properties.NAME
-        )
+        df_i[Df.OBSERVATION_TYPE] = response_datastream.get(
+            Entities.OBSERVEDPROPERTY, {}
+        ).get(Properties.NAME)
         df_i[Df.OBSERVATION_TYPE] = df_i[Df.OBSERVATION_TYPE].astype("category")
         k1, k2 = Properties.UNITOFMEASUREMENT.split("/", 1)
         df_i[Df.UNITS] = response_datastream.get(k1, {}).get(k2)
@@ -97,15 +97,15 @@ def response_single_datastream_to_df(response_datastream: dict) -> pd.DataFrame:
     return df
 
 
-def response_datastreams_to_df(response: dict) -> pd.DataFrame:
-    df_out = pd.DataFrame()
-    for ds_i in response[Entities.DATASTREAMS]:
-        if f"{Entities.OBSERVATIONS}@iot.nextLink" in ds_i:
-            log.warning("Not all observations are extracted!")  # TODO: follow link!
-        df_i = response_single_datastream_to_df(ds_i)
-        log.debug(f"{df_i.shape[0]=}")
-        df_out = pd.concat([df_out, df_i], ignore_index=True)
-    return df_out
+# def response_datastreams_to_df(response: dict) -> pd.DataFrame:
+#     df_out = pd.DataFrame()
+#     for ds_i in response[Entities.DATASTREAMS]:
+#         if f"{Entities.OBSERVATIONS}@iot.nextLink" in ds_i:
+#             log.warning("Not all observations are extracted!")  # TODO: follow link!
+#         df_i = response_single_datastream_to_df(ds_i)
+#         log.debug(f"{df_i.shape[0]=}")
+#         df_out = pd.concat([df_out, df_i], ignore_index=True)
+#     return df_out
 
 
 def datastreams_response_to_df(response_datastreams):
@@ -151,9 +151,14 @@ def seavox_to_df(response_seavox: Sequence[Sequence[str]]) -> pd.DataFrame:
 #     a = Patch.observation(entity_id=id, result_quality=str(value))
 #     return a
 
+
 def query_region_from_xy(coords):
     points_q = build_points_query(coords)
-    query = build_query_points(table="seavox_sea_areas", points_query=points_q, select="region, sub_region, ST_AsText(geom)")
+    query = build_query_points(
+        table="seavox_sea_areas",
+        points_query=points_q,
+        select="region, sub_region, ST_AsText(geom)",
+    )
     with connect() as c:
         with c.cursor() as cursor:
             results = []
@@ -166,7 +171,7 @@ def query_region_from_xy(coords):
 def query_all_nan_regions(df):
     idx_nan = df.Region.isnull()
     points_nan = df.loc[idx_nan, [Df.LONG, Df.LAT]].to_numpy().tolist()
-    if points_nan: 
+    if points_nan:
         res = query_region_from_xy(points_nan)
 
         df_seavox = seavox_to_df([res_i[:2] for res_i in res])
@@ -187,7 +192,9 @@ def intersect_df_region(df, max_queries, max_query_points):
 
     while True:
         point_i = (
-            df_out.loc[df_out.Region.isnull(), [Df.LONG, Df.LAT]].to_numpy().tolist()[:1]
+            df_out.loc[df_out.Region.isnull(), [Df.LONG, Df.LAT]]
+            .to_numpy()
+            .tolist()[:1]
         )
         res = query_region_from_xy(point_i)
 
@@ -206,5 +213,3 @@ def intersect_df_region(df, max_queries, max_query_points):
     df_out = query_all_nan_regions(df_out)
     df_out = df_type_conversions(df_out)
     return df_out
-
-
