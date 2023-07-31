@@ -171,8 +171,12 @@ def query_all_nan_regions(df):
     return df
 
 
+# no in a test
 def intersect_df_region(df, max_queries, max_query_points):
     df_out = deepcopy(df)
+    if Df.REGION not in df_out:
+        df_out[Df.REGION] = None
+
     n = 0
 
     si = df.sindex
@@ -196,6 +200,7 @@ def intersect_df_region(df, max_queries, max_query_points):
             break
 
     df_out = query_all_nan_regions(df_out)
+    df_out = df_type_conversions(df_out)
     return df_out
 
 

@@ -17,3 +17,5 @@ geopandas
 
 pytest
 pytest-cov
+
+ordered_enum

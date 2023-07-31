@@ -4,13 +4,14 @@ from collections import Counter
 from typing import Literal, Tuple
 
 import pandas as pd
+from pandas.api.types import CategoricalDtype
 from requests import post
 from stapy import Entity, Query
 
 from models.enums import (Df, Entities, Filter, Order, OrderOption, Properties,
                           Qactions, Settings)
 from services.config import filter_cfg_to_query
-from services.df import (features_request_to_df,
+from services.df import (df_type_conversions, features_request_to_df,
                          response_single_datastream_to_df)
 from utils.utils import (convert_to_datetime, log, series_to_patch_dict,
                          update_response)
@@ -208,7 +209,7 @@ def response_datastreams_to_df(response: dict) -> pd.DataFrame:
             log.warning("Not all observations are extracted!")  # TODO: follow link!
         # df_i = datastreams_response_to_df(ds_i)
         df_i = response_single_datastream_to_df(ds_i)
-        df_out = pd.concat([df_out, df_i], ignore_index=True)
+        df_out = df_type_conversions(pd.concat([df_out, df_i], ignore_index=True))
     return df_out
 
 

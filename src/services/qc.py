@@ -1,6 +1,5 @@
 import logging
 from copy import deepcopy
-from functools import partial
 
 import geopandas as gpd
 import numpy as np
@@ -11,8 +10,12 @@ from qc_functions.functions import min_max_check_values
 
 from models.enums import Df
 
+from pandas.api.types import CategoricalDtype
+
 log = logging.getLogger(__name__)
 
+
+CAT_TYPE = CategoricalDtype(list(QualityFlags), ordered=True)
 
 def get_null_mask(df: pd.DataFrame, qc_type: str) -> pd.Series:
     mask_out = (
@@ -80,25 +83,18 @@ def qc_region(df: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     return df_out
 
 
-def calc_gradient_results(df, groupby):
+# TODO: refactor, complete df is not needed
+def calc_gradient_results(df: pd.DataFrame, groupby: Df):
     log.debug(f"Start gradient calculations per {groupby}.")
 
     def grad_function(group):
         g = np.gradient(
             group.result, group.phenomenonTime.astype("datetime64[s]").astype("int64")
         )
-        group["gradient"] = g
+        group[Df.GRADIENT] = g
         return group
 
-    # np.gradient(df_idexed.result.values, df_idexed.index.get_level_values(Df.TIME).astype('datetime64[s]').astype('int64'))
-
-    # df_idexed.result.groupby(level=[Df.DATASTREAM_ID], group_keys=False).apply(lambda x: pd.DataFrame(np.gradient(x, x.index.get_level_values(Df.TIME).astype("datetime64[s]").astype('int64'), axis=0)))
-
-    # df['wc'].groupby(level = ['model'], group_keys=False)
-    #   .apply(lambda x: #do all the columns at once, specifying the axis in gradient
-    #          pd.DataFrame(np.gradient(x, x.index.get_level_values(0), axis=0),
-    #                       columns=x.columns, index=x.index))
-
+    df_out = df.sort_values(Df.TIME)
     df_out = df.groupby([groupby], group_keys=False).apply(grad_function)
     return df_out
 
@@ -138,3 +134,19 @@ def qc_dependent_quantity_secondary(
     df = df.set_index(Df.IOT_ID)
     df.loc[df_unpivot.index, Df.QC_FLAG] = df_unpivot[Df.QC_FLAG]
     return df
+
+
+# test needed!
+def set_qc_flag_range_check(df: pd.DataFrame, qc_type: str, qc_on: Df, flag_on_fail: QualityFlags, flag_on_succes: QualityFlags | None = None) -> pd.DataFrame:
+    df_out = deepcopy(df)
+    df_out[Df.QC_FLAG] = df_out[Df.QC_FLAG].astype(CAT_TYPE)
+    mask = get_null_mask(df_out, qc_type)
+    bool_tmp = get_bool_range(df_out.loc[mask], qc_on=Df.RESULT, qc_type=qc_type)
+
+    df_out.loc[ bool_tmp.index, Df.VERIFIED] = True
+    df_out[Df.VALID] = (df_out.get(Df.VALID, True) & bool_tmp) | ~df_out[Df.VERIFIED].astype(bool) # type: ignore
+
+    df_out.loc[(mask & (df_out[Df.QC_FLAG] < flag_on_fail))] = flag_on_fail # type: ignore
+    df_out[Df.QC_FLAG] = df_out[Df.QC_FLAG].astype(CAT_TYPE)
+    
+    return df_out

@@ -1,6 +1,7 @@
 from enum import Enum
 
 from strenum import StrEnum
+from ordered_enum.ordered_enum import OrderedEnum
 
 
 class BaseQueryStrEnum(StrEnum):
@@ -84,12 +85,11 @@ class Order(BaseQueryStrEnum):
         out: str = f"{str(self)}={property} {option}"
         return out
 
-class QualityFlags(Enum):
-    NO_QUALITY_control = 0	
+class QualityFlags(OrderedEnum):
+    NO_QUALITY_CONTROL = 0	
     GOOD = 1	
     PROBABLY_GOOD = 2	
     PROBABLY_BAD = 3	
-    BAD = 4	
     CHANGED = 5	
     BELOW_detection = 6	
     IN_EXCESS = 7	
@@ -98,12 +98,13 @@ class QualityFlags(Enum):
     PHENOMENON_UNCERTAIN = "A"
     NOMINAL = "B"
     BELOW_LIMIT_OF_QUANTIFICATION = "Q"
+    BAD = 4	
 
     def __str__(self):
         return f"{self.value}"
 
 
-class Df(StrEnum):
+class Df(StrEnum, OrderedEnum):
     IOT_ID = Properties.IOT_ID
     DATASTREAM_ID = "datastream_id"
     UNITS = "units"
@@ -116,3 +117,5 @@ class Df(StrEnum):
     SUB_REGION = "Sub-region"
     LONG= "long"
     LAT = "lat"
+    VERIFIED = "verified"
+    VALID = "valid"
