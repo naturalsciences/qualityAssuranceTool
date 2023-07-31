@@ -17,6 +17,7 @@ class Properties(StrEnum):
     COORDINATES = "feature/coordinates"
     PHENOMENONTIME = "phenomenonTime"
     RESULT = "result"
+    QC_FLAG = "resultQuality"
 
 
 class Settings(BaseQueryStrEnum):
@@ -109,7 +110,7 @@ class Df(StrEnum, OrderedEnum):
     DATASTREAM_ID = "datastream_id"
     UNITS = "units"
     OBSERVATION_TYPE = "observation_type"
-    QC_FLAG= "qc_flag"
+    QC_FLAG= Properties.QC_FLAG
     GRADIENT = "gradient"
     TIME = "phenomenonTime"
     RESULT = Properties.RESULT

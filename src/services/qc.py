@@ -146,7 +146,7 @@ def set_qc_flag_range_check(df: pd.DataFrame, qc_type: str, qc_on: Df, flag_on_f
     df_out.loc[ bool_tmp.index, Df.VERIFIED] = True
     df_out[Df.VALID] = (df_out.get(Df.VALID, True) & bool_tmp) | ~df_out[Df.VERIFIED].astype(bool) # type: ignore
 
-    df_out.loc[(mask & (df_out[Df.QC_FLAG] < flag_on_fail))] = flag_on_fail # type: ignore
+    df_out.loc[(mask & (df_out[Df.QC_FLAG] < flag_on_fail)), Df.QC_FLAG] = QualityFlags(flag_on_fail) # type: ignore
     df_out[Df.QC_FLAG] = df_out[Df.QC_FLAG].astype(CAT_TYPE)
     
     return df_out

@@ -120,6 +120,7 @@ def get_results_n_datastreams_query(
                         Properties.IOT_ID,
                         Properties.RESULT,
                         Properties.PHENOMENONTIME,
+                        Properties.QC_FLAG,
                     ]
                 ),
                 Qactions.EXPAND(

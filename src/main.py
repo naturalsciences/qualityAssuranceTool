@@ -65,14 +65,12 @@ def main(cfg):
 
     log.info(f"time merge shizzle {t2-t1}")
 
-    # df_all = qc_region(df_all)
-    # t3 = time.time()
-    # df_all = qc_on_df(df_all, cfg=cfg)
-    # t4 = time.time()
-    # log.info(f"time old qc range {t4-t3}")
-    # url = "http://localhost:8080/FROST-Server/v1.1/$batch"
-    # counter = patch_qc_flags(df_all, url=url)
+    t3 = time.time()
+    url = "http://localhost:8080/FROST-Server/v1.1/$batch"
+    counter = patch_qc_flags(df_merge.reset_index(), url=url)
     tend = time.time()
+    log.info(f"{t3-t2=}")
+    log.info(f"Patch time: {tend-t3}")
     log.info(f"Total time: {tend-t0}")
     print(
         f"{sum([di.memory_usage().sum() for di in [df_all, df_all, df_merge, qc_df]])*1.e-6}"

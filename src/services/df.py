@@ -6,17 +6,18 @@ import numpy as np
 import pandas as pd
 from shapely.wkt import loads
 
-from models.enums import Df, Entities, Properties
+from models.enums import Df, Entities, Properties, QualityFlags
 from services.regions_query import (build_points_query, build_query_points,
                                     connect)
 from utils.utils import convert_to_datetime
 
+from services.qc import CAT_TYPE
 log = logging.getLogger(__name__)
 
 
 def df_type_conversions(df):
     df_out = deepcopy(df)
-    list_columns = [Df.OBSERVATION_TYPE, Df.UNITS, Df.QC_FLAG, Df.REGION, Df.SUB_REGION]
+    list_columns = [Df.OBSERVATION_TYPE, Df.UNITS, Df.REGION, Df.SUB_REGION]
     for ci in set(list_columns).intersection(df.columns):
         mu0 = df_out[[ci]].memory_usage().get(ci)
         df_out[ci] = df_out[ci].astype("category")
@@ -24,6 +25,8 @@ def df_type_conversions(df):
         if mu1 > mu0:
             log.warning("df type conversion might not reduce the memory usage!")
 
+    if Df.QC_FLAG in df.columns:
+        df_out[Df.QC_FLAG] = df_out[Df.QC_FLAG].astype(CAT_TYPE)
     for ci in set(list_columns).intersection(["bool"]):
         df_out[ci] = df_out[ci].astype("bool")
 
@@ -69,6 +72,7 @@ def response_single_datastream_to_df(response_datastream: dict) -> pd.DataFrame:
         df_i = pd.DataFrame(observations_list).astype(
             {Properties.IOT_ID: int, Df.RESULT: float}
         )
+        df_i[Df.QC_FLAG] = df_i[Df.QC_FLAG].astype(int).apply(QualityFlags).astype(CAT_TYPE)
         df_i[Df.DATASTREAM_ID] = int(response_datastream.get(Properties.IOT_ID, -1))
         df_i[Properties.PHENOMENONTIME] = df_i[Properties.PHENOMENONTIME].apply(
             convert_to_datetime
