@@ -80,6 +80,7 @@ def qc_region(df: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     bool_mainland = df_out.Region.str.lower().str.contains("mainland").fillna(False)
     df_out.loc[bool_mainland, Df.QC_FLAG] = QualityFlags.BAD  # type: ignore
 
+    log.info(f"Flags set: {df_out.loc[bool_mainland | bool_nan, [Df.QC_FLAG, Df.REGION]].value_counts(dropna=False)}")
     return df_out
 
 
@@ -99,13 +100,25 @@ def calc_gradient_results(df: pd.DataFrame, groupby: Df):
     return df_out
 
 
-def qc_dependent_quantity_base(df: pd.DataFrame, independent: int, dependent: int):
+def dependent_quantity_pivot(df: pd.DataFrame):
     df_pivot = df.pivot(
         index=[Df.TIME],
         columns=[Df.DATASTREAM_ID],
         values=[Df.RESULT, Df.QC_FLAG, Df.OBSERVATION_TYPE, Df.IOT_ID],
-    )
-    mask = ~df_pivot[Df.QC_FLAG, independent].isin(["0", "1", "2"])
+    ) 
+    df_pivot = df_pivot.dropna(how="any", subset=df_pivot.loc[[], [Df.RESULT]].columns)
+    return df_pivot
+
+def strip_df_to_minimal_required_dependent_quantity(df, independent, dependent):
+    df_out = deepcopy(df.loc[df[Df.DATASTREAM_ID].isin([independent, dependent]),[Df.TIME, Df.DATASTREAM_ID, Df.RESULT, Df.QC_FLAG, Df.OBSERVATION_TYPE, Df.IOT_ID]])
+    return df_out
+
+def qc_dependent_quantity_base(df: pd.DataFrame, independent: int, dependent: int):
+    df_tmp = strip_df_to_minimal_required_dependent_quantity(df, independent=independent, dependent=dependent)
+
+    df_pivot = dependent_quantity_pivot(df_tmp)
+
+    mask = ~df_pivot[Df.QC_FLAG, independent].isin([QualityFlags.NO_QUALITY_CONTROL, QualityFlags.GOOD])
     df_pivot.loc[mask, (Df.QC_FLAG, dependent)] = df_pivot[mask][
         (Df.QC_FLAG, independent)
     ]
@@ -113,17 +126,15 @@ def qc_dependent_quantity_base(df: pd.DataFrame, independent: int, dependent: in
     df_unpivot = df_pivot.stack().reset_index().set_index(Df.IOT_ID)
     df = df.set_index(Df.IOT_ID)
     df.loc[df_unpivot.index, Df.QC_FLAG] = df_unpivot[Df.QC_FLAG]
-    return df
+    return df.reset_index()
 
 
 def qc_dependent_quantity_secondary(
     df: pd.DataFrame, independent: int, dependent: int, range_: tuple[float, float]
 ):
-    df_pivot = df.pivot(
-        index=[Df.TIME],
-        columns=[Df.DATASTREAM_ID],
-        values=[Df.RESULT, Df.QC_FLAG, Df.OBSERVATION_TYPE, Df.IOT_ID],
-    )
+    df_tmp = strip_df_to_minimal_required_dependent_quantity(df, independent=independent, dependent=dependent)
+
+    df_pivot = dependent_quantity_pivot(df_tmp)
 
     df_pivot[["qc_drange_min", "qc_drange_max"]] = range_
     bool_qc = get_bool_range(df_pivot, (Df.RESULT, independent), qc_type="drange")
@@ -133,7 +144,7 @@ def qc_dependent_quantity_secondary(
     df_unpivot = df_pivot.stack().reset_index().set_index(Df.IOT_ID)
     df = df.set_index(Df.IOT_ID)
     df.loc[df_unpivot.index, Df.QC_FLAG] = df_unpivot[Df.QC_FLAG]
-    return df
+    return df.reset_index()
 
 
 # test needed!

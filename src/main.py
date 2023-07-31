@@ -9,8 +9,13 @@ import stapy
 from models.enums import Df, QualityFlags
 from services.config import filter_cfg_to_query
 from services.df import df_type_conversions, intersect_df_region
-from services.qc import (calc_gradient_results, qc_region,
-                         set_qc_flag_range_check)
+from services.qc import (
+    calc_gradient_results,
+    qc_dependent_quantity_base,
+    qc_dependent_quantity_secondary,
+    qc_region,
+    set_qc_flag_range_check,
+)
 from services.requests import get_all_data, patch_qc_flags
 
 log = logging.getLogger(__name__)
@@ -22,6 +27,7 @@ def main(cfg):
     log.info("Start")
 
     # setup
+    t_df0 = time.time()
     stapy.set_sta_url(cfg.data_api.base_url)
 
     thing_id = cfg.data_api.things.id
@@ -33,7 +39,11 @@ def main(cfg):
     nb_observations = df_all.shape[0]
     df_all = gpd.GeoDataFrame(df_all, geometry=gpd.points_from_xy(df_all.long, df_all.lat), crs="EPSG:4326")  # type: ignore
 
+    t_df1 = time.time()
+
+    t_qc0 = time.time()
     ## find region
+    t_region2 = time.time()
     df_all = intersect_df_region(df_all, max_queries=2, max_query_points=100)
     df_all = qc_region(df_all)
 
@@ -41,9 +51,10 @@ def main(cfg):
     qc_df = pd.DataFrame.from_dict(cfg.QC, orient="index")
     qc_df.index.name = Df.OBSERVATION_TYPE
 
-    t1 = time.time()
+    t_region1 = time.time()
 
     ## setup needed columns. Should these be removed?
+    t_ranges0 = time.time()
     for qc_type in qc_df.keys():
         qc_df[[f"qc_{'_'.join([qc_type, i])}" for i in ["min", "max"]]] = qc_df.pop(
             qc_type
@@ -61,24 +72,40 @@ def main(cfg):
     df_merge = set_qc_flag_range_check(
         df_merge, qc_type="range", qc_on=Df.GRADIENT, flag_on_fail=QualityFlags.BAD
     )
+    t_ranges1 = time.time()
 
-    t2 = time.time()
-
+    t_flag_ranges0 = time.time()
     df_merge[Df.VALID] = df_merge[Df.VALID] & df_merge[Df.VERIFIED].astype(bool)
     df_merge.loc[df_merge[Df.VALID], Df.QC_FLAG] = QualityFlags.GOOD  # type:ignore
 
-    log.info(f"time merge shizzle {t2-t1}")
+    t_flag_ranges1 = time.time()
 
+    t_dependent0 = time.time()
+    df_merge = qc_dependent_quantity_base(df_merge, independent=69, dependent=124)
+    df_merge = qc_dependent_quantity_secondary(
+        df_merge, independent=69, dependent=124, range_=(5.0, 10)
+    )
+    t_dependent1 = time.time()
+
+    log.info(f"{df_merge[Df.QC_FLAG].value_counts(dropna=False)=}")
+    log.info(
+        f"{df_merge[[Df.OBSERVATION_TYPE, Df.QC_FLAG]].value_counts(dropna=False)=}"
+    )
+
+    cfg_dependent = cfg.get("QC_dependent")
+    t_qc1 = time.time()
+    t_patch0 = time.time()
     t3 = time.time()
     url = "http://localhost:8080/FROST-Server/v1.1/$batch"
     counter = patch_qc_flags(df_merge.reset_index(), url=url)
+    t_patch1 = time.time()
     tend = time.time()
-    log.info(f"{t3-t2=}")
-    log.info(f"Patch time: {tend-t3}")
-    log.info(f"Total time: {tend-t0}")
-    print(
-        f"{sum([di.memory_usage().sum() for di in [df_all, df_all, df_merge, qc_df]])*1.e-6}"
-    )
+    log.info(f"df requests/construction duration: {t_df1 - t_df0}")
+    log.info(f"Ranges check duration: {t_ranges1 - t_ranges0}")
+    log.info(f"Flagging ranges duration: {t_flag_ranges1 - t_flag_ranges0}")
+    log.info(f"Total QC check duration: {t_qc1 - t_qc0}")
+    log.info(f"Patch duration: {t_patch1 - t_patch0}")
+    log.info(f"Total duration: {tend-t0}")
     log.info("End")
 
 

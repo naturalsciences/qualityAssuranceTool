@@ -14,24 +14,19 @@ data_api:
     phenomenonTime:
       format: "%Y-%m-%d %H:%M"
       range:
-        - 2023-07-10 12:00
+        - 2020-07-10 12:00
         - 3003-01-01 00:00
 other:
   pickle:
     path: ${hydra:runtime.cwd}/features.pkl
 # example, not yet implemented
 QC_dependent:
-  Water flow in the scientific seawater circuit:
-    dependent:
-      - salinity
+  - independent: 69
+    dependent: 124
     QC:
       range:
-        - 5.
+        - 5
         - 10.
-    # the dependent quantities
-    # the qc check and range
-
-
 QC:
   seabed depth:
     range:

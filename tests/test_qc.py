@@ -127,8 +127,8 @@ def test_qc_region_to_flag(df_testing):
     # pandas does strang things with type hints
     df_out = qc_region(df_testing)
     pdt.assert_series_equal(
-        df_out[Df.QC_FLAG].fillna("nan").astype("string"),
-        df_out[Df.QC_FLAG + "_ref"].fillna("nan").astype("string"),
+        df_out[Df.QC_FLAG].fillna("nan").astype("string"), #type: ignore
+        df_out[Df.QC_FLAG + "_ref"].fillna("nan").astype("string"), #type: ignore
         check_names=False,
     )
 
