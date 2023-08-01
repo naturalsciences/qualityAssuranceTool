@@ -169,18 +169,20 @@ def query_region_from_xy(coords):
 
 
 def query_all_nan_regions(df):
-    idx_nan = df.Region.isnull()
-    points_nan = df.loc[idx_nan, [Df.LONG, Df.LAT]].to_numpy().tolist()
-    if points_nan:
-        res = query_region_from_xy(points_nan)
+    points_nan = df.loc[df[Df.REGION].isnull(), [Df.LONG, Df.LAT]].drop_duplicates()
+    if not points_nan.empty:
+        res = query_region_from_xy(points_nan.to_numpy().tolist())
 
         df_seavox = seavox_to_df([res_i[:2] for res_i in res])
-        df.loc[idx_nan, [Df.REGION, Df.SUB_REGION]] = df_seavox
+        df_seavox[[Df.LONG, Df.LAT]] = points_nan.to_numpy().tolist()
+        df.update(
+            df[[Df.LONG, Df.LAT]].merge(df_seavox, on=[Df.LONG, Df.LAT], how="left")
+        )
 
     return df
 
 
-# no in a test
+# not in a test
 def intersect_df_region(df, max_queries, max_query_points):
     df_out = deepcopy(df)
     if Df.REGION not in df_out:
@@ -191,10 +193,11 @@ def intersect_df_region(df, max_queries, max_query_points):
     si = df.sindex
 
     while True:
+        df.info(f"Find sear region of next point.")
         point_i = (
-            df_out.loc[df_out.Region.isnull(), [Df.LONG, Df.LAT]]
+            df_out.loc[df_out.Region.isnull(), [Df.LONG, Df.LAT]].sample(1)
             .to_numpy()
-            .tolist()[:1]
+            .tolist()
         )
         res = query_region_from_xy(point_i)
 

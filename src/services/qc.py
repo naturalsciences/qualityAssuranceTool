@@ -74,13 +74,13 @@ def qc_df(df_in, function):
 def qc_region(df: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     df_out = deepcopy(df)
 
-    bool_nan = df_out.Region.isnull()
+    bool_nan = df_out[Df.REGION].isnull() #type: ignore
     df_out.loc[bool_nan, Df.QC_FLAG] = QualityFlags.PROBABLY_BAD  # type: ignore
 
-    bool_mainland = df_out.Region.str.lower().str.contains("mainland").fillna(False)
+    bool_mainland = df_out[Df.REGION].str.lower().str.contains("mainland").fillna(False) #type: ignore
     df_out.loc[bool_mainland, Df.QC_FLAG] = QualityFlags.BAD  # type: ignore
 
-    log.info(f"Flags set: {df_out.loc[bool_mainland | bool_nan, [Df.QC_FLAG, Df.REGION]].value_counts(dropna=False)}")
+    log.info(f"Flags set: {df_out.loc[bool_mainland | bool_nan, [Df.QC_FLAG, Df.REGION]].value_counts(dropna=False)}")  #type: ignore
     return df_out
 
 

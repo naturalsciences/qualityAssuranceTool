@@ -19,8 +19,8 @@ def connect() -> psycopg2.extensions.connection:
             user="sevox",
             password="ChangeMe",
             host="localhost",
-            # port="8901"
-            port="5432",
+            port="8901"
+            # port="5432",
         )
         return connection
 
@@ -41,7 +41,7 @@ def build_query_points(table: str, points_query: str, select: str) -> str:
     LEFT JOIN
         {table} AS regions_table
     ON
-        ST_Intersects(regions_table.geom, points_table.point_geom);"""
+        ST_Intersects(ST_SetSRID(regions_table.geom, 4326), points_table.point_geom);"""
 
     return query
 

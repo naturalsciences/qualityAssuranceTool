@@ -43,8 +43,8 @@ def main(cfg):
 
     t_qc0 = time.time()
     ## find region
-    t_region2 = time.time()
-    df_all = intersect_df_region(df_all, max_queries=2, max_query_points=100)
+    t_region0 = time.time()
+    df_all = intersect_df_region(df_all, max_queries=5, max_query_points=20)
     df_all = qc_region(df_all)
 
     # get qc check df (try to find clearer name)
@@ -101,6 +101,7 @@ def main(cfg):
     t_patch1 = time.time()
     tend = time.time()
     log.info(f"df requests/construction duration: {t_df1 - t_df0}")
+    log.info(f"Region check duration: {t_region1 - t_region0}")
     log.info(f"Ranges check duration: {t_ranges1 - t_ranges0}")
     log.info(f"Flagging ranges duration: {t_flag_ranges1 - t_flag_ranges0}")
     log.info(f"Total QC check duration: {t_qc1 - t_qc0}")
