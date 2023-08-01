@@ -139,6 +139,21 @@ def test_qc_region_to_flag(df_testing):
     )
 
 
+def test_location_outlier(df_testing):
+    df_testing[Df.LONG] = df_testing.index*0.001 + 50.
+    df_testing[Df.LAT] = df_testing.index*0.001 + 50.
+
+    
+    df_testing.iloc[int(df_testing.shape[0]/2), df_testing.columns.get_loc(Df.LAT)] -= 10
+    df_testing["geometry"] = gpd.points_from_xy(df_testing[Df.LONG],df_testing[Df.LAT])
+    df_testing = df_testing.set_crs("EPSG:4326")
+    
+    crs_ = "EPSG:4087"
+    df_testing["distance"] = df_testing["geometry"].to_crs(crs_).distance(df_testing["geometry"].to_crs(crs_).shift())
+    df_testing["distance_rev"] = df_testing["geometry"].to_crs(crs_).distance(df_testing["geometry"].to_crs(crs_).shift(-1))
+    df_testing["peak"] = (df_testing["distance"] > 1e3) & (df_testing["distance_rev"] > 1e3)
+    assert 0
+
 @pytest.mark.parametrize(
     "result,ref",
     [

@@ -37,7 +37,7 @@ def main(cfg):
     # get data in dataframe
     df_all = get_all_data(thing_id=thing_id, filter_cfg=filter_cfg)
     nb_observations = df_all.shape[0]
-    df_all = gpd.GeoDataFrame(df_all, geometry=gpd.points_from_xy(df_all.long, df_all.lat), crs="EPSG:4326")  # type: ignore
+    df_all = gpd.GeoDataFrame(df_all, geometry=gpd.points_from_xy(df_all[Df.LONG] df_all[Df.LAT]), crs="EPSG:4326")  # type: ignore
 
     t_df1 = time.time()
 
