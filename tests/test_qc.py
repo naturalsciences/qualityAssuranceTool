@@ -8,8 +8,12 @@ import pandas.testing as pdt
 import pytest
 
 from models.enums import QualityFlags, Df
-from services.qc import (calc_gradient_results, qc_dependent_quantity_base,
-                         qc_dependent_quantity_secondary, qc_region)
+from services.qc import (
+    calc_gradient_results,
+    qc_dependent_quantity_base,
+    qc_dependent_quantity_secondary,
+    qc_region,
+)
 from services.regions_query import build_points_query, build_query_points
 
 
@@ -73,7 +77,7 @@ def df_testing() -> gpd.GeoDataFrame:
         {
             Df.IOT_ID: pd.Series(range(len(qc_ref_base) * MULTIPL_FACTOR)),
             Df.REGION: pd.Series(base_list_region * MULTIPL_FACTOR, dtype="string"),
-            Df.QC_FLAG +"_ref": pd.Series(qc_ref_base * MULTIPL_FACTOR),
+            Df.QC_FLAG + "_ref": pd.Series(qc_ref_base * MULTIPL_FACTOR),
             Df.DATASTREAM_ID: pd.Series(
                 list(
                     sum(  # to convert list of tuples to flat list
@@ -98,8 +102,10 @@ def df_testing() -> gpd.GeoDataFrame:
 
     return df_out
 
+
 MULTIPL_FACTOR: int = 2
 LENGTH: int = len(base_list_region) * MULTIPL_FACTOR
+
 
 def test_build_points_query(points_testing):
     q: str = build_points_query(points_testing)
@@ -127,50 +133,33 @@ def test_qc_region_to_flag(df_testing):
     # pandas does strang things with type hints
     df_out = qc_region(df_testing)
     pdt.assert_series_equal(
-        df_out[Df.QC_FLAG].fillna("nan").astype("string"), #type: ignore
-        df_out[Df.QC_FLAG + "_ref"].fillna("nan").astype("string"), #type: ignore
+        df_out[Df.QC_FLAG].fillna("nan").astype("string"),  # type: ignore
+        df_out[Df.QC_FLAG + "_ref"].fillna("nan").astype("string"),  # type: ignore
         check_names=False,
     )
 
 
-def test_qc_gradient_cacl_zero(df_testing):
+@pytest.mark.parametrize(
+    "result,ref",
+    [
+        (np.zeros(LENGTH), np.zeros(LENGTH)),
+        (range(0, LENGTH, 1), np.ones(LENGTH)),
+        (range(LENGTH, 0, -1), np.ones(LENGTH) * -1),
+    ],
+)
+def test_qc_gradient_calc_basic(df_testing, result, ref):
     df_testing[Df.TIME] = pd.Timestamp("now") + pd.timedelta_range(
         start=0, periods=df_testing.shape[0], freq="S", unit="s"  # type: ignore
     )
-    df_testing[Df.RESULT] = 1.0
+    df_testing[Df.RESULT] = pd.Series(result, dtype="float")
     df = calc_gradient_results(df_testing, Df.DATASTREAM_ID)
-    pdt.assert_series_equal(
-        df.gradient, pd.Series(np.zeros_like(df_testing.result), name=Df.GRADIENT)
-    )
-
-
-@pytest.mark.parametrize("begin,end,step", [(0,LENGTH,1), (LENGTH,0,-1)])
-def test_qc_gradient_cacl_PNone(df_testing, begin, end, step):
-    df_testing[Df.TIME] = pd.Timestamp("now") + pd.timedelta_range(
-        start=0, periods=df_testing.shape[0], freq="S", unit="s"  # type: ignore
-    )
-    df_testing[Df.RESULT] = pd.Series(range(begin, end, step), dtype="float")
-    df = calc_gradient_results(df_testing, Df.DATASTREAM_ID)
-    pdt.assert_series_equal(
-        df[Df.GRADIENT], pd.Series(np.ones_like(df_testing.result)*step, name=Df.GRADIENT)
-    )
-
-
-# def test_qc_gradient_cacl_neg_one(df_testing):
-#     df_testing[Df.TIME] = pd.Timestamp("now") + pd.timedelta_range(
-#         start=0, periods=df_testing.shape[0], freq="S", unit="s"  # type: ignore
-#     )
-#     df_testing[Df.RESULT] = pd.Series(range(df_testing.shape[0], 0, -1), dtype="float")
-#     df = calc_gradient_results(df_testing, Df.DATASTREAM_ID)
-#     pdt.assert_series_equal(
-#         df[Df.GRADIENT], pd.Series(np.ones_like(df_testing.result) * -1, name=Df.GRADIENT)
-#     )
+    pdt.assert_series_equal(df[Df.GRADIENT], pd.Series(ref, name=Df.GRADIENT))
 
 
 def test_qc_gradient_cacl_vardt_pos(df_testing):
     for ds_i in df_testing.datastream_id.unique():
         df_slice = df_testing.loc[df_testing.datastream_id == ds_i]
-        df_slice.loc[:,Df.TIME] = pd.Timestamp("now") + pd.timedelta_range(
+        df_slice.loc[:, Df.TIME] = pd.Timestamp("now") + pd.timedelta_range(
             start=0, periods=df_slice.shape[0], freq="S", unit="s"  # type: ignore
         ) * list(range(df_slice.shape[0]))
         df_slice.loc[:, Df.RESULT] = pd.Series(range(df_slice.shape[0]), dtype="float")
@@ -193,7 +182,9 @@ def test_qc_gradient_cacl_vardt_neg(df_testing):
         df_slice.loc[:, Df.TIME] = pd.Timestamp("now") + pd.timedelta_range(
             start=0, periods=df_slice.shape[0], freq="S", unit="s"  # type: ignore
         ) * list(range(df_slice.shape[0]))
-        df_slice.loc[:, Df.RESULT] = pd.Series(range(df_slice.shape[0], 0, -1), dtype="float")
+        df_slice.loc[:, Df.RESULT] = pd.Series(
+            range(df_slice.shape[0], 0, -1), dtype="float"
+        )
         df = calc_gradient_results(df_slice, Df.DATASTREAM_ID)
         pdt.assert_series_equal(
             df[Df.GRADIENT],
