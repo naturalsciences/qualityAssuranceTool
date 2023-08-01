@@ -36,7 +36,6 @@ base_list_region: list = [
 
 @pytest.fixture
 def df_testing() -> gpd.GeoDataFrame:
-    multipl_factor: int = 2
     results_factor: float = 2.345
 
     base_list_phenomenonTime: list[np.datetime64] = list(
@@ -66,39 +65,41 @@ def df_testing() -> gpd.GeoDataFrame:
     datastream_id_series: pd.Series = pd.Series(
         list(
             sum(  # to convert list of tuples to flat list
-                zip(*([list(range(multipl_factor))] * len(base_list_region))), ()
+                zip(*([list(range(MULTIPL_FACTOR))] * len(base_list_region))), ()
             )
         )
     )
     df_out = gpd.GeoDataFrame(
         {
-            Df.IOT_ID: pd.Series(range(len(qc_ref_base) * multipl_factor)),
-            Df.REGION: pd.Series(base_list_region * multipl_factor, dtype="string"),
-            Df.QC_FLAG +"_ref": pd.Series(qc_ref_base * multipl_factor),
+            Df.IOT_ID: pd.Series(range(len(qc_ref_base) * MULTIPL_FACTOR)),
+            Df.REGION: pd.Series(base_list_region * MULTIPL_FACTOR, dtype="string"),
+            Df.QC_FLAG +"_ref": pd.Series(qc_ref_base * MULTIPL_FACTOR),
             Df.DATASTREAM_ID: pd.Series(
                 list(
                     sum(  # to convert list of tuples to flat list
-                        zip(*([list(range(multipl_factor))] * len(base_list_region))),
+                        zip(*([list(range(MULTIPL_FACTOR))] * len(base_list_region))),
                         (),
                     )
                 )
             ),
-            Df.TIME: pd.Series(base_list_phenomenonTime * multipl_factor),
+            Df.TIME: pd.Series(base_list_phenomenonTime * MULTIPL_FACTOR),
             Df.RESULT: pd.Series(
                 map(
                     add,
-                    base_results * multipl_factor,
+                    base_results * MULTIPL_FACTOR,
                     [i * 10 for i in datastream_id_series.to_list()],
                 )
             ),
             Df.OBSERVATION_TYPE: pd.Series(
-                base_observation_type * multipl_factor, dtype="category"
+                base_observation_type * MULTIPL_FACTOR, dtype="category"
             ),
         }
     )
 
     return df_out
 
+MULTIPL_FACTOR: int = 2
+LENGTH: int = len(base_list_region) * MULTIPL_FACTOR
 
 def test_build_points_query(points_testing):
     q: str = build_points_query(points_testing)
@@ -143,26 +144,27 @@ def test_qc_gradient_cacl_zero(df_testing):
     )
 
 
-def test_qc_gradient_cacl_one(df_testing):
+@pytest.mark.parametrize("begin,end,step", [(0,LENGTH,1), (LENGTH,0,-1)])
+def test_qc_gradient_cacl_PNone(df_testing, begin, end, step):
     df_testing[Df.TIME] = pd.Timestamp("now") + pd.timedelta_range(
         start=0, periods=df_testing.shape[0], freq="S", unit="s"  # type: ignore
     )
-    df_testing[Df.RESULT] = pd.Series(range(df_testing.shape[0]), dtype="float")
+    df_testing[Df.RESULT] = pd.Series(range(begin, end, step), dtype="float")
     df = calc_gradient_results(df_testing, Df.DATASTREAM_ID)
     pdt.assert_series_equal(
-        df[Df.GRADIENT], pd.Series(np.ones_like(df_testing.result), name=Df.GRADIENT)
+        df[Df.GRADIENT], pd.Series(np.ones_like(df_testing.result)*step, name=Df.GRADIENT)
     )
 
 
-def test_qc_gradient_cacl_neg_one(df_testing):
-    df_testing[Df.TIME] = pd.Timestamp("now") + pd.timedelta_range(
-        start=0, periods=df_testing.shape[0], freq="S", unit="s"  # type: ignore
-    )
-    df_testing[Df.RESULT] = pd.Series(range(df_testing.shape[0], 0, -1), dtype="float")
-    df = calc_gradient_results(df_testing, Df.DATASTREAM_ID)
-    pdt.assert_series_equal(
-        df[Df.GRADIENT], pd.Series(np.ones_like(df_testing.result) * -1, name=Df.GRADIENT)
-    )
+# def test_qc_gradient_cacl_neg_one(df_testing):
+#     df_testing[Df.TIME] = pd.Timestamp("now") + pd.timedelta_range(
+#         start=0, periods=df_testing.shape[0], freq="S", unit="s"  # type: ignore
+#     )
+#     df_testing[Df.RESULT] = pd.Series(range(df_testing.shape[0], 0, -1), dtype="float")
+#     df = calc_gradient_results(df_testing, Df.DATASTREAM_ID)
+#     pdt.assert_series_equal(
+#         df[Df.GRADIENT], pd.Series(np.ones_like(df_testing.result) * -1, name=Df.GRADIENT)
+#     )
 
 
 def test_qc_gradient_cacl_vardt_pos(df_testing):
