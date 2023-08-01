@@ -2,7 +2,6 @@ import json
 
 import pytest
 from pandas.api import types
-from stapy import Entity, Query
 
 # from pandas.testing import
 # from numpy.testing import

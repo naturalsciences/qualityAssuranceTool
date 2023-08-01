@@ -5,9 +5,7 @@ import stapy
 from hydra import compose, initialize
 from omegaconf import DictConfig
 
-import services.requests
 import utils.utils as u
-from models.enums import Entities
 
 
 @pytest.fixture(scope="session")
