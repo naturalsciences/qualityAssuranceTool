@@ -50,13 +50,9 @@ def main(cfg):
 
     ## outliers location
     KNOTS_TO_KM_HOUR = 1.852
-    def median_point(df):
-        out = Point(*df[[Df.LONG, Df.LAT]].median())
-        return out
-    rolling = df_all.loc[:, [Df.TIME, Df.LONG, Df.LAT]].sort_values(Df.TIME).rolling('5min', on=Df.TIME)
-    rolling.apply(np.median)
-    df_all.rolling('5m').apply(partial(get_bool_spacial_outlier_compared_to_median, max_dx_dt=15*KNOTS_TO_KM_HOUR*1e3/3600))
-
+    KNOTS_TO_M_S = KNOTS_TO_KM_HOUR *1.e3 / 3600.
+    bool_outlier = get_bool_spacial_outlier_compared_to_median(df_all, max_dx_dt=13.*KNOTS_TO_M_S, time_window='5min')
+    df_all.loc[bool_outlier, Df.QC_FLAG] = QualityFlags.BAD # type: ignore
     # get qc check df (try to find clearer name)
     qc_df = pd.DataFrame.from_dict(cfg.QC, orient="index")
     qc_df.index.name = Df.OBSERVATION_TYPE
