@@ -193,6 +193,7 @@ def set_qc_flag_range_check(
     return df_out
 
 
+# TODO: add check distance between consecutive points
 def get_bool_spacial_outlier_compared_to_median(
     df: gpd.GeoDataFrame, max_dx_dt: float, time_window: str
 ) -> pd.Series:

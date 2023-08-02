@@ -167,7 +167,7 @@ def test_location_outlier(df_testing, idx, dx, columns):
     df_testing["geometry"] = gpd.points_from_xy(df_testing[Df.LONG], df_testing[Df.LAT])
     df_testing = df_testing.set_crs("EPSG:4326")
 
-    res = get_bool_spacial_outlier_compared_to_median(df_testing, max_dx_dt=1e3)
+    res = get_bool_spacial_outlier_compared_to_median(df_testing, max_dx_dt=10., time_window='5min')
     assert all(res[idx])
 
 
