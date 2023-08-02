@@ -1,3 +1,4 @@
+from itertools import product
 from operator import add
 from typing import Sequence
 
@@ -7,13 +8,14 @@ import pandas as pd
 import pandas.testing as pdt
 import pytest
 
-from models.enums import QualityFlags, Df
+from models.enums import Df, QualityFlags
 from services.qc import (
     calc_gradient_results,
     qc_dependent_quantity_base,
     qc_dependent_quantity_secondary,
     qc_region,
 )
+from services.qc import get_bool_spacial_outlier_compared_to_median
 from services.regions_query import build_points_query, build_query_points
 
 
@@ -42,7 +44,7 @@ base_list_region: list = [
 def df_testing() -> gpd.GeoDataFrame:
     results_factor: float = 2.345
 
-    base_list_phenomenonTime: list[np.datetime64] = list(
+    base_list_phenomenonTime: list[pd.Timestamp] = list(
         pd.Timestamp("now")
         + pd.timedelta_range(
             start=0, periods=len(base_list_region), freq="S", unit="s"  # type: ignore
@@ -51,7 +53,7 @@ def df_testing() -> gpd.GeoDataFrame:
     base_results: list[float] = [
         fi * results_factor for fi in range(len(base_list_region))
     ]
-    qc_ref_base = [
+    qc_ref_base: list[QualityFlags | float] = [
         np.NaN,
         QualityFlags.BAD,
         QualityFlags.BAD,
@@ -66,33 +68,39 @@ def df_testing() -> gpd.GeoDataFrame:
         "random2",
     ]
 
-    datastream_id_series: pd.Series = pd.Series(
+    datastream_id_series: "pd.Series[int]" = pd.Series(
         list(
             sum(  # to convert list of tuples to flat list
                 zip(*([list(range(MULTIPL_FACTOR))] * len(base_list_region))), ()
             )
-        )
+        ),
+        dtype=int,
     )
     df_out = gpd.GeoDataFrame(
         {
-            Df.IOT_ID: pd.Series(range(len(qc_ref_base) * MULTIPL_FACTOR)),
+            Df.IOT_ID: pd.Series(range(len(qc_ref_base) * MULTIPL_FACTOR), dtype=int),
             Df.REGION: pd.Series(base_list_region * MULTIPL_FACTOR, dtype="string"),
-            Df.QC_FLAG + "_ref": pd.Series(qc_ref_base * MULTIPL_FACTOR),
+            Df.QC_FLAG
+            + "_ref": pd.Series(qc_ref_base * MULTIPL_FACTOR),
             Df.DATASTREAM_ID: pd.Series(
                 list(
                     sum(  # to convert list of tuples to flat list
                         zip(*([list(range(MULTIPL_FACTOR))] * len(base_list_region))),
                         (),
                     )
-                )
+                ),
+                dtype=int,
             ),
-            Df.TIME: pd.Series(base_list_phenomenonTime * MULTIPL_FACTOR),
+            Df.TIME: pd.Series(
+                base_list_phenomenonTime * MULTIPL_FACTOR
+            ),
             Df.RESULT: pd.Series(
                 map(
                     add,
                     base_results * MULTIPL_FACTOR,
                     [i * 10 for i in datastream_id_series.to_list()],
-                )
+                ),
+                dtype=float,
             ),
             Df.OBSERVATION_TYPE: pd.Series(
                 base_observation_type * MULTIPL_FACTOR, dtype="category"
@@ -130,29 +138,38 @@ def test_location_mainland_eu():
 
 
 def test_qc_region_to_flag(df_testing):
-    # pandas does strang things with type hints
+    # pandas does strange things with type hints
     df_out = qc_region(df_testing)
     pdt.assert_series_equal(
-        df_out[Df.QC_FLAG].fillna("nan").astype("string"),  # type: ignore
-        df_out[Df.QC_FLAG + "_ref"].fillna("nan").astype("string"),  # type: ignore
+        df_out.loc[:,Df.QC_FLAG],
+        df_out.loc[:, Df.QC_FLAG + "_ref"],
         check_names=False,
     )
 
 
-def test_location_outlier(df_testing):
-    df_testing[Df.LONG] = df_testing.index*0.001 + 50.
-    df_testing[Df.LAT] = df_testing.index*0.001 + 50.
+@pytest.mark.parametrize(
+    "idx,dx,columns",
+    [
+        ([1, 4], 1, [Df.LONG]),
+        ([3, 4], 1, [Df.LAT]),
+        ([3, 4], -0.1, [Df.LONG]),
+        ([3, 4], -0.1, [Df.LAT, Df.LONG]),
+        ([3, 6], -1, [Df.LAT]),
+    ],
+)
+def test_location_outlier(df_testing, idx, dx, columns):
+    df_testing[Df.LONG] = df_testing.index * 0.001 + 50.0
+    df_testing[Df.LAT] = df_testing.index * 0.001 + 50.0
 
-    
-    df_testing.iloc[int(df_testing.shape[0]/2), df_testing.columns.get_loc(Df.LAT)] -= 10
-    df_testing["geometry"] = gpd.points_from_xy(df_testing[Df.LONG],df_testing[Df.LAT])
+    for idx_i, col_i in product(idx, columns):
+        df_testing.iloc[idx_i, df_testing.columns.get_loc(col_i)] -= dx
+
+    df_testing["geometry"] = gpd.points_from_xy(df_testing[Df.LONG], df_testing[Df.LAT])
     df_testing = df_testing.set_crs("EPSG:4326")
-    
-    crs_ = "EPSG:4087"
-    df_testing["distance"] = df_testing["geometry"].to_crs(crs_).distance(df_testing["geometry"].to_crs(crs_).shift())
-    df_testing["distance_rev"] = df_testing["geometry"].to_crs(crs_).distance(df_testing["geometry"].to_crs(crs_).shift(-1))
-    df_testing["peak"] = (df_testing["distance"] > 1e3) & (df_testing["distance_rev"] > 1e3)
-    assert 0
+
+    res = get_bool_spacial_outlier_compared_to_median(df_testing, max_dx_dt=1e3)
+    assert all(res[idx])
+
 
 @pytest.mark.parametrize(
     "result,ref",
@@ -224,7 +241,8 @@ def test_qc_gradient_cacl_vardx_pos(df_testing):
         )
 
         df_slice.loc[:, Df.RESULT] = pd.Series(
-            np.array(range(df_slice.shape[0])) * range(df_slice.shape[0]), dtype="float"
+            np.array(list(range(df_slice.shape[0]))) * range(df_slice.shape[0]),
+            dtype="float",
         )
         df = calc_gradient_results(df_slice, Df.DATASTREAM_ID)
 
@@ -257,7 +275,7 @@ def test_qc_gradient_cacl_vardx_neg(df_testing):
         )
 
         df_slice.loc[:, Df.RESULT] = pd.Series(
-            np.array(range(df_slice.shape[0], 0, -1)) * range(df_slice.shape[0]),
+            np.array(list(range(df_slice.shape[0], 0, -1))) * range(df_slice.shape[0]),
             dtype="float",
         )
         df = calc_gradient_results(df_slice, Df.DATASTREAM_ID)

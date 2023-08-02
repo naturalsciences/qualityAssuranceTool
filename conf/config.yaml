@@ -14,7 +14,7 @@ data_api:
     phenomenonTime:
       format: "%Y-%m-%d %H:%M"
       range:
-        - 2020-07-10 12:00
+        - 2023-07-10 12:00
         - 3003-01-01 00:00
 other:
   pickle:

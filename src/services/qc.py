@@ -4,6 +4,7 @@ from copy import deepcopy
 import geopandas as gpd
 import numpy as np
 import pandas as pd
+from shapely.geometry import Point
 
 from models.enums import QualityFlags
 from qc_functions.functions import min_max_check_values
@@ -26,7 +27,7 @@ def get_null_mask(df: pd.DataFrame, qc_type: str) -> pd.Series:
     return mask_out
 
 
-def get_bool_range(df: pd.DataFrame, qc_on: str | tuple, qc_type: str) -> pd.Series:
+def get_bool_out_of_range(df: pd.DataFrame, qc_on: str | tuple, qc_type: str) -> pd.Series:
     qc_type_min = f"qc_{qc_type}_min"
     qc_type_max= f"qc_{qc_type}_max"
 
@@ -137,7 +138,7 @@ def qc_dependent_quantity_secondary(
     df_pivot = dependent_quantity_pivot(df_tmp)
 
     df_pivot[["qc_drange_min", "qc_drange_max"]] = range_
-    bool_qc = get_bool_range(df_pivot, (Df.RESULT, independent), qc_type="drange")
+    bool_qc = get_bool_out_of_range(df_pivot, (Df.RESULT, independent), qc_type="drange")
     df_pivot.loc[~bool_qc, (Df.QC_FLAG, dependent)] = QualityFlags.BAD #type: ignore Don"t know how to fix this 
 
     df_pivot = df_pivot.drop(["qc_drange_min", "qc_drange_max"], axis=1)
@@ -152,7 +153,7 @@ def set_qc_flag_range_check(df: pd.DataFrame, qc_type: str, qc_on: Df, flag_on_f
     df_out = deepcopy(df)
     df_out[Df.QC_FLAG] = df_out[Df.QC_FLAG].astype(CAT_TYPE)
     mask = get_null_mask(df_out, qc_type)
-    bool_tmp = get_bool_range(df_out.loc[mask], qc_on=Df.RESULT, qc_type=qc_type)
+    bool_tmp = get_bool_out_of_range(df_out.loc[mask], qc_on=Df.RESULT, qc_type=qc_type)
 
     df_out.loc[ bool_tmp.index, Df.VERIFIED] = True
     df_out[Df.VALID] = (df_out.get(Df.VALID, True) & bool_tmp) | ~df_out[Df.VERIFIED].astype(bool) # type: ignore
@@ -161,3 +162,22 @@ def set_qc_flag_range_check(df: pd.DataFrame, qc_type: str, qc_on: Df, flag_on_f
     df_out[Df.QC_FLAG] = df_out[Df.QC_FLAG].astype(CAT_TYPE)
     
     return df_out
+
+
+def get_bool_spacial_outlier_compared_to_median(
+    df: gpd.GeoDataFrame, max_dx_dt: float
+) -> pd.Series:
+    median_series = gpd.GeoSeries(
+        Point(*df.loc[:, [Df.LONG, Df.LAT]].median()),
+        index=df.index,
+        dtype="geometry",
+    ).set_crs("EPSG:4326")
+
+    crs_ = "EPSG:4087"
+    dtmax = np.ptp(df.loc[:, Df.TIME]).total_seconds()
+    df["distance_to_median"] = (
+        df.loc[:, "geometry"].to_crs(crs_).distance(median_series.to_crs(crs_))
+    )
+    df["dx_median/dtmax"] = df["distance_to_median"] / dtmax
+
+    return df.loc[:, "dx_median/dtmax"].astype(float) > max_dx_dt

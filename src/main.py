@@ -1,21 +1,22 @@
 import logging
 import time
+from functools import partial
 
 import geopandas as gpd
 import hydra
 import pandas as pd
 import stapy
+from shapely.geometry import Point
+import numpy as np
 
 from models.enums import Df, QualityFlags
 from services.config import filter_cfg_to_query
 from services.df import df_type_conversions, intersect_df_region
-from services.qc import (
-    calc_gradient_results,
-    qc_dependent_quantity_base,
-    qc_dependent_quantity_secondary,
-    qc_region,
-    set_qc_flag_range_check,
-)
+from services.qc import (calc_gradient_results,
+                         get_bool_spacial_outlier_compared_to_median,
+                         qc_dependent_quantity_base,
+                         qc_dependent_quantity_secondary, qc_region,
+                         set_qc_flag_range_check)
 from services.requests import get_all_data, patch_qc_flags
 
 log = logging.getLogger(__name__)
@@ -37,7 +38,7 @@ def main(cfg):
     # get data in dataframe
     df_all = get_all_data(thing_id=thing_id, filter_cfg=filter_cfg)
     nb_observations = df_all.shape[0]
-    df_all = gpd.GeoDataFrame(df_all, geometry=gpd.points_from_xy(df_all[Df.LONG] df_all[Df.LAT]), crs="EPSG:4326")  # type: ignore
+    df_all = gpd.GeoDataFrame(df_all, geometry=gpd.points_from_xy(df_all[Df.LONG], df_all[Df.LAT]), crs="EPSG:4326")  # type: ignore
 
     t_df1 = time.time()
 
@@ -46,6 +47,15 @@ def main(cfg):
     t_region0 = time.time()
     df_all = intersect_df_region(df_all, max_queries=5, max_query_points=20)
     df_all = qc_region(df_all)
+
+    ## outliers location
+    KNOTS_TO_KM_HOUR = 1.852
+    def median_point(df):
+        out = Point(*df[[Df.LONG, Df.LAT]].median())
+        return out
+    rolling = df_all.loc[:, [Df.TIME, Df.LONG, Df.LAT]].sort_values(Df.TIME).rolling('5min', on=Df.TIME)
+    rolling.apply(np.median)
+    df_all.rolling('5m').apply(partial(get_bool_spacial_outlier_compared_to_median, max_dx_dt=15*KNOTS_TO_KM_HOUR*1e3/3600))
 
     # get qc check df (try to find clearer name)
     qc_df = pd.DataFrame.from_dict(cfg.QC, orient="index")
