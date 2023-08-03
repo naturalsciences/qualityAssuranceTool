@@ -281,12 +281,11 @@ def test_qc_dependent_quantities(df_testing, n):
 
     # perform qc check
     df_testing = qc_dependent_quantity_base(df_testing, independent=0, dependent=1)
-    # assert
     assert df_testing[Df.QC_FLAG].value_counts().to_dict() == qc_flag_count_ref
 
 
 @pytest.mark.parametrize("bad_value", (100.0,))
-@pytest.mark.parametrize("n", (0, 2, 4))
+@pytest.mark.parametrize("n", ('0', '2', '4'))
 def test_qc_dependent_quantities_secondary_fct(df_testing, bad_value, n):
     qc_flag_count_ref = {
         QualityFlags.GOOD: df_testing.shape[0] - 1,
