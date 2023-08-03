@@ -105,25 +105,13 @@ def dependent_quantity_merge_asof(df: pd.DataFrame, independent, dependent):
     df_dep = df.loc[df[Df.DATASTREAM_ID] == dependent].sort_values(Df.TIME).set_index(Df.TIME)
 
     df_merged = pd.merge_asof(df_indep, df_dep, left_index=True, right_index=True, tolerance=pd.Timedelta('0.5s'), suffixes=[f"_{i}" for i in [independent, dependent]])
-    # df_merged = pd.DataFrame(df_merged.values, columns=df_merged.columns.str.rsplit("_", expand=True, n=1).set_names(["", Df.DATASTREAM_ID]))
     df_merged = pd.DataFrame(df_merged.values, columns=df_merged.columns.str.rsplit("_", expand=True, n=1))
-
-    # columns_L0 = df_merged.columns.get_level_values(0).to_list()
-    # columns_L1 = df_merged.columns.get_level_values(1).to_list()
-    # columns_L1[0] = ''
-    # columns = pd.MultiIndex.from_arrays([columns_L0, columns_L1])
-    # df_merged.columns = columns
 
     return df_merged
 
 def dependent_quantity_pivot(df: pd.DataFrame, independent, dependent):
+    # merge_asof is used, but creates a pivot-like table
     df_merged = dependent_quantity_merge_asof(df, independent=independent, dependent=dependent)
-    df_pivot = df.pivot(
-        index=[Df.TIME],
-        columns=[Df.DATASTREAM_ID],
-        values=[Df.RESULT, Df.QC_FLAG, Df.OBSERVATION_TYPE, Df.IOT_ID],
-    )
-    # df_pivot = df_pivot.dropna(how="any", subset=df_pivot.loc[[], [Df.RESULT]].columns)
     return df_merged
 
 
