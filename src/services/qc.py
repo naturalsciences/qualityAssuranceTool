@@ -104,8 +104,9 @@ def dependent_quantity_merge_asof(df: pd.DataFrame, independent, dependent):
     df_indep = df.loc[df[Df.DATASTREAM_ID] == independent].sort_values(Df.TIME).set_index(Df.TIME)
     df_dep = df.loc[df[Df.DATASTREAM_ID] == dependent].sort_values(Df.TIME).set_index(Df.TIME)
 
-    df_merged = pd.merge_asof(df_indep, df_dep, left_index=True, right_index=True, tolerance=pd.Timedelta('0.5s'), suffixes=[f"_{i}" for i in [independent, dependent]])
-    df_merged = pd.DataFrame(df_merged.values, columns=df_merged.columns.str.rsplit("_", expand=True, n=1))
+    # df_merged = pd.merge_asof(df_indep, df_dep, left_index=True, right_index=True, tolerance=pd.Timedelta('0.5s'), suffixes=[f"_{i}" for i in [independent, dependent]])
+    df_merged = pd.merge_asof(df_dep, df_indep, left_index=True, right_index=True, tolerance=pd.Timedelta('0.5s'), suffixes=[f"_{i}" for i in [dependent, independent]])
+    df_merged = pd.DataFrame(df_merged.values, index=df_merged.index, columns=df_merged.columns.str.rsplit("_", expand=True, n=1))
 
     return df_merged
 
@@ -117,7 +118,7 @@ def dependent_quantity_pivot(df: pd.DataFrame, independent, dependent):
 
 def strip_df_to_minimal_required_dependent_quantity(df, independent, dependent):
     df_out = deepcopy(
-        df.loc[
+        df.reset_index().loc[
             df[Df.DATASTREAM_ID].isin([independent, dependent]),
             [
                 Df.TIME,
@@ -149,6 +150,7 @@ def qc_dependent_quantity_base(df: pd.DataFrame, independent: int, dependent: in
     df_unpivot = df_pivot.stack().reset_index().set_index(Df.IOT_ID)
     df = df.set_index(Df.IOT_ID)
     df.loc[df_unpivot.index, Df.QC_FLAG] = df_unpivot[Df.QC_FLAG]
+    df.loc[df[Df.QC_FLAG].isna(), Df.QC_FLAG] = QualityFlags.BAD # type: ignore
     return df.reset_index()
 
 

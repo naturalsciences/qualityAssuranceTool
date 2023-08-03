@@ -284,6 +284,27 @@ def test_qc_dependent_quantities(df_testing, n):
     assert df_testing[Df.QC_FLAG].value_counts().to_dict() == qc_flag_count_ref
 
 
+@pytest.mark.parametrize("n", tuple(range(len(base_list_region))))
+def test_qc_dependent_quantities_mismatch(df_testing, n):
+    # setup ref count
+    qc_flag_count_ref = {
+        QualityFlags.GOOD: df_testing.shape[0] - 1,
+        QualityFlags.BAD: 1,
+    }
+
+    # setup df
+    df_testing[Df.QC_FLAG] = QualityFlags.GOOD
+
+    idx_ = df_testing.loc[df_testing[Df.DATASTREAM_ID] == 0].index[n]
+    df_testing.loc[idx_, Df.TIME] += pd.Timedelta('1d')
+
+    # perform qc check
+    df_testing = qc_dependent_quantity_base(df_testing, independent=0, dependent=1)
+    print(f"qsdf")
+    assert df_testing[Df.QC_FLAG].value_counts().to_dict() == qc_flag_count_ref
+
+
+
 @pytest.mark.parametrize("bad_value", (100.0,))
 @pytest.mark.parametrize("n", (0, 2, 4))
 def test_qc_dependent_quantities_secondary_fct(df_testing, bad_value, n):
