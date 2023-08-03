@@ -1,17 +1,15 @@
 import logging
 from copy import deepcopy
+from itertools import compress
 
 import geopandas as gpd
 import numpy as np
 import pandas as pd
+from pandas.api.types import CategoricalDtype
 from shapely.geometry import Point
 
-from models.enums import QualityFlags
+from models.enums import Df, QualityFlags
 from qc_functions.functions import min_max_check_values
-
-from models.enums import Df
-
-from pandas.api.types import CategoricalDtype
 
 log = logging.getLogger(__name__)
 
@@ -102,14 +100,31 @@ def calc_gradient_results(df: pd.DataFrame, groupby: Df):
     return df_out
 
 
-def dependent_quantity_pivot(df: pd.DataFrame):
+def dependent_quantity_merge_asof(df: pd.DataFrame, independent, dependent):
+    df_indep = df.loc[df[Df.DATASTREAM_ID] == independent].sort_values(Df.TIME).set_index(Df.TIME)
+    df_dep = df.loc[df[Df.DATASTREAM_ID] == dependent].sort_values(Df.TIME).set_index(Df.TIME)
+
+    df_merged = pd.merge_asof(df_indep, df_dep, left_index=True, right_index=True, tolerance=pd.Timedelta('0.5s'), suffixes=[f"_{i}" for i in [independent, dependent]])
+    # df_merged = pd.DataFrame(df_merged.values, columns=df_merged.columns.str.rsplit("_", expand=True, n=1).set_names(["", Df.DATASTREAM_ID]))
+    df_merged = pd.DataFrame(df_merged.values, columns=df_merged.columns.str.rsplit("_", expand=True, n=1))
+
+    # columns_L0 = df_merged.columns.get_level_values(0).to_list()
+    # columns_L1 = df_merged.columns.get_level_values(1).to_list()
+    # columns_L1[0] = ''
+    # columns = pd.MultiIndex.from_arrays([columns_L0, columns_L1])
+    # df_merged.columns = columns
+
+    return df_merged
+
+def dependent_quantity_pivot(df: pd.DataFrame, independent, dependent):
+    df_merged = dependent_quantity_merge_asof(df, independent=independent, dependent=dependent)
     df_pivot = df.pivot(
         index=[Df.TIME],
         columns=[Df.DATASTREAM_ID],
         values=[Df.RESULT, Df.QC_FLAG, Df.OBSERVATION_TYPE, Df.IOT_ID],
     )
-    df_pivot = df_pivot.dropna(how="any", subset=df_pivot.loc[[], [Df.RESULT]].columns)
-    return df_pivot
+    # df_pivot = df_pivot.dropna(how="any", subset=df_pivot.loc[[], [Df.RESULT]].columns)
+    return df_merged
 
 
 def strip_df_to_minimal_required_dependent_quantity(df, independent, dependent):
@@ -134,13 +149,13 @@ def qc_dependent_quantity_base(df: pd.DataFrame, independent: int, dependent: in
         df, independent=independent, dependent=dependent
     )
 
-    df_pivot = dependent_quantity_pivot(df_tmp)
+    df_pivot = dependent_quantity_pivot(df_tmp, independent=independent, dependent=dependent)
 
-    mask = ~df_pivot[Df.QC_FLAG, independent].isin(
+    mask = ~df_pivot[Df.QC_FLAG, str(independent)].isin(
         [QualityFlags.NO_QUALITY_CONTROL, QualityFlags.GOOD]
     )
-    df_pivot.loc[mask, (Df.QC_FLAG, dependent)] = df_pivot[mask][
-        (Df.QC_FLAG, independent)
+    df_pivot.loc[mask, (Df.QC_FLAG, str(dependent))] = df_pivot[mask][
+        (Df.QC_FLAG, str(independent))
     ]
 
     df_unpivot = df_pivot.stack().reset_index().set_index(Df.IOT_ID)
@@ -156,13 +171,13 @@ def qc_dependent_quantity_secondary(
         df, independent=independent, dependent=dependent
     )
 
-    df_pivot = dependent_quantity_pivot(df_tmp)
+    df_pivot = dependent_quantity_pivot(df_tmp, dependent=dependent, independent=independent)
 
     df_pivot[["qc_drange_min", "qc_drange_max"]] = range_
     bool_qc = get_bool_out_of_range(
-        df_pivot, (Df.RESULT, independent), qc_type="drange"
+        df_pivot, (Df.RESULT, str(independent)), qc_type="drange"
     )
-    df_pivot.loc[~bool_qc, (Df.QC_FLAG, dependent)] = QualityFlags.BAD  # type: ignore Don"t know how to fix this
+    df_pivot.loc[~bool_qc, (Df.QC_FLAG, str(dependent))] = QualityFlags.BAD  # type: ignore Don"t know how to fix this
 
     df_pivot = df_pivot.drop(["qc_drange_min", "qc_drange_max"], axis=1)
     df_unpivot = df_pivot.stack().reset_index().set_index(Df.IOT_ID)
@@ -171,24 +186,34 @@ def qc_dependent_quantity_secondary(
     return df.reset_index()
 
 
+def get_qc_flag_from_bool(
+    df: pd.DataFrame,
+    bool_: pd.Series,
+    flag_on_true: QualityFlags,
+    update_verified: bool,
+) -> pd.DataFrame:
+    df.loc[bool_.index, Df.VERIFIED] = True
+    df[Df.VALID] = (df.get(Df.VALID, True) & bool_) | ~df[Df.VERIFIED].astype(bool)  # type: ignore
+
+
+    df.loc[(df[Df.QC_FLAG] < flag_on_true), Df.QC_FLAG] = QualityFlags(flag_on_true)  # type: ignore
+    df[Df.QC_FLAG] = df[Df.QC_FLAG].astype(CAT_TYPE)
+
+    columns_out = list(compress([Df.QC_FLAG, Df.VALID, Df.VERIFIED], [True, True, update_verified]))
+    return df[columns_out]
+
+
 # test needed!
 def set_qc_flag_range_check(
-    df: pd.DataFrame,
-    qc_type: str,
-    qc_on: Df,
-    flag_on_fail: QualityFlags,
-    flag_on_succes: QualityFlags | None = None,
+    df: pd.DataFrame, qc_type: str, qc_on: Df, flag_on_fail: QualityFlags
 ) -> pd.DataFrame:
     df_out = deepcopy(df)
     df_out[Df.QC_FLAG] = df_out[Df.QC_FLAG].astype(CAT_TYPE)
     mask = get_null_mask(df_out, qc_type)
-    bool_tmp = get_bool_out_of_range(df_out.loc[mask], qc_on=Df.RESULT, qc_type=qc_type)
+    bool_tmp = get_bool_out_of_range(df_out.loc[mask], qc_on=qc_on, qc_type=qc_type)
 
-    df_out.loc[bool_tmp.index, Df.VERIFIED] = True
-    df_out[Df.VALID] = (df_out.get(Df.VALID, True) & bool_tmp) | ~df_out[Df.VERIFIED].astype(bool)  # type: ignore
-
-    df_out.loc[(mask & (df_out[Df.QC_FLAG] < flag_on_fail)), Df.QC_FLAG] = QualityFlags(flag_on_fail)  # type: ignore
-    df_out[Df.QC_FLAG] = df_out[Df.QC_FLAG].astype(CAT_TYPE)
+    df_tmp = get_qc_flag_from_bool(df_out.loc[mask], bool_=bool_tmp, flag_on_true=QualityFlags.BAD, update_verified=True)
+    df_out.loc[df_tmp.index, df_tmp.columns] = df_tmp
 
     return df_out
 
@@ -203,8 +228,12 @@ def get_bool_spacial_outlier_compared_to_median(
         .rolling(time_window, on=Df.TIME)
         .apply(np.median)
     )
-    ref_point = gpd.GeoDataFrame(rolling_median,
-                                 geometry=gpd.points_from_xy(rolling_median.loc[:, Df.LONG], rolling_median.loc[:, Df.LAT])).set_crs("EPSG:4326")  # type: ignore
+    ref_point = gpd.GeoDataFrame(
+        rolling_median,
+        geometry=gpd.points_from_xy(
+            rolling_median.loc[:, Df.LONG], rolling_median.loc[:, Df.LAT]
+        ),
+    ).set_crs("EPSG:4326")  # type: ignore
     bool_series = (
         df.sort_values(Df.TIME)
         .loc[:, "geometry"]

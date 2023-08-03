@@ -120,3 +120,4 @@ class Df(StrEnum, OrderedEnum):
     LAT = "lat"
     VERIFIED = "verified"
     VALID = "valid"
+    OBSERVED_PROPERTY_ID = "observed_property_id"

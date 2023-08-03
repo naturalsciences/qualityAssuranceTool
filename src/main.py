@@ -13,7 +13,7 @@ from models.enums import Df, QualityFlags
 from services.config import filter_cfg_to_query
 from services.df import df_type_conversions, intersect_df_region
 from services.qc import (calc_gradient_results,
-                         get_bool_spacial_outlier_compared_to_median,
+                         get_bool_spacial_outlier_compared_to_median, get_qc_flag_from_bool,
                          qc_dependent_quantity_base,
                          qc_dependent_quantity_secondary, qc_region,
                          set_qc_flag_range_check)
@@ -52,7 +52,9 @@ def main(cfg):
     KNOTS_TO_KM_HOUR = 1.852
     KNOTS_TO_M_S = KNOTS_TO_KM_HOUR *1.e3 / 3600.
     bool_outlier = get_bool_spacial_outlier_compared_to_median(df_all, max_dx_dt=13.*KNOTS_TO_M_S, time_window='5min')
-    df_all.loc[bool_outlier, Df.QC_FLAG] = QualityFlags.BAD # type: ignore
+    df_all.loc[bool_outlier.index, Df.QC_FLAG] = get_qc_flag_from_bool(df_all, bool_=bool_outlier, flag_on_true=QualityFlags.BAD, update_verified=False)
+
+    # df_all.loc[bool_outlier, Df.QC_FLAG] = QualityFlags.BAD # type: ignore
     # get qc check df (try to find clearer name)
     qc_df = pd.DataFrame.from_dict(cfg.QC, orient="index")
     qc_df.index.name = Df.OBSERVATION_TYPE

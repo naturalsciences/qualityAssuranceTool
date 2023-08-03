@@ -80,6 +80,7 @@ def response_single_datastream_to_df(response_datastream: dict) -> pd.DataFrame:
         df_i[Df.OBSERVATION_TYPE] = response_datastream.get(
             Entities.OBSERVEDPROPERTY, {}
         ).get(Properties.NAME)
+        df_i[Df.OBSERVED_PROPERTY_ID] = response_datastream.get(Entities.OBSERVEDPROPERTY, {}).get(Properties.IOT_ID)
         df_i[Df.OBSERVATION_TYPE] = df_i[Df.OBSERVATION_TYPE].astype("category")
         k1, k2 = Properties.UNITOFMEASUREMENT.split("/", 1)
         df_i[Df.UNITS] = response_datastream.get(k1, {}).get(k2)
