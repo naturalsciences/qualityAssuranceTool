@@ -39,21 +39,6 @@ def main(cfg):
     df_all = get_all_data(thing_id=thing_id, filter_cfg=filter_cfg)
     nb_observations = df_all.shape[0]
     df_all = gpd.GeoDataFrame(df_all, geometry=gpd.points_from_xy(df_all[Df.LONG], df_all[Df.LAT]), crs="EPSG:4326") # type: ignore
-
-    t_df1 = time.time()
-    t_qc0 = time.time()
-    ## find region
-    #   t_region0 = time.time()
-    #   df_all = intersect_df_region(df_all, max_queries=5, max_query_points=20)
-    #   df_all = qc_region(df_all)
-
-    #   ## outliers location
-    #   KNOTS_TO_KM_HOUR = 1.852
-    #   KNOTS_TO_M_S = KNOTS_TO_KM_HOUR *1.e3 / 3600.
-    #   bool_outlier = get_bool_spacial_outlier_compared_to_median(df_all, max_dx_dt=13.*KNOTS_TO_M_S, time_window='5min')
-    #   df_all.loc[bool_outlier.index, Df.QC_FLAG] = get_qc_flag_from_bool(df_all, bool_=bool_outlier, flag_on_true=QualityFlags.BAD, update_verified=False)[Df.QC_FLAG]
-
-    # df_all.loc[bool_outlier, Df.QC_FLAG] = QualityFlags.BAD # type: ignore
     # get qc check df (try to find clearer name)
     qc_df = pd.DataFrame.from_dict(cfg.QC, orient="index")
     qc_df.index.name = Df.OBSERVATION_TYPE
@@ -71,16 +56,30 @@ def main(cfg):
     df_merge = df_all.merge(qc_df, on=Df.OBSERVATION_TYPE, how="left")
     df_merge.set_index(Df.IOT_ID)
 
+    t_df1 = time.time()
+    t_qc0 = time.time()
+    ## find region
+    t_region0 = time.time()
+    df_all = intersect_df_region(df_all, max_queries=5, max_query_points=20)
+    df_all = qc_region(df_all)
+
+    ## outliers location
+    KNOTS_TO_KM_HOUR = 1.852
+    KNOTS_TO_M_S = KNOTS_TO_KM_HOUR *1.e3 / 3600.
+    bool_outlier = get_bool_spacial_outlier_compared_to_median(df_all, max_dx_dt=13.*KNOTS_TO_M_S, time_window='5min')
+    df_all.update(get_qc_flag_from_bool(df_all, bool_=bool_outlier, flag_on_true=QualityFlags.BAD, update_verified=False)[[Df.QC_FLAG]])
+
+    
     if nb_observations != df_merge.shape[0]:
         raise RuntimeError("Not all observations are included in the dataframe.")
 
     bool_range = get_bool_out_of_range(df=df_merge, qc_on=Df.RESULT, qc_type="range")
-    df_merge.loc[bool_range.index, [Df.QC_FLAG, Df.VERIFIED, Df.VALID]] = get_qc_flag_from_bool(df_merge, bool_=bool_range, flag_on_true=QualityFlags.BAD, update_verified=True)[[Df.QC_FLAG, Df.VERIFIED, Df.VALID]]
+    df_merge.update(get_qc_flag_from_bool(df_merge, bool_=bool_range, flag_on_true=QualityFlags.BAD, update_verified=True))
     # df_merge = set_qc_flag_range_check(
         # df_merge, qc_type="range", qc_on=Df.RESULT, flag_on_fail=QualityFlags.BAD
     # )
     bool_gradient = get_bool_out_of_range(df=df_merge, qc_on=Df.GRADIENT, qc_type="gradient")
-    df_merge.loc[bool_gradient.index, [Df.QC_FLAG, Df.VERIFIED, Df.VALID]] = get_qc_flag_from_bool(df_merge, bool_=bool_gradient, flag_on_true=QualityFlags.BAD, update_verified=True)[[Df.QC_FLAG, Df.VERIFIED, Df.VALID]]
+    df_merge.update(get_qc_flag_from_bool(df_merge, bool_=bool_gradient, flag_on_true=QualityFlags.BAD, update_verified=True))
 
     # df_merge = set_qc_flag_range_check(
         # df_merge, qc_type="range", qc_on=Df.GRADIENT, flag_on_fail=QualityFlags.BAD

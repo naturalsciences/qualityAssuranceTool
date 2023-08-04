@@ -42,14 +42,14 @@ def get_bool_out_of_range(
     return s_bool_out
 
 
-# TODO: refactor
-def qc_df(df_in, function):
-    # http://vocab.nerc.ac.uk/collection/L20/current/
-    df_out = deepcopy(df_in)
-    df_out["bool"] = function(df_out[Df.RESULT].array)
-    df_out.loc[~df_out["bool"], Df.QC_FLAG] = QualityFlags.PROBABLY_GOOD
-    df_out.loc[df_out["bool"], Df.QC_FLAG] = QualityFlags.PROBABLY_BAD
-    return df_out
+# # TODO: refactor
+# def qc_df(df_in, function):
+#     # http://vocab.nerc.ac.uk/collection/L20/current/
+#     df_out = deepcopy(df_in)
+#     df_out["bool"] = function(df_out[Df.RESULT].array)
+#     df_out.loc[~df_out["bool"], Df.QC_FLAG] = QualityFlags.PROBABLY_GOOD
+#     df_out.loc[df_out["bool"], Df.QC_FLAG] = QualityFlags.PROBABLY_BAD
+#     return df_out
 
 
 ##  TODO: refactor
@@ -177,7 +177,28 @@ def strip_df_to_minimal_required_dependent_quantity(df, independent, dependent):
     return df_out
 
 
-def qc_dependent_quantity_base(df: pd.DataFrame, independent: int, dependent: int):
+def get_bool_flagged_dependent_quantity(df: pd.DataFrame, independent: int, dependent: int):
+    df_tmp = strip_df_to_minimal_required_dependent_quantity(
+        df, independent=independent, dependent=dependent
+    )
+
+    df_pivot = dependent_quantity_pivot(
+        df_tmp, independent=independent, dependent=dependent
+    )
+
+    mask = ~df_pivot[Df.QC_FLAG, str(independent)].isin(
+        [QualityFlags.NO_QUALITY_CONTROL, QualityFlags.GOOD]
+    )
+    bool_ = df[Df.IOT_ID].isin(df_pivot.loc[mask, (Df.IOT_ID, str(dependent))].values) # type: ignore
+    return bool_
+
+
+def qc_dependent_quantity_base(
+    df: pd.DataFrame,
+    independent: int,
+    dependent: int,
+    flag_when_missing: QualityFlags | None = QualityFlags.BAD,
+):
     df_tmp = strip_df_to_minimal_required_dependent_quantity(
         df, independent=independent, dependent=dependent
     )
@@ -196,7 +217,8 @@ def qc_dependent_quantity_base(df: pd.DataFrame, independent: int, dependent: in
     df_unpivot = df_pivot.stack().reset_index().set_index(Df.IOT_ID)
     df = df.set_index(Df.IOT_ID)
     df.loc[df_unpivot.index, Df.QC_FLAG] = df_unpivot[Df.QC_FLAG]
-    df.loc[df[Df.QC_FLAG].isna(), Df.QC_FLAG] = QualityFlags.BAD  # type: ignore
+    if flag_when_missing:
+        df.loc[df[Df.QC_FLAG].isna(), Df.QC_FLAG] = flag_when_missing  # type: ignore
     return df.reset_index()
 
 
