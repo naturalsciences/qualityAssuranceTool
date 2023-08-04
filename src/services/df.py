@@ -45,6 +45,7 @@ def features_request_to_df(request_features):
     return df
 
 
+# not used
 def response_obs_to_df(response_obs: dict) -> pd.DataFrame:
     # MISSING UNITS, TYPE, ...
     df = pd.DataFrame()
@@ -109,36 +110,36 @@ def response_single_datastream_to_df(response_datastream: dict) -> pd.DataFrame:
 #     return df_out
 
 
-def datastreams_response_to_df(response_datastreams):
-    df = pd.DataFrame()
-    for di in response_datastreams:
-        observations_list = di.get(Entities.OBSERVATIONS)
-        if observations_list:
-            df_i = pd.DataFrame(observations_list).astype(
-                {Properties.IOT_ID: int, Df.RESULT: float}
-            )
-            df_i[Df.DATASTREAM_ID] = int(di.get(Properties.IOT_ID))
-            df_i[Properties.PHENOMENONTIME] = df_i[Properties.PHENOMENONTIME].apply(
-                convert_to_datetime
-            )
-            df_i[Df.OBSERVATION_TYPE] = di.get(Entities.OBSERVEDPROPERTY).get(
-                Properties.NAME
-            )
-            df_i[Df.OBSERVATION_TYPE] = df_i[Df.OBSERVATION_TYPE].astype("category")
-            k1, k2 = Properties.UNITOFMEASUREMENT.split("/", 1)
-            df_i[Df.UNITS] = di.get(k1).get(k2)
-            df_i[Df.UNITS] = df_i[Df.UNITS].astype("category")
-
-            df_i[[Df.LONG, Df.LAT]] = pd.DataFrame.from_records(
-                df_i[str(Entities.FEATUREOFINTEREST)].apply(
-                    lambda x: x.get("feature").get("coordinates")
-                )
-            )
-            del df_i[str(Entities.FEATUREOFINTEREST)]
-            # df_i.drop(columns=str(Entities.FEATUREOFINTEREST))
-            df = pd.concat([df, df_i], ignore_index=True)
-
-    return df
+# def datastreams_response_to_df(response_datastreams):
+#     df = pd.DataFrame()
+#     for di in response_datastreams:
+#         observations_list = di.get(Entities.OBSERVATIONS)
+#         if observations_list:
+#             df_i = pd.DataFrame(observations_list).astype(
+#                 {Properties.IOT_ID: int, Df.RESULT: float}
+#             )
+#             df_i[Df.DATASTREAM_ID] = int(di.get(Properties.IOT_ID))
+#             df_i[Properties.PHENOMENONTIME] = df_i[Properties.PHENOMENONTIME].apply(
+#                 convert_to_datetime
+#             )
+#             df_i[Df.OBSERVATION_TYPE] = di.get(Entities.OBSERVEDPROPERTY).get(
+#                 Properties.NAME
+#             )
+#             df_i[Df.OBSERVATION_TYPE] = df_i[Df.OBSERVATION_TYPE].astype("category")
+#             k1, k2 = Properties.UNITOFMEASUREMENT.split("/", 1)
+#             df_i[Df.UNITS] = di.get(k1).get(k2)
+#             df_i[Df.UNITS] = df_i[Df.UNITS].astype("category")
+# 
+#             df_i[[Df.LONG, Df.LAT]] = pd.DataFrame.from_records(
+#                 df_i[str(Entities.FEATUREOFINTEREST)].apply(
+#                     lambda x: x.get("feature").get("coordinates")
+#                 )
+#             )
+#             del df_i[str(Entities.FEATUREOFINTEREST)]
+#             # df_i.drop(columns=str(Entities.FEATUREOFINTEREST))
+#             df = pd.concat([df, df_i], ignore_index=True)
+# 
+#     return df
 
 
 def seavox_to_df(response_seavox: Sequence[Sequence[str]]) -> pd.DataFrame:
@@ -194,7 +195,7 @@ def intersect_df_region(df, max_queries, max_query_points):
     si = df.sindex
 
     while True:
-        df.info(f"Find sear region of next point.")
+        df.info(f"Find seavox region of next point.")
         point_i = (
             df_out.loc[df_out.Region.isnull(), [Df.LONG, Df.LAT]].sample(1)
             .to_numpy()

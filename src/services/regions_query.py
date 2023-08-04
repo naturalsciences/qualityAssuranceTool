@@ -19,8 +19,8 @@ def connect() -> psycopg2.extensions.connection:
             user="sevox",
             password="ChangeMe",
             host="localhost",
-            port="8901"
-            # port="5432",
+            # port="8901"
+            port="5432",
         )
         return connection
 

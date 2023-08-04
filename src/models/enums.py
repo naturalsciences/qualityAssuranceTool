@@ -75,8 +75,8 @@ class Filter(BaseQueryStrEnum):
 
 
 class OrderOption(StrEnum):
-        DESC = "desc"
-        ASC = "asc"
+    DESC = "desc"
+    ASC = "asc"
 
 
 class Order(BaseQueryStrEnum):
@@ -86,37 +86,38 @@ class Order(BaseQueryStrEnum):
         out: str = f"{str(self)}={property} {option}"
         return out
 
+
 class QualityFlags(OrderedEnum):
-    NO_QUALITY_CONTROL = 0	
-    GOOD = 1	
-    PROBABLY_GOOD = 2	
-    PROBABLY_BAD = 3	
-    CHANGED = 5	
-    BELOW_detection = 6	
-    IN_EXCESS = 7	
-    INTERPOLATED = 8	
-    MISSING = 9	
+    NO_QUALITY_CONTROL = 0
+    GOOD = 1
+    PROBABLY_GOOD = 2
+    PROBABLY_BAD = 3
+    CHANGED = 5
+    BELOW_detection = 6
+    IN_EXCESS = 7
+    INTERPOLATED = 8
+    MISSING = 9
     PHENOMENON_UNCERTAIN = "A"
     NOMINAL = "B"
     BELOW_LIMIT_OF_QUANTIFICATION = "Q"
-    BAD = 4	
+    BAD = 4
 
     def __str__(self):
         return f"{self.value}"
 
 
-class Df(StrEnum, OrderedEnum):
+class Df(StrEnum):
     IOT_ID = Properties.IOT_ID
     DATASTREAM_ID = "datastream_id"
     UNITS = "units"
     OBSERVATION_TYPE = "observation_type"
-    QC_FLAG= Properties.QC_FLAG
+    QC_FLAG = Properties.QC_FLAG
     GRADIENT = "gradient"
     TIME = "phenomenonTime"
     RESULT = Properties.RESULT
     REGION = "Region"
     SUB_REGION = "Sub-region"
-    LONG= "long"
+    LONG = "long"
     LAT = "lat"
     VERIFIED = "verified"
     VALID = "valid"

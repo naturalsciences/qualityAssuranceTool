@@ -10,7 +10,9 @@ import pytest
 
 from models.enums import Df, QualityFlags
 from services.qc import (
+    CAT_TYPE,
     calc_gradient_results,
+    get_bool_out_of_range,
     qc_dependent_quantity_base,
     qc_dependent_quantity_secondary,
     qc_region,
@@ -54,7 +56,7 @@ def df_testing() -> gpd.GeoDataFrame:
         fi * results_factor for fi in range(len(base_list_region))
     ]
     qc_ref_base: list[QualityFlags | float] = [
-        np.NaN,
+        QualityFlags.NO_QUALITY_CONTROL,
         QualityFlags.BAD,
         QualityFlags.BAD,
         QualityFlags.PROBABLY_BAD,
@@ -80,7 +82,11 @@ def df_testing() -> gpd.GeoDataFrame:
         {
             Df.IOT_ID: pd.Series(range(len(qc_ref_base) * MULTIPL_FACTOR), dtype=int),
             Df.REGION: pd.Series(base_list_region * MULTIPL_FACTOR, dtype="string"),
-            Df.QC_FLAG + "_ref": pd.Series(qc_ref_base * MULTIPL_FACTOR),
+            Df.QC_FLAG
+            + "_ref": pd.Series(qc_ref_base * MULTIPL_FACTOR, dtype=CAT_TYPE),
+            Df.QC_FLAG: pd.Series(
+                QualityFlags.NO_QUALITY_CONTROL, index=datastream_id_series.index
+            ),
             Df.DATASTREAM_ID: pd.Series(
                 list(
                     sum(  # to convert list of tuples to flat list
@@ -209,7 +215,9 @@ def test_qc_gradient_cacl_vardt(df_testing, result):
         )
 
 
-@pytest.mark.parametrize("result", [(range(0, LENGTH_SLICE, 1)), (range(LENGTH_SLICE, 0, -1))])
+@pytest.mark.parametrize(
+    "result", [(range(0, LENGTH_SLICE, 1)), (range(LENGTH_SLICE, 0, -1))]
+)
 def test_qc_gradient_cacl_vardx(df_testing, result):
     def grad_cte_dt(fm1, fp1, dh):
         return (fp1 - fm1) / (2.0 * dh)
@@ -284,6 +292,19 @@ def test_qc_dependent_quantities(df_testing, n):
     assert df_testing[Df.QC_FLAG].value_counts().to_dict() == qc_flag_count_ref
 
 
+def test_qc_range(df_testing):
+    df_testing.loc[
+        df_testing[Df.DATASTREAM_ID] == 0, ["qc_range_min", "qc_range_max"]
+    ] = [2.0, 9.2]
+    bool_range = get_bool_out_of_range(df=df_testing, qc_on=Df.RESULT, qc_type="range")
+    bool_ref = pd.Series(
+        [True, False, False, False, True] + [False] * LENGTH_SLICE,
+        index=df_testing.index,
+        dtype=bool,
+    )
+    pdt.assert_series_equal(bool_ref, bool_range, check_names=False)
+
+
 @pytest.mark.parametrize("n", tuple(range(len(base_list_region))))
 def test_qc_dependent_quantities_mismatch(df_testing, n):
     # setup ref count
@@ -296,13 +317,12 @@ def test_qc_dependent_quantities_mismatch(df_testing, n):
     df_testing[Df.QC_FLAG] = QualityFlags.GOOD
 
     idx_ = df_testing.loc[df_testing[Df.DATASTREAM_ID] == 0].index[n]
-    df_testing.loc[idx_, Df.TIME] += pd.Timedelta('1d')
+    df_testing.loc[idx_, Df.TIME] += pd.Timedelta("1d")
 
     # perform qc check
     df_testing = qc_dependent_quantity_base(df_testing, independent=0, dependent=1)
     print(f"qsdf")
     assert df_testing[Df.QC_FLAG].value_counts().to_dict() == qc_flag_count_ref
-
 
 
 @pytest.mark.parametrize("bad_value", (100.0,))
@@ -317,7 +337,9 @@ def test_qc_dependent_quantities_secondary_fct(df_testing, bad_value, n):
     idx_ = df_testing[df_testing[Df.DATASTREAM_ID] == 0].index[n]
     df_testing.loc[idx_, Df.RESULT] = bad_value
 
-    df_testing = qc_dependent_quantity_secondary(df_testing, independent=0, dependent=1, range_=(0.0, 10.0))
+    df_testing = qc_dependent_quantity_secondary(
+        df_testing, independent=0, dependent=1, range_=(0.0, 10.0)
+    )
     assert df_testing[Df.QC_FLAG].value_counts().to_dict() == qc_flag_count_ref
     assert (
         df_testing.loc[

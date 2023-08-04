@@ -12,7 +12,7 @@ import numpy as np
 from models.enums import Df, QualityFlags
 from services.config import filter_cfg_to_query
 from services.df import df_type_conversions, intersect_df_region
-from services.qc import (calc_gradient_results,
+from services.qc import (calc_gradient_results, get_bool_out_of_range,
                          get_bool_spacial_outlier_compared_to_median, get_qc_flag_from_bool,
                          qc_dependent_quantity_base,
                          qc_dependent_quantity_secondary, qc_region,
@@ -38,21 +38,20 @@ def main(cfg):
     # get data in dataframe
     df_all = get_all_data(thing_id=thing_id, filter_cfg=filter_cfg)
     nb_observations = df_all.shape[0]
-    df_all = gpd.GeoDataFrame(df_all, geometry=gpd.points_from_xy(df_all[Df.LONG], df_all[Df.LAT]), crs="EPSG:4326")  # type: ignore
+    df_all = gpd.GeoDataFrame(df_all, geometry=gpd.points_from_xy(df_all[Df.LONG], df_all[Df.LAT]), crs="EPSG:4326") # type: ignore
 
     t_df1 = time.time()
-
     t_qc0 = time.time()
     ## find region
-    t_region0 = time.time()
-    df_all = intersect_df_region(df_all, max_queries=5, max_query_points=20)
-    df_all = qc_region(df_all)
+    #   t_region0 = time.time()
+    #   df_all = intersect_df_region(df_all, max_queries=5, max_query_points=20)
+    #   df_all = qc_region(df_all)
 
-    ## outliers location
-    KNOTS_TO_KM_HOUR = 1.852
-    KNOTS_TO_M_S = KNOTS_TO_KM_HOUR *1.e3 / 3600.
-    bool_outlier = get_bool_spacial_outlier_compared_to_median(df_all, max_dx_dt=13.*KNOTS_TO_M_S, time_window='5min')
-    df_all.loc[bool_outlier.index, Df.QC_FLAG] = get_qc_flag_from_bool(df_all, bool_=bool_outlier, flag_on_true=QualityFlags.BAD, update_verified=False)
+    #   ## outliers location
+    #   KNOTS_TO_KM_HOUR = 1.852
+    #   KNOTS_TO_M_S = KNOTS_TO_KM_HOUR *1.e3 / 3600.
+    #   bool_outlier = get_bool_spacial_outlier_compared_to_median(df_all, max_dx_dt=13.*KNOTS_TO_M_S, time_window='5min')
+    #   df_all.loc[bool_outlier.index, Df.QC_FLAG] = get_qc_flag_from_bool(df_all, bool_=bool_outlier, flag_on_true=QualityFlags.BAD, update_verified=False)[Df.QC_FLAG]
 
     # df_all.loc[bool_outlier, Df.QC_FLAG] = QualityFlags.BAD # type: ignore
     # get qc check df (try to find clearer name)
@@ -72,14 +71,20 @@ def main(cfg):
     df_merge = df_all.merge(qc_df, on=Df.OBSERVATION_TYPE, how="left")
     df_merge.set_index(Df.IOT_ID)
 
-    assert nb_observations == df_merge.shape[0]
+    if nb_observations != df_merge.shape[0]:
+        raise RuntimeError("Not all observations are included in the dataframe.")
 
-    df_merge = set_qc_flag_range_check(
-        df_merge, qc_type="range", qc_on=Df.RESULT, flag_on_fail=QualityFlags.BAD
-    )
-    df_merge = set_qc_flag_range_check(
-        df_merge, qc_type="range", qc_on=Df.GRADIENT, flag_on_fail=QualityFlags.BAD
-    )
+    bool_range = get_bool_out_of_range(df=df_merge, qc_on=Df.RESULT, qc_type="range")
+    df_merge.loc[bool_range.index, [Df.QC_FLAG, Df.VERIFIED, Df.VALID]] = get_qc_flag_from_bool(df_merge, bool_=bool_range, flag_on_true=QualityFlags.BAD, update_verified=True)[[Df.QC_FLAG, Df.VERIFIED, Df.VALID]]
+    # df_merge = set_qc_flag_range_check(
+        # df_merge, qc_type="range", qc_on=Df.RESULT, flag_on_fail=QualityFlags.BAD
+    # )
+    bool_gradient = get_bool_out_of_range(df=df_merge, qc_on=Df.GRADIENT, qc_type="gradient")
+    df_merge.loc[bool_gradient.index, [Df.QC_FLAG, Df.VERIFIED, Df.VALID]] = get_qc_flag_from_bool(df_merge, bool_=bool_gradient, flag_on_true=QualityFlags.BAD, update_verified=True)[[Df.QC_FLAG, Df.VERIFIED, Df.VALID]]
+
+    # df_merge = set_qc_flag_range_check(
+        # df_merge, qc_type="range", qc_on=Df.GRADIENT, flag_on_fail=QualityFlags.BAD
+    # )
     t_ranges1 = time.time()
 
     t_flag_ranges0 = time.time()
@@ -104,12 +109,12 @@ def main(cfg):
     t_qc1 = time.time()
     t_patch0 = time.time()
     t3 = time.time()
-    url = "http://localhost:8080/FROST-Server/v1.1/$batch"
-    counter = patch_qc_flags(df_merge.reset_index(), url=url)
+    # url = "http://localhost:8080/FROST-Server/v1.1/$batch"
+    # counter = patch_qc_flags(df_merge.reset_index(), url=url)
     t_patch1 = time.time()
     tend = time.time()
     log.info(f"df requests/construction duration: {t_df1 - t_df0}")
-    log.info(f"Region check duration: {t_region1 - t_region0}")
+    # log.info(f"Region check duration: {t_region1 - t_region0}")
     log.info(f"Ranges check duration: {t_ranges1 - t_ranges0}")
     log.info(f"Flagging ranges duration: {t_flag_ranges1 - t_flag_ranges0}")
     log.info(f"Total QC check duration: {t_qc1 - t_qc0}")
