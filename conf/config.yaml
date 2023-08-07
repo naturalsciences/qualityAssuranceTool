@@ -12,7 +12,7 @@ data_api:
       range:
         - 2023-08-02 12:00
         - 3003-01-01 00:00
-regions:
+location:
   connection:
     database: seavox_areas
     user: sevox
@@ -20,6 +20,8 @@ regions:
     port: 5432
     passphrase: ChangeMe
   crs: EPSG:4326 # not fully used
+  time_window: 5min
+  max_dx_dt: 6.89
 QC_dependent:
   - independent: 69
     dependent: 124

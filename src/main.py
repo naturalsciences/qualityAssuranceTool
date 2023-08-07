@@ -34,7 +34,7 @@ def main(cfg: QCconf):
     # get data in dataframe
     df_all = get_all_data(thing_id=thing_id, filter_cfg=filter_cfg)
     nb_observations = df_all.shape[0]
-    df_all = gpd.GeoDataFrame(df_all, geometry=gpd.points_from_xy(df_all[Df.LONG], df_all[Df.LAT]), crs=cfg.regions.crs)  # type: ignore
+    df_all = gpd.GeoDataFrame(df_all, geometry=gpd.points_from_xy(df_all[Df.LONG], df_all[Df.LAT]), crs=cfg.location.crs)  # type: ignore
     # get qc check df (try to find clearer name)
     qc_df = pd.DataFrame.from_dict(cfg.QC, orient="index")
     qc_df.index.name = Df.OBSERVATION_TYPE
@@ -56,14 +56,12 @@ def main(cfg: QCconf):
     t_qc0 = time.time()
     ## find region
     t_region0 = time.time()
-    df_all = intersect_df_region(db_credentials=cfg.regions.connection, df=df_all, max_queries=5, max_query_points=20)
+    df_all = intersect_df_region(db_credentials=cfg.location.connection, df=df_all, max_queries=5, max_query_points=20)
     df_all = qc_region(df_all)
 
     ## outliers location
-    KNOTS_TO_KM_HOUR = 1.852
-    KNOTS_TO_M_S = KNOTS_TO_KM_HOUR * 1.0e3 / 3600.0
     bool_outlier = get_bool_spacial_outlier_compared_to_median(
-        df_all, max_dx_dt=13.0 * KNOTS_TO_M_S, time_window="5min"
+        df_all, max_dx_dt=cfg.location.max_dx_dt, time_window=cfg.location.time_window
     )
     df_all.update(
         get_qc_flag_from_bool(

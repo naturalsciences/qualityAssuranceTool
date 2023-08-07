@@ -57,15 +57,17 @@ class DbCredentials:
 
 
 @dataclass
-class RegionsConfig:
+class LocationConfig:
     connection: DbCredentials
     crs: str
+    time_window: str
+    max_dx_dt: float
 
 
 @dataclass
 class QCconf:
     data_api: DataApi
-    regions: RegionsConfig
+    location: LocationConfig
     QC_dependent: list[QcDependentEntry]
     QC: dict[str, QcEntry]
 

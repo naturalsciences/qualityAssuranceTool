@@ -1,14 +1,22 @@
 = qc through sensorthings API
 :toc: 
 :showtitle:
+:icons: font
 
 
 == Description
 
 The goal of this project is to perform basic quality checks on data. The
-project adds quality flags to the database (if configured). The project
-should/will be structured that adding a new algorithm is as simple as
+project adds quality flags to the database (if configured).
+The project should/will be structured that adding a new algorithm is as simple as
 changing a config file (yaml).
+
+
+== Requirements
+
+=== SeaVox db
+
+To query the sea region, seavox db is used.
 
 == Installation
 
@@ -17,14 +25,68 @@ runtime python environment needs to be created where the needed packages
 are available. The needed packages are listed in the file
 `requirements.txt`.
 
-=== Linux
+== _Possible_ Quality checks
 
-When working on a linux kernel, the setup and the running of the project
-can be done through `make`.
+=== Regions
 
-=== Windows
+1. The location associated with each observation is compared with the SeaVox database.
+A region and sub-region (lowest found level) are associated with the location.
+2. The name is verified to not contain *mainland*. These are marked as bad
 
-No install script if foreseen for windows.
+WARNING: the layers don't seem to follow the coastlines very accurately. For _internal_ waters in for example Iceland and Greenland, a lot of location return None. These location get a *probably bad* flag.
+
+=== Locations
+
+A rolling windows (see pandas documentation for more information) is used to calculate the median latitude and longitude.
+Then each location is compared with the median location.
+This distance is compared with the max distance the vessel can travel within the selected time window.
+
+NOTE: This solution is not ideal.
+Calculating the angle between each line segment and comparing with a threshold might be better. 
+This value will however be a function of the sample frequency and velocity.
+
+
+=== Dependent
+
+=== Range
+
+=== Gradient
+
+== Configuration
+
+This project uses hydra for (most) configurations and is done through a yaml file.
+All config files can be found in the `conf` folder.
+
+hydra::
+    verbose:::
+        Log level (True or \\__main__)
+data_api::
+    base_url::: url to the sensorthings instance
+    things::: 
+        id:::: thing identifier (integer)
+    filter:::
+        phenomenonTime:::: 
+            format::::: expression how time/date is formatted (for example"%Y-%m-%d %H:%M" )
+            range::::: start and end date/time following specified format
+location::
+    connection:::
+        database:::: postgresql database name
+        user:::: user name 
+        host:::: hostname
+        port:::: port that is used
+        passphrase:::: passphrase for user
+    crs::: crs of db (EPS:4326)
+    time_window::: The time window used for the _rolling median_.
+    max_dx_dt::: The maximal velocity of the vessel, used for outlier detection.
+QC_dependent:: *list* if quantity dependent relations. 2 _checks_ can be performed. If the independent quantity has a quality flag different from _good_, the dependent quantity wil get the same label (in the default use case. This can also be changed in the main file). 
+    independent::: identifier (sensorthings) of independent quantity
+    dependent::: identifier (sensorthings) of dependent quantity
+    QC::: type of quality check (only range is implemented)
+        range:::: list of *2* values (min, max)
+QC:: _normal_ quality checks. only two are defined: range and gradient
+    name::: the *name* of the observed feature
+    range::: expected range of the feature values
+    gradient::: expected range of the *gradient*.
 
 == Usage
 
