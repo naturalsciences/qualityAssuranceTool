@@ -385,5 +385,5 @@ def patch_qc_flags(df: pd.DataFrame, url) -> Counter:
     )
     count_res = Counter([ri["status"] for ri in response.json()["responses"]])
     log.info("End batch patch query")
-    log.info(f"{count_res}")
+    log.info(f"{json.dumps(count_res)}")
     return count_res

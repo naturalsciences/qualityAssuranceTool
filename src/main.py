@@ -119,9 +119,9 @@ def main(cfg: QCconf):
     )
     t_dependent1 = time.time()
 
-    log.info(f"{df_merge[Df.QC_FLAG].value_counts(dropna=False)=}")
+    log.info(f"{df_merge[Df.QC_FLAG].value_counts(dropna=False).to_json()=}")
     log.info(
-        f"{df_merge[[Df.OBSERVATION_TYPE, Df.QC_FLAG]].value_counts(dropna=False)=}"
+        f"{df_merge[[Df.OBSERVATION_TYPE, Df.QC_FLAG]].value_counts(dropna=False).to_json()=}"
     )
 
     cfg_dependent = cfg.QC_dependent
