@@ -34,7 +34,7 @@ def main(cfg: QCconf):
     # get data in dataframe
     df_all = get_all_data(thing_id=thing_id, filter_cfg=filter_cfg)
     nb_observations = df_all.shape[0]
-    df_all = gpd.GeoDataFrame(df_all, geometry=gpd.points_from_xy(df_all[Df.LONG], df_all[Df.LAT]), crs="EPSG:4326")  # type: ignore
+    df_all = gpd.GeoDataFrame(df_all, geometry=gpd.points_from_xy(df_all[Df.LONG], df_all[Df.LAT]), crs=cfg.regions.crs)  # type: ignore
     # get qc check df (try to find clearer name)
     qc_df = pd.DataFrame.from_dict(cfg.QC, orient="index")
     qc_df.index.name = Df.OBSERVATION_TYPE
@@ -56,7 +56,7 @@ def main(cfg: QCconf):
     t_qc0 = time.time()
     ## find region
     t_region0 = time.time()
-    df_all = intersect_df_region(df_all, max_queries=5, max_query_points=20)
+    df_all = intersect_df_region(db_credentials=cfg.regions.connection, df=df_all, max_queries=5, max_query_points=20)
     df_all = qc_region(df_all)
 
     ## outliers location

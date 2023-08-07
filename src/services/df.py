@@ -154,14 +154,14 @@ def seavox_to_df(response_seavox: Sequence[Sequence[str]]) -> pd.DataFrame:
 #     return a
 
 
-def query_region_from_xy(coords):
+def query_region_from_xy(db_credentials, coords):
     points_q = build_points_query(coords)
     query = build_query_points(
         table="seavox_sea_areas",
         points_query=points_q,
         select="region, sub_region, ST_AsText(geom)",
     )
-    with connect() as c:
+    with connect(db_credentials) as c:
         with c.cursor() as cursor:
             results = []
             cursor.execute(query)
@@ -170,10 +170,10 @@ def query_region_from_xy(coords):
     return res
 
 
-def query_all_nan_regions(df):
+def query_all_nan_regions(db_credentials, df):
     points_nan = df.loc[df[Df.REGION].isnull(), [Df.LONG, Df.LAT]].drop_duplicates()
     if not points_nan.empty:
-        res = query_region_from_xy(points_nan.to_numpy().tolist())
+        res = query_region_from_xy(db_credentials, points_nan.to_numpy().tolist())
 
         df_seavox = seavox_to_df([res_i[:2] for res_i in res])
         df_seavox[[Df.LONG, Df.LAT]] = points_nan.to_numpy().tolist()
@@ -185,7 +185,7 @@ def query_all_nan_regions(df):
 
 
 # not in a test
-def intersect_df_region(df, max_queries, max_query_points):
+def intersect_df_region(db_credentials, df, max_queries, max_query_points):
     df_out = deepcopy(df)
     if Df.REGION not in df_out:
         df_out[Df.REGION] = None
@@ -201,7 +201,7 @@ def intersect_df_region(df, max_queries, max_query_points):
             .to_numpy()
             .tolist()
         )
-        res = query_region_from_xy(point_i)
+        res = query_region_from_xy(db_credentials, point_i)
 
         g_ref = loads(res[0][2])
 
@@ -215,6 +215,6 @@ def intersect_df_region(df, max_queries, max_query_points):
         if nb_nan <= max_query_points or n >= max_queries:
             break
 
-    df_out = query_all_nan_regions(df_out)
+    df_out = query_all_nan_regions(db_credentials, df_out)
     df_out = df_type_conversions(df_out)
     return df_out

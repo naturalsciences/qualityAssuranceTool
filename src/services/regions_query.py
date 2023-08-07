@@ -7,20 +7,22 @@ import psycopg2.extensions
 from shapely import Point, distance, intersects, set_srid
 from shapely.wkt import loads
 
+from services.config import DbCredentials
+
 # from services.df import seavox_to_df
 
 log = logging.getLogger(__name__)
 
-def connect() -> psycopg2.extensions.connection:
+def connect(db_credentials: DbCredentials) -> psycopg2.extensions.connection:
     log.debug("Get connection seavox db")
     try:
         connection = psycopg2.connect(
-            database="seavox_areas",
-            user="sevox",
-            password="ChangeMe",
-            host="localhost",
+            database=db_credentials.database,
+            user=db_credentials.user,
+            password=db_credentials.passphrase,
+            host=db_credentials.host,
             # port="8901"
-            port="5432",
+            port=db_credentials.port,
         )
         return connection
 
@@ -60,12 +62,20 @@ def main():
         [points[0]]
         )
 
+    db_credentials: DbCredentials = DbCredentials(
+        database= "seavox_areas",
+        user= "sevox",
+        host= "localhost",
+        port= 5432,
+        passphrase="ChangeMe"
+    )
+
     query_0 = build_query_points(
         table="seavox_sea_areas",
         points_query=points_q,
         select="region, sub_region, ST_AsText(geom)",
     )
-    with connect() as c:
+    with connect(db_credentials) as c:
         t1 = time.time()
         with c.cursor() as cursor:
             results = []

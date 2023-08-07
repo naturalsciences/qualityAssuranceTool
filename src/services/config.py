@@ -48,8 +48,24 @@ class QcEntry:
 
 
 @dataclass
+class DbCredentials:
+    database: str
+    user: str
+    host: str
+    port: int
+    passphrase: str
+
+
+@dataclass
+class RegionsConfig:
+    connection: DbCredentials
+    crs: str
+
+
+@dataclass
 class QCconf:
     data_api: DataApi
+    regions: RegionsConfig
     QC_dependent: list[QcDependentEntry]
     QC: dict[str, QcEntry]
 
