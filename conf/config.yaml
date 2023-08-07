@@ -6,19 +6,12 @@ data_api:
   base_url: http://localhost:8080/FROST-Server/v1.1
   things:
     id: 1
-  datastreams:
-    top: 10
-  observations:
-    top: 100000
   filter:
     phenomenonTime:
       format: "%Y-%m-%d %H:%M"
       range:
         - 2023-08-02 12:00
         - 3003-01-01 00:00
-other:
-  pickle:
-    path: ${hydra:runtime.cwd}/features.pkl
 # example, not yet implemented
 QC_dependent:
   - independent: 69

@@ -8,7 +8,7 @@ from pandas.api import types
 from test_utils import cfg, mock_response, mock_response_full, mock_response_full_obs
 
 from models.enums import Df, Entities, Properties
-from services.config import filter_cfg_to_query
+from services.config import QCconf, filter_cfg_to_query
 from services.df import response_obs_to_df, response_single_datastream_to_df
 from services.requests import (
     build_query_datastreams,
@@ -30,8 +30,8 @@ from services.requests import (
 
 
 class TestServicesConfig:
-    def test_filter_cfg_to_query(self, cfg):
-        out = filter_cfg_to_query(cfg.data_api.get("filter", {}))
+    def test_filter_cfg_to_query(self, cfg: QCconf):
+        out = filter_cfg_to_query(cfg.data_api.filter)
         assert (
             out == "phenomenonTime gt 1002-01-01T00:00:00.000000Z and "
             "phenomenonTime lt 3003-01-01T00:00:00.000000Z"
@@ -39,20 +39,7 @@ class TestServicesConfig:
 
 
 class TestServicesRequests:
-    def test_build_query_observations(self, cfg):
-        filter_condition = filter_cfg_to_query(cfg.data_api.get("filter", {}))
-        top_observations = cfg.data_api.observations.top
-        q = build_query_observations(filter_condition, top_observations)
-        assert (
-            q == "http://testing.com/v1.1/Observations"
-            "?$top=10000&$select=FeatureOfInterest"
-            "&$filter=phenomenonTime gt 1002-01-01T00:00:00.000000Z and "
-            "phenomenonTime lt 3003-01-01T00:00:00.000000Z"
-            "&$select=@iot.id,result,phenomenonTime,FeatureOfInterest"
-            "&$expand=FeatureOfInterest"
-        )
-
-    def test_build_query_datastreams(self, cfg):
+    def test_build_query_datastreams(self, cfg: QCconf):
         q = build_query_datastreams(entity_id=cfg.data_api.things.id)
         assert (
             q == "http://testing.com/v1.1/Things(1)"

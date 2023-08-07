@@ -4,7 +4,6 @@ from collections import Counter
 from typing import Literal, Tuple
 
 import pandas as pd
-from pandas.api.types import CategoricalDtype
 from requests import post
 from stapy import Entity, Query
 

@@ -1,5 +1,3 @@
-from enum import Enum
-
 from strenum import StrEnum
 from ordered_enum.ordered_enum import OrderedEnum
 

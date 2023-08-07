@@ -1,14 +1,64 @@
+from dataclasses import dataclass
 from datetime import datetime
+from typing import Tuple
 
 from models.constants import ISO_STR_FORMAT
 from models.enums import Properties
 
 
-def filter_cfg_to_query(filter_cfg) -> str:
+@dataclass
+class PhenomenonTimeFilter:
+    format: str
+    range: Tuple[str, str]
+
+
+@dataclass
+class ThingConfig:
+    id: int
+
+
+@dataclass
+class FilterEntry:
+    phenomenonTime: PhenomenonTimeFilter
+
+
+@dataclass
+class DataApi:
+    base_url: str
+    things: ThingConfig
+    filter: FilterEntry
+
+
+@dataclass
+class Range:
+    range: Tuple[float, float]
+
+
+@dataclass
+class QcDependentEntry:
+    independent: int
+    dependent: int
+    QC: Range
+
+
+@dataclass
+class QcEntry:
+    range: Range
+    gradient: Range
+
+
+@dataclass
+class QCconf:
+    data_api: DataApi
+    QC_dependent: list[QcDependentEntry]
+    QC: dict[str, QcEntry]
+
+
+def filter_cfg_to_query(filter_cfg: FilterEntry) -> str:
     filter_condition = ""
     if filter_cfg:
-        range = filter_cfg.get(Properties.PHENOMENONTIME).get("range")
-        format = filter_cfg.get(Properties.PHENOMENONTIME).get("format")
+        range = filter_cfg.phenomenonTime.range
+        format = filter_cfg.phenomenonTime.format
 
         t0, t1 = [datetime.strptime(str(ti), format) for ti in range]
 

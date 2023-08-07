@@ -6,10 +6,8 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 from pandas.api.types import CategoricalDtype
-from shapely.geometry import Point
 
 from models.enums import Df, QualityFlags
-from qc_functions.functions import min_max_check_values
 
 log = logging.getLogger(__name__)
 
@@ -278,7 +276,7 @@ def set_qc_flag_range_check(
         # df_out.loc[mask],
         df_out,
         bool_=bool_tmp,
-        flag_on_true=QualityFlags.BAD,
+        flag_on_true=flag_on_fail,
         update_verified=True,
     )
     df_out.loc[df_tmp.index, df_tmp.columns] = df_tmp
