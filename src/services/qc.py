@@ -284,15 +284,25 @@ def set_qc_flag_range_check(
     return df_out
 
 
-# TODO: add check distance between consecutive points
+# TODO: refactor
 def get_bool_spacial_outlier_compared_to_median(
     df: gpd.GeoDataFrame, max_dx_dt: float, time_window: str
 ) -> pd.Series:
+
+    df["dt"] = df[Df.TIME].diff().fillna(pd.to_timedelta('0')).dt.total_seconds() # type: ignore
+    df["dt"] = (df[Df.TIME]-df[Df.TIME].min()).dt.total_seconds() # type: ignore
+
     rolling_median = (
         df.loc[:, [Df.TIME, Df.LONG, Df.LAT]]
         .sort_values(Df.TIME)
-        .rolling(time_window, on=Df.TIME)
+        .rolling(time_window, on=Df.TIME, center=True)
         .apply(np.median)
+    )
+    rolling_time = (
+        df.loc[:, [Df.TIME, "dt"]]
+        .sort_values(Df.TIME)
+        .rolling(time_window, on=Df.TIME, center=True)
+        .apply(np.sum)
     )
     ref_point = gpd.GeoDataFrame(  # type: ignore
         rolling_median,
@@ -300,11 +310,12 @@ def get_bool_spacial_outlier_compared_to_median(
             rolling_median.loc[:, Df.LONG], rolling_median.loc[:, Df.LAT]
         ),
     ).set_crs("EPSG:4326")
+    ref_point["dt"] = rolling_time["dt"]
     bool_series = (
         df.sort_values(Df.TIME)
         .loc[:, "geometry"]
         .to_crs("EPSG:4087")
         .distance(ref_point.loc[:, "geometry"].to_crs("EPSG:4087"))
-        > pd.Timedelta(time_window).total_seconds() * max_dx_dt
+        > ref_point["dt"] * max_dx_dt # type: ignore
     )
     return bool_series
