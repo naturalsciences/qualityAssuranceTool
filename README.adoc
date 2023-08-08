@@ -39,7 +39,7 @@ WARNING: the layers don't seem to follow the coastlines very accurately. For _in
 
 A rolling windows (see pandas documentation for more information) is used to calculate the median latitude and longitude.
 Then each location is compared with the median location.
-This distance is compared with the max distance the vessel can travel within the selected time window.
+This distance is compared with the max distance within the considered window.
 
 NOTE: This solution is not ideal.
 Calculating the angle between each line segment and comparing with a threshold might be better. 
