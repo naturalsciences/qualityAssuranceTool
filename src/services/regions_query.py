@@ -1,11 +1,16 @@
 import logging
 import time
 from typing import Sequence
+import pandas as pd
+import numpy as np
 
 import psycopg2
 import psycopg2.extensions
+from pydap.model import BaseType, GridType
 from shapely import Point, distance, intersects, set_srid
 from shapely.wkt import loads
+from utils.utils import find_nearest_idx
+# pydap.lib.CACHE = "/tmp/cache-pydap/" # doesn't seem to work
 
 from services.config import DbCredentials
 
@@ -189,3 +194,23 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+def get_depth_from_etop(
+    lat: pd.Series,
+    lon: pd.Series,
+    grid_data: GridType,
+    lat_var: BaseType,
+    lon_var: BaseType,
+):
+    df_out = pd.DataFrame({"lat": lat, "lon": lon})
+    df_out["lat_idx"] = df_out.apply(
+        lambda x: find_nearest_idx(np.linspace(-90+1./120, 90-1./120., int(180*60)), x["lat"]), axis=1
+    )
+    df_out["lon_idx"] = df_out.apply(
+        lambda x: find_nearest_idx(np.linspace(-180+1./120., 180-1./120., int(2*180*60)), x["lon"]), axis=1
+    )
+    df_out["z"] = df_out.apply(
+        lambda x: grid_data[int(x["lat_idx"]), int(x["lon_idx"])].z.data.take(0), axis=1
+    )
+    return df_out
