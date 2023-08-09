@@ -298,8 +298,8 @@ def test_qc_range(df_testing):
     ] = [2.0, 9.2]
     bool_range = get_bool_out_of_range(df=df_testing, qc_on=Df.RESULT, qc_type="range")
     bool_ref = pd.Series(
-        [True, False, False, False, True] + [False] * LENGTH_SLICE,
-        index=df_testing.index,
+        [True, False, False, False, True],
+        index=df_testing.loc[df_testing[Df.DATASTREAM_ID] == 0].index,
         dtype=bool,
     )
     pdt.assert_series_equal(bool_ref, bool_range, check_names=False)

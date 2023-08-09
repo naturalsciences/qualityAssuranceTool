@@ -13,6 +13,8 @@ from utils.utils import find_nearest_idx
 # pydap.lib.CACHE = "/tmp/cache-pydap/" # doesn't seem to work
 
 from services.config import DbCredentials
+import netCDF4 as nc
+import xarray as xr
 
 # from services.df import seavox_to_df
 
@@ -106,90 +108,6 @@ def main():
     print(f"contains: {t4-t3}")
 
     print(f"done")
-    # res_regions = list(map(lambda x: (x[0], x[1]), res))
-    # t4 = time.time()
-    # res_regions = list(
-    #     zip(*list(zip(*res))[:2])
-    # )  # same as "list(map(lambda x: (x[0], x[1]), res))"", but faster
-    # t5 = time.time()
-    # df = seavox_to_df(res_regions)
-    # print(f"duration: {t3-t0}")
-    # print(f"duration map: {t4-t3}")
-    # print(f"duration zipzip: {t5-t4}")
-    # print(res)
-    # points_query = """
-    #         (ST_MakePoint(4., 51.7)),
-    #         (ST_MakePoint(5., 51.6)),
-    #         (ST_MakePoint(5., 51.27)),
-    #         (ST_MakePoint(5., 51.27)),
-    #         (ST_MakePoint(5., 51.27)),
-    #         (ST_MakePoint(5., 51.27)),
-    #         (ST_MakePoint(5., 51.27)),
-    #         (ST_MakePoint(5., 51.27)),
-    #         (ST_MakePoint(5., 51.27)),
-    #         (ST_MakePoint(5., 51.27)),
-    #         (ST_MakePoint(5., 51.27)),
-    #         (ST_MakePoint(5., 51.27)),
-    #         (ST_MakePoint(5., 51.27)),
-    #         (ST_MakePoint(5., 51.27)),
-    #         (ST_MakePoint(5., 51.27)),
-    #         (ST_MakePoint(5., 51.27)),
-    #         (ST_MakePoint(5., 51.27)),
-    #         (ST_MakePoint(5., 51.27)),
-    #         (ST_MakePoint(5., 51.27)),
-    #         (ST_MakePoint(5., 51.27)),
-    #         (ST_MakePoint(5., 51.27)),
-    #         (ST_MakePoint(5., 51.27)),
-    #         (ST_MakePoint(5., 51.27)),
-    #         (ST_MakePoint(5., 51.27)),
-    #         (ST_MakePoint(5., 51.27)),
-    #         (ST_MakePoint(5., 51.27)),
-    #         (ST_MakePoint(5., 51.27)),
-    #         (ST_MakePoint(5., 51.27)),
-    #         (ST_MakePoint(6., 51.5)),
-    #         (ST_MakePoint(8., 51.17)),
-    #         (ST_MakePoint(9., 51.5)),
-    #         (ST_MakePoint(15., 52.5)),
-    #         (ST_MakePoint(7., 55.34)),
-    #         (ST_MakePoint(8., 42.5)),
-    #         (ST_MakePoint(8., 61.5))
-    # """
-    # query = build_query_points(points_query)
-    # with connect() as c:
-    #     t2 = time.time()
-    #     with c.cursor() as cursor:
-    #         results = []
-    #         cursor.execute(query)
-    #         res = cursor.fetchall()
-    # t1 = time.time()
-    # print(res)
-    # # with connect() as c:
-    # #     with c.cursor() as cursor:
-    # #         results = []
-    # #         for point in points:
-    # #             query = build_query("seavox_sea_areas", point)
-
-    # #             cursor.execute(query)
-    # #             regions = cursor.fetchall()
-    # #             results.append({"point": point, "regions": regions})
-
-    # print(f"duration: {t1-t0}")
-    # print(f"duration: {t2-t0}")
-    # t3 = time.time()
-    # with connect() as c:
-    #     with c.cursor() as cursor:
-    #         results = []
-    #         for point in points:
-    #             query = build_query("seavox_sea_areas", point)
-
-    #             cursor.execute(query)
-    #             regions = cursor.fetchall()
-    #             results.append({"point": point, "regions": regions})
-    # t4 = time.time()
-    # print(f"{t4-t3}")
-    # #
-    # # print(build_query("str", [1, 2]))
-    # # print(build_query("str", (1, 2)))
 
 
 if __name__ == "__main__":
@@ -198,19 +116,11 @@ if __name__ == "__main__":
 
 def get_depth_from_etop(
     lat: pd.Series,
-    lon: pd.Series,
-    grid_data: GridType,
-    lat_var: BaseType,
-    lon_var: BaseType,
+    lon: pd.Series
 ):
-    df_out = pd.DataFrame({"lat": lat, "lon": lon})
-    df_out["lat_idx"] = df_out.apply(
-        lambda x: find_nearest_idx(np.linspace(-90+1./120, 90-1./120., int(180*60)), x["lat"]), axis=1
-    )
-    df_out["lon_idx"] = df_out.apply(
-        lambda x: find_nearest_idx(np.linspace(-180+1./120., 180-1./120., int(2*180*60)), x["lon"]), axis=1
-    )
-    df_out["z"] = df_out.apply(
-        lambda x: grid_data[int(x["lat_idx"]), int(x["lon_idx"])].z.data.take(0), axis=1
-    )
-    return df_out
+    datasetx = xr.open_dataset("./resources/ETOPO_2022_v1_60s_N90W180_bed.nc")
+
+    coords_dataarray = xr.DataArray(list(zip(lat, lon)), dims=["points", "coords"], name="coords")
+    z_values = datasetx["z"].sel(lat=coords_dataarray[:, 0], lon=coords_dataarray[:, 1], method="nearest").values
+
+    return z_values

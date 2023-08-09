@@ -10,7 +10,7 @@ data_api:
     phenomenonTime:
       format: "%Y-%m-%d %H:%M"
       range:
-        - 2023-08-02 12:00
+        - 2023-07-02 12:00
         - 3003-01-01 00:00
 location:
   connection:

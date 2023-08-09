@@ -25,6 +25,16 @@ from services.requests import get_all_data, patch_qc_flags
 
 log = logging.getLogger(__name__)
 
+def get_bool_depth_below_threshold(df: pd.DataFrame, threshold: float) -> pd.Series:
+    mask_is_none = df[Df.REGION].isnull()  # type: ignore
+    df_coords_none_unique = df.loc[mask_is_none, [Df.LONG, Df.LAT]] # type: ignore
+    bool_depth = get_depth_from_etop(
+        lat=df_coords_none_unique[Df.LAT],  # type: ignore
+        lon=df_coords_none_unique[Df.LONG]  # type: ignore
+    ) < threshold
+    bool_out = pd.Series(bool_depth, index=df.loc[mask_is_none].index) # type: ignore
+    return bool_out
+
 
 @hydra.main(config_path="../conf", config_name="config.yaml", version_base="1.2")
 def main(cfg: QCconf):
@@ -55,8 +65,7 @@ def main(cfg: QCconf):
         ).apply(pd.Series)
 
     df_all = calc_gradient_results(df_all, Df.DATASTREAM_ID)
-    df_merge = df_all.merge(qc_df, on=Df.OBSERVATION_TYPE, how="left")
-    df_merge.set_index(Df.IOT_ID)
+    
 
     t_df1 = time.time()
     t_qc0 = time.time()
@@ -68,22 +77,14 @@ def main(cfg: QCconf):
         max_queries=5,
         max_query_points=20,
     )
-    df_all = qc_region(df_all)
-    # SOME ARE SET TO 5 DON'T KNOW WHY
+    df_all = qc_region(df_all, flag_none=QualityFlags.NO_QUALITY_CONTROL)
 
-    # pydap.lib.CACHE = "/tmp/cache-pydap/" # doesn't seem to work
-    url_etop = "https://www.ngdc.noaa.gov/thredds/dodsC/global/ETOPO2022/60s/60s_geoid_netcdf/ETOPO_2022_v1_60s_N90W180_geoid.nc"
-    dataset = open_url(url_etop)
-
-    mask_is_none = df_all[Df.REGION].isnull()  # type: ignore
-    df_coords_none_unique = df_all.loc[mask_is_none, [Df.LONG, Df.LAT]].drop_duplicates() # type: ignore
-    bool_depth = get_depth_from_etop(
-        lat=df_coords_none_unique[Df.LAT],  # type: ignore
-        lon=df_coords_none_unique[Df.LONG],  # type: ignore
-        grid_data=dataset.z,
-        lat_var=dataset["lat"],
-        lon_var=dataset["lon"],
-    ) < 0.
+    bool_depth_below_0 = get_bool_depth_below_threshold(df_all, threshold=0.)
+    df_all.update(get_qc_flag_from_bool(
+        df_all,
+        bool_= bool_depth_below_0, # type: ignore
+        flag_on_true=QualityFlags.PROBABLY_GOOD,
+        update_verified=False)[[Df.QC_FLAG]])
 
     ## outliers location
     bool_outlier = get_bool_spacial_outlier_compared_to_median(
@@ -99,27 +100,30 @@ def main(cfg: QCconf):
     )
 
     t_region1 = time.time()
-    if nb_observations != df_merge.shape[0]:
+    df_all = df_all.merge(qc_df, on=Df.OBSERVATION_TYPE, how="left")
+    df_all.set_index(Df.IOT_ID)
+    if nb_observations != df_all.shape[0]:
         raise RuntimeError("Not all observations are included in the dataframe.")
 
-    bool_range = get_bool_out_of_range(df=df_merge, qc_on=Df.RESULT, qc_type="range")
-    df_merge.update(
+    bool_range = get_bool_out_of_range(df=df_all, qc_on=Df.RESULT, qc_type="range")
+    df_all.update(
         get_qc_flag_from_bool(
-            df_merge,
+            df_all,
             bool_=bool_range,
             flag_on_true=QualityFlags.BAD,
             update_verified=True,
         )
     )
+
     # df_merge = set_qc_flag_range_check(
     # df_merge, qc_type="range", qc_on=Df.RESULT, flag_on_fail=QualityFlags.BAD
     # )
     bool_gradient = get_bool_out_of_range(
-        df=df_merge, qc_on=Df.GRADIENT, qc_type="gradient"
+        df=df_all, qc_on=Df.GRADIENT, qc_type="gradient"
     )
-    df_merge.update(
+    df_all.update(
         get_qc_flag_from_bool(
-            df_merge,
+            df_all,
             bool_=bool_gradient,
             flag_on_true=QualityFlags.BAD,
             update_verified=True,
@@ -132,21 +136,21 @@ def main(cfg: QCconf):
     t_ranges1 = time.time()
 
     t_flag_ranges0 = time.time()
-    df_merge[Df.VALID] = df_merge[Df.VALID] & df_merge[Df.VERIFIED].astype(bool)
-    df_merge.loc[df_merge[Df.VALID], Df.QC_FLAG] = QualityFlags.GOOD  # type:ignore
+    df_all[Df.VALID] = df_all[Df.VALID] & df_all[Df.VERIFIED].astype(bool)
+    df_all.loc[df_all[Df.VALID], Df.QC_FLAG] = QualityFlags.GOOD  # type:ignore
 
     t_flag_ranges1 = time.time()
 
     t_dependent0 = time.time()
-    df_merge = qc_dependent_quantity_base(df_merge, independent=69, dependent=124)
-    df_merge = qc_dependent_quantity_secondary(
-        df_merge, independent=69, dependent=124, range_=(5.0, 10)
+    df_all = qc_dependent_quantity_base(df_all, independent=69, dependent=124)
+    df_all = qc_dependent_quantity_secondary(
+        df_all, independent=69, dependent=124, range_=(5.0, 10)
     )
     t_dependent1 = time.time()
 
-    log.info(f"{df_merge[Df.QC_FLAG].value_counts(dropna=False).to_json()=}")
+    log.info(f"{df_all[Df.QC_FLAG].value_counts(dropna=False).to_json()=}")
     log.info(
-        f"{df_merge[[Df.OBSERVATION_TYPE, Df.QC_FLAG]].value_counts(dropna=False).to_json()=}"
+        f"{df_all[[Df.OBSERVATION_TYPE, Df.QC_FLAG]].value_counts(dropna=False).to_json()=}"
     )
 
     cfg_dependent = cfg.QC_dependent
@@ -154,7 +158,7 @@ def main(cfg: QCconf):
     t_patch0 = time.time()
     t3 = time.time()
     url = "http://localhost:8080/FROST-Server/v1.1/$batch"
-    counter = patch_qc_flags(df_merge.reset_index(), url=url)
+    counter = patch_qc_flags(df_all.reset_index(), url=url)
     t_patch1 = time.time()
     tend = time.time()
     log.info(f"df requests/construction duration: {t_df1 - t_df0}")

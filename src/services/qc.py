@@ -30,13 +30,15 @@ def get_bool_out_of_range(
     qc_type_min = f"qc_{qc_type}_min"
     qc_type_max = f"qc_{qc_type}_max"
 
-    # if isinstance(qc_on, tuple):
-    #     qc_type_min = (qc_type_max, qc_on[1])
-    #     qc_type_max= (qc_type_min, qc_on[1])
+    mask_max_not_null = ~df[qc_type_max].isnull()
+    mask_min_not_null = ~df[qc_type_min].isnull()
+    s_bool_out = (df.loc[mask_max_not_null, qc_on] > df.loc[mask_max_not_null, qc_type_max]) | (df.loc[mask_min_not_null, qc_on] < df.loc[mask_min_not_null, qc_type_min])  # type: ignore
 
-    s_bool_out = ((df[qc_on] > df[qc_type_max]) & ~df[qc_type_max].isnull()) | (
-        (df[qc_on] < df[qc_type_min]) & ~df[qc_type_min].isnull()
-    )
+    # s_bool_out = (df.loc[mask_not_null, qc_on] > df.loc[mask_not_null, qc_type_max]) &
+
+    # s_bool_out = ((df[qc_on] > df[qc_type_max]) & ~df[qc_type_max].isnull()) | (
+    #     (df[qc_on] < df[qc_type_min]) & ~df[qc_type_min].isnull()
+    # )
     return s_bool_out
 
 
@@ -80,14 +82,18 @@ def get_bool_land_region(df: pd.DataFrame) -> pd.Series:
     return bool_mainland
 
 
-def qc_region(df: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+def qc_region(
+    df: gpd.GeoDataFrame,
+    flag_none: QualityFlags = QualityFlags.PROBABLY_BAD,
+    flag_mainland: QualityFlags = QualityFlags.BAD,
+) -> gpd.GeoDataFrame:
     df_out = deepcopy(df)
 
     bool_nan = get_bool_null_region(df_out)
     df_out.loc[bool_nan.index, Df.QC_FLAG] = get_qc_flag_from_bool(
         df=df_out.loc[bool_nan.index],
         bool_=bool_nan,
-        flag_on_true=QualityFlags.PROBABLY_BAD,
+        flag_on_true=flag_none,
         update_verified=False,
     )[Df.QC_FLAG]
 
@@ -95,7 +101,7 @@ def qc_region(df: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     df_out.loc[bool_mainland.index, Df.QC_FLAG] = get_qc_flag_from_bool(
         df=df_out.loc[bool_mainland.index],
         bool_=bool_mainland,
-        flag_on_true=QualityFlags.BAD,
+        flag_on_true=flag_mainland,
         update_verified=False,
     )[Df.QC_FLAG]
 
@@ -175,7 +181,9 @@ def strip_df_to_minimal_required_dependent_quantity(df, independent, dependent):
     return df_out
 
 
-def get_bool_flagged_dependent_quantity(df: pd.DataFrame, independent: int, dependent: int):
+def get_bool_flagged_dependent_quantity(
+    df: pd.DataFrame, independent: int, dependent: int
+):
     df_tmp = strip_df_to_minimal_required_dependent_quantity(
         df, independent=independent, dependent=dependent
     )
@@ -187,7 +195,7 @@ def get_bool_flagged_dependent_quantity(df: pd.DataFrame, independent: int, depe
     mask = ~df_pivot[Df.QC_FLAG, str(independent)].isin(
         [QualityFlags.NO_QUALITY_CONTROL, QualityFlags.GOOD]
     )
-    bool_ = df[Df.IOT_ID].isin(df_pivot.loc[mask, (Df.IOT_ID, str(dependent))].values) # type: ignore
+    bool_ = df[Df.IOT_ID].isin(df_pivot.loc[mask, (Df.IOT_ID, str(dependent))].values)  # type: ignore
     return bool_
 
 
@@ -288,9 +296,8 @@ def set_qc_flag_range_check(
 def get_bool_spacial_outlier_compared_to_median(
     df: gpd.GeoDataFrame, max_dx_dt: float, time_window: str
 ) -> pd.Series:
-
-    df["dt"] = df[Df.TIME].diff().fillna(pd.to_timedelta('0')).dt.total_seconds() # type: ignore
-    df["dt"] = (df[Df.TIME]-df[Df.TIME].min()).dt.total_seconds() # type: ignore
+    df["dt"] = df[Df.TIME].diff().fillna(pd.to_timedelta("0")).dt.total_seconds()  # type: ignore
+    df["dt"] = (df[Df.TIME] - df[Df.TIME].min()).dt.total_seconds()  # type: ignore
 
     rolling_median = (
         df.loc[:, [Df.TIME, Df.LONG, Df.LAT]]
@@ -316,6 +323,6 @@ def get_bool_spacial_outlier_compared_to_median(
         .loc[:, "geometry"]
         .to_crs("EPSG:4087")
         .distance(ref_point.loc[:, "geometry"].to_crs("EPSG:4087"))
-        > ref_point["dt"] * max_dx_dt # type: ignore
+        > ref_point["dt"] * max_dx_dt  # type: ignore
     )
     return bool_series

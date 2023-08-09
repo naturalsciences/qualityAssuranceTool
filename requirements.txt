@@ -20,3 +20,4 @@ pytest-cov
 
 ordered_enum
 pydap
+xarray
