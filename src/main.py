@@ -4,7 +4,6 @@ import time
 import geopandas as gpd
 import hydra
 import pandas as pd
-import pydap.lib
 import stapy
 from pydap.client import open_url
 
@@ -13,6 +12,8 @@ from services.config import QCconf, filter_cfg_to_query
 from services.df import intersect_df_region
 from services.qc import (
     calc_gradient_results,
+    get_bool_land_region,
+    get_bool_null_region,
     get_bool_out_of_range,
     get_bool_spacial_outlier_compared_to_median,
     get_qc_flag_from_bool,
@@ -77,12 +78,31 @@ def main(cfg: QCconf):
         max_queries=5,
         max_query_points=20,
     )
-    df_all = qc_region(df_all, flag_none=QualityFlags.NO_QUALITY_CONTROL)
+
+    bool_nan = get_bool_null_region(df_all)
+    df_all.update(
+        get_qc_flag_from_bool(
+            df_all,
+            bool_=bool_nan,
+            flag_on_true=QualityFlags.PROBABLY_BAD,
+            update_verified=False,
+        )[[Df.QC_FLAG]]
+    )
+
+    bool_mainland = get_bool_land_region(df_all)
+    df_all.update(
+        get_qc_flag_from_bool(
+            df_all,
+            bool_=bool_mainland,
+            flag_on_true=QualityFlags.BAD,
+            update_verified=False,
+        )[[Df.QC_FLAG]]
+    )
 
     bool_depth_below_0 = get_bool_depth_below_threshold(df_all, threshold=0.)
     df_all.update(get_qc_flag_from_bool(
         df_all,
-        bool_= bool_depth_below_0, # type: ignore
+        bool_= bool_depth_below_0,
         flag_on_true=QualityFlags.PROBABLY_GOOD,
         update_verified=False)[[Df.QC_FLAG]])
 
@@ -136,8 +156,8 @@ def main(cfg: QCconf):
     t_ranges1 = time.time()
 
     t_flag_ranges0 = time.time()
-    df_all[Df.VALID] = df_all[Df.VALID] & df_all[Df.VERIFIED].astype(bool)
-    df_all.loc[df_all[Df.VALID], Df.QC_FLAG] = QualityFlags.GOOD  # type:ignore
+    # df_all[Df.VALID] = df_all[Df.VALID] & df_all[Df.VERIFIED].astype(bool)
+    # df_all.loc[df_all[Df.VALID], Df.QC_FLAG] = QualityFlags.GOOD  # type:ignore
 
     t_flag_ranges1 = time.time()
 

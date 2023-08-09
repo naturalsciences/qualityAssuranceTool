@@ -1,3 +1,4 @@
+from copy import deepcopy
 from itertools import product
 from operator import add
 from typing import Sequence
@@ -12,7 +13,10 @@ from models.enums import Df, QualityFlags
 from services.qc import (
     CAT_TYPE,
     calc_gradient_results,
+    get_bool_land_region,
+    get_bool_null_region,
     get_bool_out_of_range,
+    get_qc_flag_from_bool,
     qc_dependent_quantity_base,
     qc_dependent_quantity_secondary,
     qc_region,
@@ -85,7 +89,7 @@ def df_testing() -> gpd.GeoDataFrame:
             Df.QC_FLAG
             + "_ref": pd.Series(qc_ref_base * MULTIPL_FACTOR, dtype=CAT_TYPE),
             Df.QC_FLAG: pd.Series(
-                QualityFlags.NO_QUALITY_CONTROL, index=datastream_id_series.index
+                QualityFlags.NO_QUALITY_CONTROL, index=datastream_id_series.index, dtype=CAT_TYPE
             ),
             Df.DATASTREAM_ID: pd.Series(
                 list(
@@ -143,7 +147,28 @@ def test_location_mainland_eu():
 
 def test_qc_region_to_flag(df_testing):
     # pandas does strange things with type hints
-    df_out = qc_region(df_testing)
+    # df_out = qc_region(df_testing)
+    df_out = deepcopy(df_testing)
+    bool_nan = get_bool_null_region(df_out)
+    df_out.update(
+        get_qc_flag_from_bool(
+            df_out,
+            bool_=bool_nan,
+            flag_on_true=QualityFlags.PROBABLY_BAD,
+            update_verified=False,
+        )[[Df.QC_FLAG]]
+    )
+
+    bool_mainland = get_bool_land_region(df_out)
+    df_out.update(
+        get_qc_flag_from_bool(
+            df_out,
+            bool_=bool_mainland,
+            flag_on_true=QualityFlags.BAD,
+            update_verified=False,
+        )[[Df.QC_FLAG]]
+    )
+ 
     pdt.assert_series_equal(
         df_out.loc[:, Df.QC_FLAG],
         df_out.loc[:, Df.QC_FLAG + "_ref"],

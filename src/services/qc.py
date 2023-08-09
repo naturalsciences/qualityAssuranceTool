@@ -34,43 +34,7 @@ def get_bool_out_of_range(
     mask_min_not_null = ~df[qc_type_min].isnull()
     s_bool_out = (df.loc[mask_max_not_null, qc_on] > df.loc[mask_max_not_null, qc_type_max]) | (df.loc[mask_min_not_null, qc_on] < df.loc[mask_min_not_null, qc_type_min])  # type: ignore
 
-    # s_bool_out = (df.loc[mask_not_null, qc_on] > df.loc[mask_not_null, qc_type_max]) &
-
-    # s_bool_out = ((df[qc_on] > df[qc_type_max]) & ~df[qc_type_max].isnull()) | (
-    #     (df[qc_on] < df[qc_type_min]) & ~df[qc_type_min].isnull()
-    # )
     return s_bool_out
-
-
-# # TODO: refactor
-# def qc_df(df_in, function):
-#     # http://vocab.nerc.ac.uk/collection/L20/current/
-#     df_out = deepcopy(df_in)
-#     df_out["bool"] = function(df_out[Df.RESULT].array)
-#     df_out.loc[~df_out["bool"], Df.QC_FLAG] = QualityFlags.PROBABLY_GOOD
-#     df_out.loc[df_out["bool"], Df.QC_FLAG] = QualityFlags.PROBABLY_BAD
-#     return df_out
-
-
-##  TODO: refactor
-# def qc_on_df(df: pd.DataFrame, cfg: dict[Df, dict]) -> pd.DataFrame:
-#     df_out = deepcopy(df)
-#     # df_out["bool"] = None
-#     # df_out[Df.QC_FLAG] = None
-#     for _, row in (
-#         df_out[[Df.DATASTREAM_ID, Df.UNITS, Df.OBSERVATION_TYPE]]
-#         .drop_duplicates()
-#         .iterrows()
-#     ):
-#         d_id_i, u_i, ot_i = row.values
-#         df_sub = df_out.loc[df_out[Df.DATASTREAM_ID] == d_id_i]
-#         cfg_ds_i = cfg.get("QC", {}).get(ot_i, {})
-#         if cfg_ds_i:
-#             min_, max_ = cfg_ds_i.get("range", (0, 0))
-#             function_i = partial(min_max_check_values, min_=min_, max_=max_)
-#             df_sub = qc_df(df_sub, function_i)
-#             df_out.loc[df_sub.index] = df_sub
-#     return df_out
 
 
 def get_bool_null_region(df: pd.DataFrame) -> pd.Series:
@@ -258,16 +222,8 @@ def get_qc_flag_from_bool(
     flag_on_true: QualityFlags,
     update_verified: bool,
 ) -> pd.DataFrame:
-    df.loc[bool_.index, Df.VERIFIED] = True
-    df[Df.VALID] = (df.get(Df.VALID, True) & bool_) | ~df[Df.VERIFIED].astype(bool)  # type: ignore
-
-    df.loc[bool_ & (df[Df.QC_FLAG] < QualityFlags(flag_on_true)), Df.QC_FLAG] = QualityFlags(flag_on_true)  # type: ignore
-    df[Df.QC_FLAG] = df[Df.QC_FLAG].astype(CAT_TYPE)
-
-    columns_out = list(
-        compress([Df.QC_FLAG, Df.VALID, Df.VERIFIED], [True, True, update_verified])
-    )
-    return df[columns_out]
+    qc_flag_series = pd.Series(flag_on_true, index= bool_.index, dtype=CAT_TYPE).loc[bool_]
+    return pd.DataFrame(qc_flag_series, columns=[Df.QC_FLAG])
 
 
 # test needed!

@@ -117,6 +117,4 @@ class Df(StrEnum):
     SUB_REGION = "Sub-region"
     LONG = "long"
     LAT = "lat"
-    VERIFIED = "verified"
-    VALID = "valid"
     OBSERVED_PROPERTY_ID = "observed_property_id"
