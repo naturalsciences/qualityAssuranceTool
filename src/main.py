@@ -5,36 +5,19 @@ import geopandas as gpd
 import hydra
 import pandas as pd
 import stapy
-from pydap.client import open_url
 
 from models.enums import Df, QualityFlags
 from services.config import QCconf, filter_cfg_to_query
 from services.df import intersect_df_region
-from services.qc import (
-    calc_gradient_results,
-    get_bool_land_region,
-    get_bool_null_region,
-    get_bool_out_of_range,
-    get_bool_spacial_outlier_compared_to_median,
-    get_qc_flag_from_bool,
-    qc_dependent_quantity_base,
-    qc_dependent_quantity_secondary,
-    qc_region,
-)
-from services.regions_query import get_depth_from_etop
-from services.requests import get_all_data, patch_qc_flags
+from services.qc import (calc_gradient_results, get_bool_depth_below_threshold,
+                         get_bool_land_region, get_bool_null_region,
+                         get_bool_out_of_range,
+                         get_bool_spacial_outlier_compared_to_median,
+                         get_qc_flag_from_bool, qc_dependent_quantity_base,
+                         qc_dependent_quantity_secondary)
+from services.requests import get_all_data, get_elev_netcdf, patch_qc_flags
 
 log = logging.getLogger(__name__)
-
-def get_bool_depth_below_threshold(df: pd.DataFrame, threshold: float) -> pd.Series:
-    mask_is_none = df[Df.REGION].isnull()  # type: ignore
-    df_coords_none_unique = df.loc[mask_is_none, [Df.LONG, Df.LAT]] # type: ignore
-    bool_depth = get_depth_from_etop(
-        lat=df_coords_none_unique[Df.LAT],  # type: ignore
-        lon=df_coords_none_unique[Df.LONG]  # type: ignore
-    ) < threshold
-    bool_out = pd.Series(bool_depth, index=df.loc[mask_is_none].index) # type: ignore
-    return bool_out
 
 
 @hydra.main(config_path="../conf", config_name="config.yaml", version_base="1.2")
@@ -48,6 +31,7 @@ def main(cfg: QCconf):
 
     thing_id = cfg.data_api.things.id
 
+    get_elev_netcdf()
     filter_cfg = filter_cfg_to_query(cfg.data_api.filter)
 
     # get data in dataframe
@@ -66,7 +50,6 @@ def main(cfg: QCconf):
         ).apply(pd.Series)
 
     df_all = calc_gradient_results(df_all, Df.DATASTREAM_ID)
-    
 
     t_df1 = time.time()
     t_qc0 = time.time()
@@ -99,12 +82,15 @@ def main(cfg: QCconf):
         )[[Df.QC_FLAG]]
     )
 
-    bool_depth_below_0 = get_bool_depth_below_threshold(df_all, threshold=0.)
-    df_all.update(get_qc_flag_from_bool(
-        df_all,
-        bool_= bool_depth_below_0,
-        flag_on_true=QualityFlags.PROBABLY_GOOD,
-        update_verified=False)[[Df.QC_FLAG]])
+    bool_depth_below_0 = get_bool_depth_below_threshold(df_all, threshold=0.0)
+    df_all.update(
+        get_qc_flag_from_bool(
+            df_all,
+            bool_=bool_depth_below_0,
+            flag_on_true=QualityFlags.PROBABLY_GOOD,
+            update_verified=False,
+        )[[Df.QC_FLAG]]
+    )
 
     ## outliers location
     bool_outlier = get_bool_spacial_outlier_compared_to_median(

@@ -1,6 +1,7 @@
 import copy
 import logging
 from datetime import datetime
+from pathlib import Path
 
 import numpy as np
 from stapy import Entity, Query
@@ -86,3 +87,10 @@ def find_nearest_idx(array, value):
     # array = np.asarray(array)
     idx = (np.abs(array - value)).argmin()
     return idx
+
+
+def get_absolute_path_to_base():
+    current_file = Path(__file__)
+    idx_src = current_file.parts.index("src")
+    out = current_file.parents[len(current_file.parts)-idx_src -1]
+    return out

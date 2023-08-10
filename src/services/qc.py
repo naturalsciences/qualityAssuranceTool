@@ -8,6 +8,7 @@ import pandas as pd
 from pandas.api.types import CategoricalDtype
 
 from models.enums import Df, QualityFlags
+from services.regions_query import get_depth_from_etop
 
 log = logging.getLogger(__name__)
 
@@ -222,7 +223,9 @@ def get_qc_flag_from_bool(
     flag_on_true: QualityFlags,
     update_verified: bool,
 ) -> pd.DataFrame:
-    qc_flag_series = pd.Series(flag_on_true, index= bool_.index, dtype=CAT_TYPE).loc[bool_]
+    qc_flag_series = pd.Series(flag_on_true, index=bool_.index, dtype=CAT_TYPE).loc[
+        bool_
+    ]
     return pd.DataFrame(qc_flag_series, columns=[Df.QC_FLAG])
 
 
@@ -282,3 +285,17 @@ def get_bool_spacial_outlier_compared_to_median(
         > ref_point["dt"] * max_dx_dt  # type: ignore
     )
     return bool_series
+
+
+def get_bool_depth_below_threshold(df: pd.DataFrame, threshold: float) -> pd.Series:
+    mask_is_none = df[Df.REGION].isnull()  # type: ignore
+    df_coords_none_unique = df.loc[mask_is_none, [Df.LONG, Df.LAT]]  # type: ignore
+    bool_depth = (
+        get_depth_from_etop(
+            lat=df_coords_none_unique[Df.LAT],  # type: ignore
+            lon=df_coords_none_unique[Df.LONG],  # type: ignore
+        )
+        < threshold
+    )
+    bool_out = pd.Series(bool_depth, index=df.loc[mask_is_none].index)  # type: ignore
+    return bool_out

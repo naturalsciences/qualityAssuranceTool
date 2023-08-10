@@ -4,26 +4,16 @@ from collections import Counter
 from typing import Literal, Tuple
 
 import pandas as pd
-from requests import post
+from requests import get, post
 from stapy import Entity, Query
 
-from models.enums import (
-    Df,
-    Entities,
-    Filter,
-    Order,
-    OrderOption,
-    Properties,
-    Qactions,
-    Settings,
-)
+from models.enums import (Df, Entities, Filter, Order, OrderOption, Properties,
+                          Qactions, Settings)
 from services.config import filter_cfg_to_query
-from services.df import (
-    df_type_conversions,
-    features_request_to_df,
-    response_single_datastream_to_df,
-)
-from utils.utils import convert_to_datetime, log, series_to_patch_dict, update_response
+from services.df import (df_type_conversions, features_request_to_df,
+                         response_single_datastream_to_df)
+from utils.utils import (convert_to_datetime, get_absolute_path_to_base, log,
+                         series_to_patch_dict, update_response)
 
 log = logging.getLogger(__name__)
 
@@ -387,3 +377,17 @@ def patch_qc_flags(df: pd.DataFrame, url) -> Counter:
     log.info("End batch patch query")
     log.info(f"{json.dumps(count_res)}")
     return count_res
+
+
+def get_elev_netcdf() -> None:
+    url_ETOPO = "https://www.ngdc.noaa.gov/thredds/fileServer/global/ETOPO2022/60s/60s_bed_elev_netcdf/ETOPO_2022_v1_60s_N90W180_bed.nc"
+    filename_ETOPO = url_ETOPO.rsplit("/", 1)[1]
+    local_file = (
+        get_absolute_path_to_base().joinpath("resources").joinpath(filename_ETOPO)
+    )
+
+    if not local_file.exists():
+        r = get(url_ETOPO, stream=True)
+        with open(local_file, "wb") as f:
+            for chunk in r.iter_content():
+                f.write(chunk)
