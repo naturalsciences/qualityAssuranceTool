@@ -150,24 +150,20 @@ def test_qc_region_to_flag(df_testing):
     # df_out = qc_region(df_testing)
     df_out = deepcopy(df_testing)
     bool_nan = get_bool_null_region(df_out)
-    df_out.update(
+    df_out[Df.QC_FLAG] = df_out[Df.QC_FLAG].combine(
         get_qc_flag_from_bool(
-            df_out,
             bool_=bool_nan,
             flag_on_true=QualityFlags.PROBABLY_BAD,
-            update_verified=False,
-        )[[Df.QC_FLAG]]
-    )
+        ), max, fill_value=QualityFlags.NO_QUALITY_CONTROL
+    ).astype(CAT_TYPE)
 
     bool_mainland = get_bool_land_region(df_out)
-    df_out.update(
+    df_out[Df.QC_FLAG] = df_out[Df.QC_FLAG].combine(
         get_qc_flag_from_bool(
-            df_out,
             bool_=bool_mainland,
             flag_on_true=QualityFlags.BAD,
-            update_verified=False,
-        )[[Df.QC_FLAG]]
-    )
+        ), max, fill_value=QualityFlags.NO_QUALITY_CONTROL
+    ).astype(CAT_TYPE)
  
     pdt.assert_series_equal(
         df_out.loc[:, Df.QC_FLAG],

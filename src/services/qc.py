@@ -1,3 +1,4 @@
+import json
 import logging
 from copy import deepcopy
 from itertools import compress
@@ -9,6 +10,7 @@ from pandas.api.types import CategoricalDtype
 
 from models.enums import Df, QualityFlags
 from services.regions_query import get_depth_from_etop
+from utils.utils import merge_json_str
 
 log = logging.getLogger(__name__)
 
@@ -56,18 +58,14 @@ def qc_region(
 
     bool_nan = get_bool_null_region(df_out)
     df_out.loc[bool_nan.index, Df.QC_FLAG] = get_qc_flag_from_bool(
-        df=df_out.loc[bool_nan.index],
         bool_=bool_nan,
         flag_on_true=flag_none,
-        update_verified=False,
     )[Df.QC_FLAG]
 
     bool_mainland = get_bool_land_region(df_out)
     df_out.loc[bool_mainland.index, Df.QC_FLAG] = get_qc_flag_from_bool(
-        df=df_out.loc[bool_mainland.index],
         bool_=bool_mainland,
         flag_on_true=flag_mainland,
-        update_verified=False,
     )[Df.QC_FLAG]
 
     df_out[Df.QC_FLAG] = df_out[Df.QC_FLAG].astype(CAT_TYPE)  # type: ignore
@@ -218,15 +216,18 @@ def qc_dependent_quantity_secondary(
 
 
 def get_qc_flag_from_bool(
-    df: pd.DataFrame,
     bool_: pd.Series,
     flag_on_true: QualityFlags,
-    update_verified: bool,
-) -> pd.DataFrame:
+    flag_on_false: QualityFlags | None = None
+) -> pd.Series:
     qc_flag_series = pd.Series(flag_on_true, index=bool_.index, dtype=CAT_TYPE).loc[
         bool_
     ]
-    return pd.DataFrame(qc_flag_series, columns=[Df.QC_FLAG])
+    if flag_on_false:
+        qc_flag_series = pd.concat([qc_flag_series, pd.Series(flag_on_false, index=bool_.index, dtype=CAT_TYPE).loc[
+        ~bool_
+    ]])
+    return qc_flag_series
 
 
 # test needed!
@@ -241,10 +242,8 @@ def set_qc_flag_range_check(
 
     df_tmp = get_qc_flag_from_bool(
         # df_out.loc[mask],
-        df_out,
         bool_=bool_tmp,
         flag_on_true=flag_on_fail,
-        update_verified=True,
     )
     df_out.loc[df_tmp.index, df_tmp.columns] = df_tmp
 
@@ -299,3 +298,13 @@ def get_bool_depth_below_threshold(df: pd.DataFrame, threshold: float) -> pd.Ser
     )
     bool_out = pd.Series(bool_depth, index=df.loc[mask_is_none].index)  # type: ignore
     return bool_out
+
+
+def update_flag_history_series(flag_history_series, test_name, bool_, flag_on_true):
+    hist_tmp = pd.Series(
+        json.dumps({str(flag_on_true): [test_name]}),
+        index=bool_.loc[bool_].index,
+    )
+
+    history_series = hist_tmp.combine(flag_history_series, merge_json_str, fill_value=json.dumps({}))
+    return history_series

@@ -1,6 +1,8 @@
 import copy
+import json
 import logging
 from datetime import datetime
+import operator
 from pathlib import Path
 
 import numpy as np
@@ -94,3 +96,17 @@ def get_absolute_path_to_base():
     idx_src = current_file.parts.index("src")
     out = current_file.parents[len(current_file.parts)-idx_src -1]
     return out
+
+
+def combine_dicts(a, b, op=operator.add):
+    return a | b | dict([(k, op(a[k], b[k])) for k in set(b) & set(a)])
+
+
+def merge_json_str(jsonstr1:str, jsonstr2: str) -> str:
+    d1 = json.loads(jsonstr1)
+    d2 = json.loads(jsonstr2)
+    # d_out = {key: value for (key, value) in (d1.items() + d2.items())}
+    d_out = combine_dicts(d1, d2)
+
+    jsonstr_out = json.dumps(d_out)
+    return jsonstr_out

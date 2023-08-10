@@ -9,21 +9,25 @@ import stapy
 from models.enums import Df, QualityFlags
 from services.config import QCconf, filter_cfg_to_query
 from services.df import intersect_df_region
-from services.qc import (calc_gradient_results, get_bool_depth_below_threshold,
+from services.qc import (CAT_TYPE, calc_gradient_results, get_bool_depth_below_threshold,
                          get_bool_land_region, get_bool_null_region,
                          get_bool_out_of_range,
                          get_bool_spacial_outlier_compared_to_median,
                          get_qc_flag_from_bool, qc_dependent_quantity_base,
                          qc_dependent_quantity_secondary)
+from services.qc import update_flag_history_series
 from services.requests import get_all_data, get_elev_netcdf, patch_qc_flags
 
 log = logging.getLogger(__name__)
+
 
 
 @hydra.main(config_path="../conf", config_name="config.yaml", version_base="1.2")
 def main(cfg: QCconf):
     t0 = time.time()
     log.info("Start")
+
+    history_series = pd.Series()
 
     # setup
     t_df0 = time.time()
@@ -63,47 +67,43 @@ def main(cfg: QCconf):
     )
 
     bool_nan = get_bool_null_region(df_all)
-    df_all.update(
+    df_all[Df.QC_FLAG] = df_all[Df.QC_FLAG].combine(
         get_qc_flag_from_bool(
-            df_all,
             bool_=bool_nan,
-            flag_on_true=QualityFlags.PROBABLY_BAD,
-            update_verified=False,
-        )[[Df.QC_FLAG]]
-    )
-
+            flag_on_true=QualityFlags.PROBABLY_GOOD,
+        ), max, fill_value=QualityFlags.NO_QUALITY_CONTROL
+    ).astype(CAT_TYPE)
+    history_series = update_flag_history_series(history_series, test_name="Region nan",bool_=bool_nan, flag_on_true=QualityFlags.PROBABLY_GOOD)
+    
     bool_mainland = get_bool_land_region(df_all)
-    df_all.update(
+    df_all[Df.QC_FLAG] = df_all[Df.QC_FLAG].combine(
         get_qc_flag_from_bool(
-            df_all,
             bool_=bool_mainland,
             flag_on_true=QualityFlags.BAD,
-            update_verified=False,
-        )[[Df.QC_FLAG]]
-    )
+        ), max, fill_value=QualityFlags.NO_QUALITY_CONTROL
+    ).astype(CAT_TYPE)
+    history_series = update_flag_history_series(history_series, test_name="Region mainland",bool_=bool_mainland, flag_on_true=QualityFlags.BAD)
 
-    bool_depth_below_0 = get_bool_depth_below_threshold(df_all, threshold=0.0)
-    df_all.update(
+    bool_depth_above_0 = ~get_bool_depth_below_threshold(df_all, threshold=0.0)
+    df_all[Df.QC_FLAG] = df_all[Df.QC_FLAG].combine(
         get_qc_flag_from_bool(
-            df_all,
-            bool_=bool_depth_below_0,
-            flag_on_true=QualityFlags.PROBABLY_GOOD,
-            update_verified=False,
-        )[[Df.QC_FLAG]]
-    )
+            bool_=bool_depth_above_0,
+            flag_on_true=QualityFlags.BAD,
+        ), max, fill_value=QualityFlags.NO_QUALITY_CONTROL
+    ).astype(CAT_TYPE)
+    history_series = update_flag_history_series(history_series, test_name="Depth",bool_=bool_depth_above_0, flag_on_true=QualityFlags.BAD)
 
     ## outliers location
     bool_outlier = get_bool_spacial_outlier_compared_to_median(
         df_all, max_dx_dt=cfg.location.max_dx_dt, time_window=cfg.location.time_window
     )
-    df_all.update(
+    df_all[Df.QC_FLAG] = df_all[Df.QC_FLAG].combine(
         get_qc_flag_from_bool(
-            df_all,
             bool_=bool_outlier,
             flag_on_true=QualityFlags.BAD,
-            update_verified=False,
-        )[[Df.QC_FLAG]]
-    )
+        ), max, fill_value=QualityFlags.NO_QUALITY_CONTROL
+    ).astype(CAT_TYPE)
+    history_series = update_flag_history_series(history_series, test_name="Location outlier",bool_=bool_outlier, flag_on_true=QualityFlags.BAD)
 
     t_region1 = time.time()
     df_all = df_all.merge(qc_df, on=Df.OBSERVATION_TYPE, how="left")
@@ -112,42 +112,35 @@ def main(cfg: QCconf):
         raise RuntimeError("Not all observations are included in the dataframe.")
 
     bool_range = get_bool_out_of_range(df=df_all, qc_on=Df.RESULT, qc_type="range")
-    df_all.update(
+    df_all[Df.QC_FLAG] = df_all[Df.QC_FLAG].combine(
         get_qc_flag_from_bool(
-            df_all,
             bool_=bool_range,
             flag_on_true=QualityFlags.BAD,
-            update_verified=True,
-        )
-    )
+            flag_on_false=QualityFlags.GOOD
+        ), max, fill_value=QualityFlags.NO_QUALITY_CONTROL
+    ).astype(CAT_TYPE)
+    history_series = update_flag_history_series(history_series, test_name="Range",bool_=bool_range, flag_on_true=QualityFlags.BAD)
 
-    # df_merge = set_qc_flag_range_check(
-    # df_merge, qc_type="range", qc_on=Df.RESULT, flag_on_fail=QualityFlags.BAD
-    # )
     bool_gradient = get_bool_out_of_range(
         df=df_all, qc_on=Df.GRADIENT, qc_type="gradient"
     )
-    df_all.update(
+    df_all[Df.QC_FLAG] = df_all[Df.QC_FLAG].combine(
         get_qc_flag_from_bool(
-            df_all,
             bool_=bool_gradient,
             flag_on_true=QualityFlags.BAD,
-            update_verified=True,
-        )
-    )
+            flag_on_false=QualityFlags.GOOD
+        ), max, fill_value=QualityFlags.NO_QUALITY_CONTROL
+    ).astype(CAT_TYPE)
+    history_series = update_flag_history_series(history_series, test_name="Gradient",bool_=bool_gradient, flag_on_true=QualityFlags.BAD)
 
-    # df_merge = set_qc_flag_range_check(
-    # df_merge, qc_type="range", qc_on=Df.GRADIENT, flag_on_fail=QualityFlags.BAD
-    # )
     t_ranges1 = time.time()
 
     t_flag_ranges0 = time.time()
-    # df_all[Df.VALID] = df_all[Df.VALID] & df_all[Df.VERIFIED].astype(bool)
-    # df_all.loc[df_all[Df.VALID], Df.QC_FLAG] = QualityFlags.GOOD  # type:ignore
 
     t_flag_ranges1 = time.time()
 
     t_dependent0 = time.time()
+    # TODO: not yet in flag_history
     df_all = qc_dependent_quantity_base(df_all, independent=69, dependent=124)
     df_all = qc_dependent_quantity_secondary(
         df_all, independent=69, dependent=124, range_=(5.0, 10)
