@@ -39,6 +39,7 @@ class QcDependentEntry:
     independent: int
     dependent: int
     QC: Range
+    dt_tolerance: str
 
 
 @dataclass

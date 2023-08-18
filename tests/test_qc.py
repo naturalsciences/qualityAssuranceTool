@@ -309,7 +309,7 @@ def test_qc_dependent_quantities(df_testing, n):
     df_testing.loc[idx_, Df.QC_FLAG] = QualityFlags.BAD
 
     # perform qc check
-    df_testing = qc_dependent_quantity_base(df_testing, independent=0, dependent=1)
+    df_testing = qc_dependent_quantity_base(df_testing, independent=0, dependent=1, dt_tolerance="0.5s")
     assert df_testing[Df.QC_FLAG].value_counts().to_dict() == qc_flag_count_ref
 
 
@@ -341,8 +341,7 @@ def test_qc_dependent_quantities_mismatch(df_testing, n):
     df_testing.loc[idx_, Df.TIME] += pd.Timedelta("1d")
 
     # perform qc check
-    df_testing = qc_dependent_quantity_base(df_testing, independent=0, dependent=1)
-    print(f"qsdf")
+    df_testing = qc_dependent_quantity_base(df_testing, independent=0, dependent=1, dt_tolerance="0.5s")
     assert df_testing[Df.QC_FLAG].value_counts().to_dict() == qc_flag_count_ref
 
 
@@ -359,7 +358,7 @@ def test_qc_dependent_quantities_secondary_fct(df_testing, bad_value, n):
     df_testing.loc[idx_, Df.RESULT] = bad_value
 
     df_testing = qc_dependent_quantity_secondary(
-        df_testing, independent=0, dependent=1, range_=(0.0, 10.0)
+        df_testing, independent=0, dependent=1, range_=(0.0, 10.0), dt_tolerance="0.5s"
     )
     assert df_testing[Df.QC_FLAG].value_counts().to_dict() == qc_flag_count_ref
     assert (

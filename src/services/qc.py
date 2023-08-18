@@ -89,7 +89,7 @@ def calc_gradient_results(df: pd.DataFrame, groupby: Df):
     return df_out
 
 
-def dependent_quantity_merge_asof(df: pd.DataFrame, independent, dependent):
+def dependent_quantity_merge_asof(df: pd.DataFrame, independent: int, dependent: int, dt_tolerance: str) -> pd.DataFrame:
     df_indep = (
         df.loc[df[Df.DATASTREAM_ID] == independent]
         .sort_values(Df.TIME)
@@ -119,10 +119,10 @@ def dependent_quantity_merge_asof(df: pd.DataFrame, independent, dependent):
     return df_merged
 
 
-def dependent_quantity_pivot(df: pd.DataFrame, independent, dependent):
+def dependent_quantity_pivot(df: pd.DataFrame, independent: int, dependent: int, dt_tolerance: str) -> pd.DataFrame:
     # merge_asof is used, but creates a pivot-like table
     df_merged = dependent_quantity_merge_asof(
-        df, independent=independent, dependent=dependent
+        df, independent=independent, dependent=dependent, dt_tolerance=dt_tolerance
     )
     return df_merged
 
@@ -145,14 +145,14 @@ def strip_df_to_minimal_required_dependent_quantity(df, independent, dependent):
 
 
 def get_bool_flagged_dependent_quantity(
-    df: pd.DataFrame, independent: int, dependent: int
-):
+    df: pd.DataFrame, independent: int, dependent: int, dt_tolerance: str
+) -> pd.Series:
     df_tmp = strip_df_to_minimal_required_dependent_quantity(
         df, independent=independent, dependent=dependent
     )
 
     df_pivot = dependent_quantity_pivot(
-        df_tmp, independent=independent, dependent=dependent
+        df_tmp, independent=independent, dependent=dependent, dt_tolerance=dt_tolerance
     )
 
     mask = ~df_pivot[Df.QC_FLAG, str(independent)].isin(
@@ -166,6 +166,7 @@ def qc_dependent_quantity_base(
     df: pd.DataFrame,
     independent: int,
     dependent: int,
+    dt_tolerance: str,
     flag_when_missing: QualityFlags | None = QualityFlags.BAD,
 ):
     df_tmp = strip_df_to_minimal_required_dependent_quantity(
@@ -173,7 +174,7 @@ def qc_dependent_quantity_base(
     )
 
     df_pivot = dependent_quantity_pivot(
-        df_tmp, independent=independent, dependent=dependent
+        df_tmp, independent=independent, dependent=dependent, dt_tolerance=dt_tolerance
     )
 
     mask = ~df_pivot[Df.QC_FLAG, str(independent)].isin(
@@ -192,14 +193,14 @@ def qc_dependent_quantity_base(
 
 
 def qc_dependent_quantity_secondary(
-    df: pd.DataFrame, independent: int, dependent: int, range_: tuple[float, float]
+    df: pd.DataFrame, independent: int, dependent: int, range_: tuple[float, float], dt_tolerance: str
 ):
     df_tmp = strip_df_to_minimal_required_dependent_quantity(
         df, independent=independent, dependent=dependent
     )
 
     df_pivot = dependent_quantity_pivot(
-        df_tmp, dependent=dependent, independent=independent
+        df_tmp, dependent=dependent, independent=independent, dt_tolerance=dt_tolerance
     )
 
     df_pivot[["qc_drange_min", "qc_drange_max"]] = range_

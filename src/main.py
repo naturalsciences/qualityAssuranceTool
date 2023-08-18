@@ -141,9 +141,9 @@ def main(cfg: QCconf):
 
     t_dependent0 = time.time()
     # TODO: not yet in flag_history
-    df_all = qc_dependent_quantity_base(df_all, independent=69, dependent=124)
+    df_all = qc_dependent_quantity_base(df_all, independent=69, dependent=124, dt_tolerance=cfg.QC_dependent[0].dt_tolerance)
     df_all = qc_dependent_quantity_secondary(
-        df_all, independent=69, dependent=124, range_=(5.0, 10)
+        df_all, independent=69, dependent=124, range_=(5.0, 10), dt_tolerance=cfg.QC_dependent[0].dt_tolerance
     )
     t_dependent1 = time.time()
 
