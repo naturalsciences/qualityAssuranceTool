@@ -117,12 +117,7 @@ QC:: _normal_ quality checks. only two are defined: range and gradient
     range::: expected range of the feature values
     gradient::: expected range of the *gradient*.
 
-== Usage
-
-== Roadmap
-
 == License
 
 link:LICENSE[License file]
 
-== Project status
