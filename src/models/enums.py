@@ -86,6 +86,15 @@ class Order(BaseQueryStrEnum):
 
 
 class QualityFlags(OrderedEnum):
+    """
+    http://vocab.nerc.ac.uk/collection/L20/current/
+
+    Args:
+        OrderedEnum (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     NO_QUALITY_CONTROL = 0
     GOOD = 1
     PROBABLY_GOOD = 2

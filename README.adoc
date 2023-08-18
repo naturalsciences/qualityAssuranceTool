@@ -25,6 +25,11 @@ runtime python environment needs to be created where the needed packages
 are available. The needed packages are listed in the file
 `requirements.txt`.
 
+== Quality flags
+
+The available flags are listed http://vocab.nerc.ac.uk/collection/L20/current/[here].
+The _order_/_priority_ of the flags are determined by the order in which they are sorted in the link:src/models/enums.py[enum definition].
+
 == _Possible_ Quality checks
 
 === Regions
@@ -37,6 +42,8 @@ WARNING: the layers don't seem to follow the coastlines very accurately. For _in
 
 === Locations
 
+==== Outliers
+
 A rolling windows (see pandas documentation for more information) is used to calculate the median latitude and longitude.
 Then each location is compared with the median location.
 This distance is compared with the max distance within the considered window.
@@ -45,12 +52,34 @@ NOTE: This solution is not ideal.
 Calculating the angle between each line segment and comparing with a threshold might be better. 
 This value will however be a function of the sample frequency and velocity.
 
+=== Bedrock height
 
-=== Dependent
+The sea region detection described in <<Regions>> sometimes fails to label points close to the coast, in a harbour or in _internal_ waters (Iceland and Greenland).
+Therefore a second test is included that determines the bedrock height at all points.
+Doing so, one can for example set the flag to _Probably good_ if no region is identified, *but* the depth is below a threshold value.
 
 === Range
 
+This test verifies that the range (min/max) of the measurement is correct.
+It is planned to allow for location dependent ranges.
+
 === Gradient
+
+The https://numpy.org/doc/stable/reference/generated/numpy.gradient.html[gradient] over time is calculated.
+If the gradient is outside of a given range, the result is flagged.
+
+=== Dependent
+
+The accuracy, quality or validity of some measurements depends on other quantities.
+To link the independent and dependent values, a difference between the *timestamps* of maximum 0.5 seconds is allowed.
+
+There are two possible dependencies:
+
+Directly linked flags:: the measurement of the dependent quantity need to assume the same flag as the independent quantity measurement (at the same time), if this flag is different from `Good` or `No Quality Control`.
+If the measured water temperature is impossible, the dependent salinity measurement can't possibly be correct.
+Quality check:: the measurement of the dependent quantity needs to be set according to the *value* of the independent quantity measurement (at the same time).
+The difference with the first dependent qc, is that the flags themselves are not _linked_.
+The flow of a scientific water circuit can be measured correctly to be zero (flagged as `Good`), but the dependent quantity measurements can't possible be correct!
 
 == Configuration
 
@@ -94,91 +123,6 @@ QC:: _normal_ quality checks. only two are defined: range and gradient
 
 == License
 
+link:LICENSE[License file]
+
 == Project status
-
-=== inspect return obj restructure
-
-* out -> dict
-** Thing
-*** name
-*** @iot.id
-** Datastreams
-*** name
-**** @iot.id
-**** unitOfMeasurement
-*** ObservedProperty
-**** name
-***** @iot.id
-*** Observations
-**** count
-
-== ToDo
-
-* [ ] JSON schema yaml
-* [ ] extend QC checks
-* [ ] asynchronous requests?
-* [ ] refactoring
-    ** [ ] restructure based on function
-    ** [ ] reevaluate variable names
-    ** [ ] merge with FROST-docker repo (github)
-* [ ] docs
-    ** [ ] extend documentation
-* [ ] testing
-    ** [ ] unit tests
-    ** [ ] integration tests
-    ** [ ] check pipelines/hooks/... on gitlab
-
-== Questions
-
-* observedArea
-** are the coordinates based on the coordinates of the observations? or
-preset? If preset, could be checked if in box
-** what coordinate reference system is used?
-** ?
-
-== Batch
-
-`curl -H "Content-Type: application/json" -d @/tmp/test.json "http://localhost:8080/FROST-Server/v1.1/\$batch"`
-
-with test.json: \{ ``requests'': [ \{ ``id'': ``0'', ``atomicityGroup'':
-``group1'', ``method'': ``post'', ``url'': ``Things'', ``body'': \{
-``name'': ``stuff'', ``description'': ``looser'' } }, \{ ``id'': ``1'',
-``method'': ``get'', ``atomicityGroup'':``group2'', ``url'':
-``Datastreams(1)'' } ] }
-
-.test.json content
-[source,json]
-----
-{
-    "requests": [
-        {
-            "id": "0",
-            "atomicityGroup": "group1",
-            "method": "post",
-            "url": "Things",
-            "body": {
-                "name": "stuff",
-                "description": "looser"
-            }
-        },
-        {
-            "id": "1",
-            "method": "get",
-            "atomicityGroup": "group2",
-            "url": "Datastreams(1)"
-        }
-    ]
-}
-----
-
-.(Partial) logs batch patch
-[source,plain]
-----
-[2023-07-12 08:51:48,584][__main__][INFO] - Start batch patch query
-[2023-07-12 08:52:21,739][__main__][INFO] - End batch patch query
-[2023-07-12 08:52:21,739][__main__][INFO] - Counter({200: 17673})
-----
-
-== geo
-
-https://rda.ucar.edu/datasets/ds759.3/dataaccess/
