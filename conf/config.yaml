@@ -25,6 +25,7 @@ location:
 QC_dependent:
   - independent: 69
     dependent: 124
+    dt_tolerance: 0.5s
     QC:
       range:
         - 0.5
