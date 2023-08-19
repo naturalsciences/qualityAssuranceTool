@@ -217,12 +217,13 @@ def main(cfg: QCconf):
         dependent = dependent_i.dependent
         dt_tolerance = dependent_i.dt_tolerance
 
-        df_all = qc_dependent_quantity_base(
+        base_flags = qc_dependent_quantity_base(
             df_all,
             independent=independent,
             dependent=dependent,
             dt_tolerance=dt_tolerance,
         )
+        df_all[Df.QC_FLAG].update(base_flags)
         df_all = qc_dependent_quantity_secondary(
             df_all,
             independent=independent,

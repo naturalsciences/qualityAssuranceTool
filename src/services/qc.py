@@ -170,7 +170,7 @@ def qc_dependent_quantity_base(
     dependent: int,
     dt_tolerance: str,
     flag_when_missing: QualityFlags | None = QualityFlags.BAD,
-):
+) -> pd.Series:
     df_tmp = strip_df_to_minimal_required_dependent_quantity(
         df, independent=independent, dependent=dependent
     )
@@ -186,16 +186,18 @@ def qc_dependent_quantity_base(
         (Df.QC_FLAG, str(independent))
     ]
 
-    df_unpivot = df_pivot.stack().reset_index().set_index(Df.IOT_ID)
+    df_unpivot = df_pivot.loc[mask].stack().reset_index().set_index(Df.IOT_ID)
     df = df.set_index(Df.IOT_ID)
     # TODO: refactor
     mask_unpivot_notnan = ~df_unpivot[Df.QC_FLAG].isna()
     idx_unpivot_notnan = df_unpivot.loc[mask_unpivot_notnan, Df.QC_FLAG].index.astype(int) # the conversion to int is needed because nan is float, and this column is set to float for some reason
     idx_unpivot_nan = df_unpivot.loc[~mask_unpivot_notnan, Df.QC_FLAG].index.astype(int)
     df.loc[idx_unpivot_notnan, Df.QC_FLAG] = df_unpivot.loc[idx_unpivot_notnan, Df.QC_FLAG]
+    s_out = df.loc[idx_unpivot_notnan, Df.QC_FLAG]
     if flag_when_missing:
-        df.loc[idx_unpivot_nan, Df.QC_FLAG] = flag_when_missing  # type: ignore
-    return df.reset_index()
+        df.loc[idx_unpivot_nan, Df.QC_FLAG] = flag_when_missing # type: ignore
+        s_out = df.loc[idx_unpivot_notnan.union(idx_unpivot_nan), Df.QC_FLAG]
+    return s_out
 
 
 def qc_dependent_quantity_secondary(

@@ -117,7 +117,6 @@ def df_testing() -> gpd.GeoDataFrame:
             ),
         }
     )
-
     return df_out
 
 
@@ -324,9 +323,11 @@ def test_qc_dependent_quantities(df_testing, n):
     df_testing.loc[idx_, Df.QC_FLAG] = QualityFlags.BAD
 
     # perform qc check
-    df_testing = qc_dependent_quantity_base(
+    qc_flag_update = qc_dependent_quantity_base(
         df_testing, independent=0, dependent=1, dt_tolerance="0.5s"
     )
+    df_testing = df_testing.set_index(Df.IOT_ID)
+    df_testing[Df.QC_FLAG].update(qc_flag_update)
     assert df_testing[Df.QC_FLAG].value_counts().to_dict() == qc_flag_count_ref
 
 
@@ -358,9 +359,11 @@ def test_qc_dependent_quantities_mismatch(df_testing, n):
     df_testing.loc[idx_, Df.TIME] += pd.Timedelta("1d")
 
     # perform qc check
-    df_testing = qc_dependent_quantity_base(
+    qc_update = qc_dependent_quantity_base(
         df_testing, independent=0, dependent=1, dt_tolerance="0.5s"
     )
+    df_testing = df_testing.set_index(Df.IOT_ID)
+    df_testing[Df.QC_FLAG].update(qc_update)
     assert df_testing[Df.QC_FLAG].value_counts().to_dict() == qc_flag_count_ref
 
 
@@ -383,9 +386,11 @@ def test_qc_dependent_quantities_base_3streams(df_testing, n):
         QualityFlags.GOOD: df_testing.shape[0] - 2,
         QualityFlags.BAD: 2,
     }
-    df_testing = qc_dependent_quantity_base(
+    qc_update = qc_dependent_quantity_base(
         df_testing, independent=0, dependent=1, dt_tolerance="0.5s"
     )
+    df_testing = df_testing.set_index(Df.IOT_ID)
+    df_testing[Df.QC_FLAG].update(qc_update)
     assert df_testing[Df.QC_FLAG].value_counts().to_dict() == qc_flag_count_ref
 
 
@@ -410,9 +415,11 @@ def test_qc_dependent_quantities_base_3streams_missing(df_testing, n):
         QualityFlags.GOOD: df_testing.shape[0] - 3,
         QualityFlags.BAD: 3,
     }
-    df_testing = qc_dependent_quantity_base(
+    qc_update = qc_dependent_quantity_base(
         df_testing, independent=0, dependent=1, dt_tolerance="0.5s", flag_when_missing=QualityFlags.BAD
     )
+    df_testing = df_testing.set_index(Df.IOT_ID)
+    df_testing[Df.QC_FLAG].update(qc_update)
     assert df_testing[Df.QC_FLAG].value_counts().to_dict() == qc_flag_count_ref
 
 @pytest.mark.parametrize("n", tuple(range(len(base_list_region))))
@@ -436,9 +443,11 @@ def test_qc_dependent_quantities_base_3streams_missing_noflag(df_testing, n):
         QualityFlags.GOOD: df_testing.shape[0] - 2,
         QualityFlags.BAD: 2,
     }
-    df_testing = qc_dependent_quantity_base(
+    qc_update = qc_dependent_quantity_base(
         df_testing, independent=0, dependent=1, dt_tolerance="0.5s", flag_when_missing=None
     )
+    df_testing = df_testing.set_index(Df.IOT_ID)
+    df_testing.update(qc_update)
     assert df_testing[Df.QC_FLAG].value_counts().to_dict() == qc_flag_count_ref
 
 @pytest.mark.parametrize("bad_value", (100.0,))
