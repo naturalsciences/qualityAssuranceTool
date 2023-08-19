@@ -237,7 +237,6 @@ def main(cfg: QCconf):
         f"{df_all[[Df.OBSERVATION_TYPE, Df.QC_FLAG]].value_counts(dropna=False).to_json()=}"
     )
 
-    cfg_dependent = cfg.QC_dependent
     t_qc1 = time.time()
     t_patch0 = time.time()
     t3 = time.time()

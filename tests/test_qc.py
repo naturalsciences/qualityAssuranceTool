@@ -1,5 +1,5 @@
 from copy import deepcopy
-from itertools import product
+from itertools import product, islice, cycle
 from operator import add
 from typing import Sequence
 
@@ -10,6 +10,7 @@ import pandas.testing as pdt
 import pytest
 
 from models.enums import Df, QualityFlags
+from services.df import df_type_conversions
 from services.qc import (
     CAT_TYPE,
     calc_gradient_results,
@@ -89,7 +90,9 @@ def df_testing() -> gpd.GeoDataFrame:
             Df.QC_FLAG
             + "_ref": pd.Series(qc_ref_base * MULTIPL_FACTOR, dtype=CAT_TYPE),
             Df.QC_FLAG: pd.Series(
-                QualityFlags.NO_QUALITY_CONTROL, index=datastream_id_series.index, dtype=CAT_TYPE
+                QualityFlags.NO_QUALITY_CONTROL,
+                index=datastream_id_series.index,
+                dtype=CAT_TYPE,
             ),
             Df.DATASTREAM_ID: pd.Series(
                 list(
@@ -150,21 +153,33 @@ def test_qc_region_to_flag(df_testing):
     # df_out = qc_region(df_testing)
     df_out = deepcopy(df_testing)
     bool_nan = get_bool_null_region(df_out)
-    df_out[Df.QC_FLAG] = df_out[Df.QC_FLAG].combine(
-        get_qc_flag_from_bool(
-            bool_=bool_nan,
-            flag_on_true=QualityFlags.PROBABLY_BAD,
-        ), max, fill_value=QualityFlags.NO_QUALITY_CONTROL
-    ).astype(CAT_TYPE)
+    df_out[Df.QC_FLAG] = (
+        df_out[Df.QC_FLAG]
+        .combine(
+            get_qc_flag_from_bool(
+                bool_=bool_nan,
+                flag_on_true=QualityFlags.PROBABLY_BAD,
+            ),
+            max,
+            fill_value=QualityFlags.NO_QUALITY_CONTROL,
+        )
+        .astype(CAT_TYPE)
+    )
 
     bool_mainland = get_bool_land_region(df_out)
-    df_out[Df.QC_FLAG] = df_out[Df.QC_FLAG].combine(
-        get_qc_flag_from_bool(
-            bool_=bool_mainland,
-            flag_on_true=QualityFlags.BAD,
-        ), max, fill_value=QualityFlags.NO_QUALITY_CONTROL
-    ).astype(CAT_TYPE)
- 
+    df_out[Df.QC_FLAG] = (
+        df_out[Df.QC_FLAG]
+        .combine(
+            get_qc_flag_from_bool(
+                bool_=bool_mainland,
+                flag_on_true=QualityFlags.BAD,
+            ),
+            max,
+            fill_value=QualityFlags.NO_QUALITY_CONTROL,
+        )
+        .astype(CAT_TYPE)
+    )
+
     pdt.assert_series_equal(
         df_out.loc[:, Df.QC_FLAG],
         df_out.loc[:, Df.QC_FLAG + "_ref"],
@@ -309,7 +324,9 @@ def test_qc_dependent_quantities(df_testing, n):
     df_testing.loc[idx_, Df.QC_FLAG] = QualityFlags.BAD
 
     # perform qc check
-    df_testing = qc_dependent_quantity_base(df_testing, independent=0, dependent=1, dt_tolerance="0.5s")
+    df_testing = qc_dependent_quantity_base(
+        df_testing, independent=0, dependent=1, dt_tolerance="0.5s"
+    )
     assert df_testing[Df.QC_FLAG].value_counts().to_dict() == qc_flag_count_ref
 
 
@@ -341,9 +358,88 @@ def test_qc_dependent_quantities_mismatch(df_testing, n):
     df_testing.loc[idx_, Df.TIME] += pd.Timedelta("1d")
 
     # perform qc check
-    df_testing = qc_dependent_quantity_base(df_testing, independent=0, dependent=1, dt_tolerance="0.5s")
+    df_testing = qc_dependent_quantity_base(
+        df_testing, independent=0, dependent=1, dt_tolerance="0.5s"
+    )
     assert df_testing[Df.QC_FLAG].value_counts().to_dict() == qc_flag_count_ref
 
+
+@pytest.mark.parametrize("n", tuple(range(len(base_list_region))))
+def test_qc_dependent_quantities_base_3streams(df_testing, n):
+    df_additional = df_testing.loc[df_testing[Df.DATASTREAM_ID] == 1]
+    df_additional.loc[:, Df.DATASTREAM_ID] = 10
+    df_additional.loc[:, Df.IOT_ID] = (
+        df_additional[Df.IOT_ID] + df_additional[Df.DATASTREAM_ID]
+    )
+    df_testing = pd.concat([df_testing, df_additional], ignore_index=True)
+    df_testing = df_type_conversions(df_testing)
+
+    df_testing[Df.QC_FLAG] = QualityFlags.GOOD
+
+    idx_ = df_testing.loc[df_testing[Df.DATASTREAM_ID] == 0].index[n]
+    df_testing.loc[idx_, Df.QC_FLAG] = QualityFlags.BAD
+
+    qc_flag_count_ref = {
+        QualityFlags.GOOD: df_testing.shape[0] - 2,
+        QualityFlags.BAD: 2,
+    }
+    df_testing = qc_dependent_quantity_base(
+        df_testing, independent=0, dependent=1, dt_tolerance="0.5s"
+    )
+    assert df_testing[Df.QC_FLAG].value_counts().to_dict() == qc_flag_count_ref
+
+
+@pytest.mark.parametrize("n", tuple(range(len(base_list_region))))
+def test_qc_dependent_quantities_base_3streams_missing(df_testing, n):
+    df_additional = df_testing.loc[df_testing[Df.DATASTREAM_ID] == 1]
+    df_additional.loc[:, Df.DATASTREAM_ID] = 10
+    df_additional.loc[:, Df.IOT_ID] = (
+        df_additional[Df.IOT_ID] + df_additional[Df.DATASTREAM_ID]
+    )
+    df_testing = pd.concat([df_testing, df_additional], ignore_index=True)
+    df_testing = df_type_conversions(df_testing)
+
+    df_testing[Df.QC_FLAG] = QualityFlags.GOOD
+
+    idx_ = df_testing.loc[df_testing[Df.DATASTREAM_ID] == 0].index[n]
+    idx_delete = next(islice(cycle(df_testing.loc[df_testing[Df.DATASTREAM_ID] == 0].index.values), n+1, None))
+    df_testing.loc[idx_, Df.QC_FLAG] = QualityFlags.BAD
+    df_testing = df_testing.drop(idx_delete).reset_index()
+
+    qc_flag_count_ref = {
+        QualityFlags.GOOD: df_testing.shape[0] - 3,
+        QualityFlags.BAD: 3,
+    }
+    df_testing = qc_dependent_quantity_base(
+        df_testing, independent=0, dependent=1, dt_tolerance="0.5s", flag_when_missing=QualityFlags.BAD
+    )
+    assert df_testing[Df.QC_FLAG].value_counts().to_dict() == qc_flag_count_ref
+
+@pytest.mark.parametrize("n", tuple(range(len(base_list_region))))
+def test_qc_dependent_quantities_base_3streams_missing_noflag(df_testing, n):
+    df_additional = df_testing.loc[df_testing[Df.DATASTREAM_ID] == 1]
+    df_additional.loc[:, Df.DATASTREAM_ID] = 10
+    df_additional.loc[:, Df.IOT_ID] = (
+        df_additional[Df.IOT_ID] + df_additional[Df.DATASTREAM_ID]
+    )
+    df_testing = pd.concat([df_testing, df_additional], ignore_index=True)
+    df_testing = df_type_conversions(df_testing)
+
+    df_testing[Df.QC_FLAG] = QualityFlags.GOOD
+
+    idx_ = df_testing.loc[df_testing[Df.DATASTREAM_ID] == 0].index[n]
+    idx_delete = next(islice(cycle(df_testing.loc[df_testing[Df.DATASTREAM_ID] == 0].index.values), n+1, None))
+    df_testing.loc[idx_, Df.QC_FLAG] = QualityFlags.BAD
+    df_testing = df_testing.drop(idx_delete).reset_index()
+
+    qc_flag_count_ref = {
+        QualityFlags.GOOD: df_testing.shape[0] - 2,
+        QualityFlags.BAD: 2,
+    }
+    df_testing = qc_dependent_quantity_base(
+        df_testing, independent=0, dependent=1, dt_tolerance="0.5s", flag_when_missing=None
+    )
+    assert df_testing[Df.QC_FLAG].value_counts().to_dict() == qc_flag_count_ref
 
 @pytest.mark.parametrize("bad_value", (100.0,))
 @pytest.mark.parametrize("n", (0, 2, 4))

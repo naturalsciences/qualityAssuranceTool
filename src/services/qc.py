@@ -9,6 +9,7 @@ import pandas as pd
 from pandas.api.types import CategoricalDtype
 
 from models.enums import Df, QualityFlags
+# from services.df import df_type_conversions
 from services.regions_query import get_depth_from_etop
 from utils.utils import merge_json_str
 
@@ -115,6 +116,7 @@ def dependent_quantity_merge_asof(df: pd.DataFrame, independent: int, dependent:
         index=df_merged.index,
         columns=df_merged.columns.str.rsplit("_", expand=True, n=1),
     )
+    # df_merged = df_type_conversions(df_merged)
 
     return df_merged
 
@@ -186,9 +188,13 @@ def qc_dependent_quantity_base(
 
     df_unpivot = df_pivot.stack().reset_index().set_index(Df.IOT_ID)
     df = df.set_index(Df.IOT_ID)
-    df.loc[df_unpivot.index, Df.QC_FLAG] = df_unpivot[Df.QC_FLAG]
+    # TODO: refactor
+    mask_unpivot_notnan = ~df_unpivot[Df.QC_FLAG].isna()
+    idx_unpivot_notnan = df_unpivot.loc[mask_unpivot_notnan, Df.QC_FLAG].index.astype(int) # the conversion to int is needed because nan is float, and this column is set to float for some reason
+    idx_unpivot_nan = df_unpivot.loc[~mask_unpivot_notnan, Df.QC_FLAG].index.astype(int)
+    df.loc[idx_unpivot_notnan, Df.QC_FLAG] = df_unpivot.loc[idx_unpivot_notnan, Df.QC_FLAG]
     if flag_when_missing:
-        df.loc[df[Df.QC_FLAG].isna(), Df.QC_FLAG] = flag_when_missing  # type: ignore
+        df.loc[idx_unpivot_nan, Df.QC_FLAG] = flag_when_missing  # type: ignore
     return df.reset_index()
 
 
