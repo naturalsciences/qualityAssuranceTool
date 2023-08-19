@@ -202,7 +202,7 @@ def qc_dependent_quantity_base(
 
 def qc_dependent_quantity_secondary(
     df: pd.DataFrame, independent: int, dependent: int, range_: tuple[float, float], dt_tolerance: str
-):
+) -> pd.Series:
     df_tmp = strip_df_to_minimal_required_dependent_quantity(
         df, independent=independent, dependent=dependent
     )
@@ -221,7 +221,8 @@ def qc_dependent_quantity_secondary(
     df_unpivot = df_pivot.stack().reset_index().set_index(Df.IOT_ID)
     df = df.set_index(Df.IOT_ID)
     df.loc[df_unpivot.index, Df.QC_FLAG] = df_unpivot[Df.QC_FLAG]
-    return df.reset_index()
+    s_out = df.loc[df_unpivot.index, Df.QC_FLAG]
+    return s_out
 
 
 def get_qc_flag_from_bool(

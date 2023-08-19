@@ -462,9 +462,12 @@ def test_qc_dependent_quantities_secondary_fct(df_testing, bad_value, n):
     idx_ = df_testing[df_testing[Df.DATASTREAM_ID] == 0].index[n]
     df_testing.loc[idx_, Df.RESULT] = bad_value
 
-    df_testing = qc_dependent_quantity_secondary(
+    qc_update = qc_dependent_quantity_secondary(
         df_testing, independent=0, dependent=1, range_=(0.0, 10.0), dt_tolerance="0.5s"
     )
+    df_testing = df_testing.set_index(Df.IOT_ID)
+    df_testing.update(qc_update)
+
     assert df_testing[Df.QC_FLAG].value_counts().to_dict() == qc_flag_count_ref
     assert (
         df_testing.loc[
