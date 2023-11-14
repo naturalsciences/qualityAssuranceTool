@@ -62,74 +62,77 @@ def main(cfg: QCconf):
 
     t_df1 = time.time()
     t_qc0 = time.time()
+
     ## find region
+
     t_region0 = time.time()
-    df_all = intersect_df_region(
-        db_credentials=cfg.location.connection,
-        df=df_all,
-        max_queries=5,
-        max_query_points=20,
-    )
-
-    bool_nan = get_bool_null_region(df_all)
-    df_all[Df.QC_FLAG] = (
-        df_all[Df.QC_FLAG]
-        .combine(
-            get_qc_flag_from_bool(
-                bool_=bool_nan,
-                flag_on_true=QualityFlags.PROBABLY_GOOD,
-            ),
-            max,
-            fill_value=QualityFlags.NO_QUALITY_CONTROL,
+    if cfg.location.connection:
+        df_all = intersect_df_region(
+            db_credentials=cfg.location.connection,
+            df=df_all,
+            max_queries=5,
+            max_query_points=20,
         )
-        .astype(CAT_TYPE)
-    )
-    history_series = update_flag_history_series(
-        history_series,
-        test_name="Region nan",
-        bool_=bool_nan,
-        flag_on_true=QualityFlags.PROBABLY_GOOD,
-    )
 
-    bool_mainland = get_bool_land_region(df_all)
-    df_all[Df.QC_FLAG] = (
-        df_all[Df.QC_FLAG]
-        .combine(
-            get_qc_flag_from_bool(
-                bool_=bool_mainland,
-                flag_on_true=QualityFlags.BAD,
-            ),
-            max,
-            fill_value=QualityFlags.NO_QUALITY_CONTROL,
+        bool_nan = get_bool_null_region(df_all)
+        df_all[Df.QC_FLAG] = (
+            df_all[Df.QC_FLAG]
+            .combine(
+                get_qc_flag_from_bool(
+                    bool_=bool_nan,
+                    flag_on_true=QualityFlags.PROBABLY_GOOD,
+                ),
+                max,
+                fill_value=QualityFlags.NO_QUALITY_CONTROL,
+            )
+            .astype(CAT_TYPE)
         )
-        .astype(CAT_TYPE)
-    )
-    history_series = update_flag_history_series(
-        history_series,
-        test_name="Region mainland",
-        bool_=bool_mainland,
-        flag_on_true=QualityFlags.BAD,
-    )
+        history_series = update_flag_history_series(
+            history_series,
+            test_name="Region nan",
+            bool_=bool_nan,
+            flag_on_true=QualityFlags.PROBABLY_GOOD,
+        )
 
-    bool_depth_above_0 = ~get_bool_depth_below_threshold(df_all, threshold=0.0)
-    df_all[Df.QC_FLAG] = (
-        df_all[Df.QC_FLAG]
-        .combine(
-            get_qc_flag_from_bool(
-                bool_=bool_depth_above_0,
-                flag_on_true=QualityFlags.BAD,
-            ),
-            max,
-            fill_value=QualityFlags.NO_QUALITY_CONTROL,
+        bool_mainland = get_bool_land_region(df_all)
+        df_all[Df.QC_FLAG] = (
+            df_all[Df.QC_FLAG]
+            .combine(
+                get_qc_flag_from_bool(
+                    bool_=bool_mainland,
+                    flag_on_true=QualityFlags.BAD,
+                ),
+                max,
+                fill_value=QualityFlags.NO_QUALITY_CONTROL,
+            )
+            .astype(CAT_TYPE)
         )
-        .astype(CAT_TYPE)
-    )
-    history_series = update_flag_history_series(
-        history_series,
-        test_name="Depth",
-        bool_=bool_depth_above_0,
-        flag_on_true=QualityFlags.BAD,
-    )
+        history_series = update_flag_history_series(
+            history_series,
+            test_name="Region mainland",
+            bool_=bool_mainland,
+            flag_on_true=QualityFlags.BAD,
+        )
+
+        bool_depth_above_0 = ~get_bool_depth_below_threshold(df_all, threshold=0.0)
+        df_all[Df.QC_FLAG] = (
+            df_all[Df.QC_FLAG]
+            .combine(
+                get_qc_flag_from_bool(
+                    bool_=bool_depth_above_0,
+                    flag_on_true=QualityFlags.BAD,
+                ),
+                max,
+                fill_value=QualityFlags.NO_QUALITY_CONTROL,
+            )
+            .astype(CAT_TYPE)
+        )
+        history_series = update_flag_history_series(
+            history_series,
+            test_name="Depth",
+            bool_=bool_depth_above_0,
+            flag_on_true=QualityFlags.BAD,
+        )
 
     ## outliers location
     bool_outlier = get_bool_spacial_outlier_compared_to_median(

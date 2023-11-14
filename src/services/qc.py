@@ -9,6 +9,7 @@ import pandas as pd
 from pandas.api.types import CategoricalDtype
 
 from models.enums import Df, QualityFlags
+
 # from services.df import df_type_conversions
 from services.regions_query import get_depth_from_etop
 from utils.utils import merge_json_str
@@ -90,7 +91,9 @@ def calc_gradient_results(df: pd.DataFrame, groupby: Df):
     return df_out
 
 
-def dependent_quantity_merge_asof(df: pd.DataFrame, independent: int, dependent: int, dt_tolerance: str) -> pd.DataFrame:
+def dependent_quantity_merge_asof(
+    df: pd.DataFrame, independent: int, dependent: int, dt_tolerance: str
+) -> pd.DataFrame:
     df_indep = (
         df.loc[df[Df.DATASTREAM_ID] == independent]
         .sort_values(Df.TIME)
@@ -121,7 +124,9 @@ def dependent_quantity_merge_asof(df: pd.DataFrame, independent: int, dependent:
     return df_merged
 
 
-def dependent_quantity_pivot(df: pd.DataFrame, independent: int, dependent: int, dt_tolerance: str) -> pd.DataFrame:
+def dependent_quantity_pivot(
+    df: pd.DataFrame, independent: int, dependent: int, dt_tolerance: str
+) -> pd.DataFrame:
     # merge_asof is used, but creates a pivot-like table
     df_merged = dependent_quantity_merge_asof(
         df, independent=independent, dependent=dependent, dt_tolerance=dt_tolerance
@@ -190,18 +195,26 @@ def qc_dependent_quantity_base(
     df = df.set_index(Df.IOT_ID)
     # TODO: refactor
     mask_unpivot_notnan = ~df_unpivot[Df.QC_FLAG].isna()
-    idx_unpivot_notnan = df_unpivot.loc[mask_unpivot_notnan, Df.QC_FLAG].index.astype(int) # the conversion to int is needed because nan is float, and this column is set to float for some reason
+    idx_unpivot_notnan = df_unpivot.loc[mask_unpivot_notnan, Df.QC_FLAG].index.astype(
+        int
+    )  # the conversion to int is needed because nan is float, and this column is set to float for some reason
     idx_unpivot_nan = df_unpivot.loc[~mask_unpivot_notnan, Df.QC_FLAG].index.astype(int)
-    df.loc[idx_unpivot_notnan, Df.QC_FLAG] = df_unpivot.loc[idx_unpivot_notnan, Df.QC_FLAG]
+    df.loc[idx_unpivot_notnan, Df.QC_FLAG] = df_unpivot.loc[
+        idx_unpivot_notnan, Df.QC_FLAG
+    ]
     s_out = df.loc[idx_unpivot_notnan, Df.QC_FLAG]
     if flag_when_missing:
-        df.loc[idx_unpivot_nan, Df.QC_FLAG] = flag_when_missing # type: ignore
+        df.loc[idx_unpivot_nan, Df.QC_FLAG] = flag_when_missing  # type: ignore
         s_out = df.loc[idx_unpivot_notnan.union(idx_unpivot_nan), Df.QC_FLAG]
     return s_out
 
 
 def qc_dependent_quantity_secondary(
-    df: pd.DataFrame, independent: int, dependent: int, range_: tuple[float, float], dt_tolerance: str
+    df: pd.DataFrame,
+    independent: int,
+    dependent: int,
+    range_: tuple[float, float],
+    dt_tolerance: str,
 ) -> pd.Series:
     df_tmp = strip_df_to_minimal_required_dependent_quantity(
         df, independent=independent, dependent=dependent
@@ -228,15 +241,18 @@ def qc_dependent_quantity_secondary(
 def get_qc_flag_from_bool(
     bool_: pd.Series,
     flag_on_true: QualityFlags,
-    flag_on_false: QualityFlags | None = None
+    flag_on_false: QualityFlags | None = None,
 ) -> pd.Series:
     qc_flag_series = pd.Series(flag_on_true, index=bool_.index, dtype=CAT_TYPE).loc[
         bool_
     ]
     if flag_on_false:
-        qc_flag_series = pd.concat([qc_flag_series, pd.Series(flag_on_false, index=bool_.index, dtype=CAT_TYPE).loc[
-        ~bool_
-    ]])
+        qc_flag_series = pd.concat(
+            [
+                qc_flag_series,
+                pd.Series(flag_on_false, index=bool_.index, dtype=CAT_TYPE).loc[~bool_],
+            ]
+        )
     return qc_flag_series
 
 
@@ -296,6 +312,21 @@ def get_bool_spacial_outlier_compared_to_median(
     return bool_series
 
 
+def get_bool_exceed_max_speed(df: pd.DataFrame, max_speed: float) -> pd.Series:
+    df["dt"] = df[Df.TIME].diff().fillna(pd.to_timedelta("0")).dt.total_seconds()  # type: ignore
+    df["dt"] = (df[Df.TIME] - df[Df.TIME].min()).dt.total_seconds()  # type: ignore
+
+    df["dt"] = df[Df.TIME].diff().fillna(pd.to_timedelta("0")).dt.total_seconds()  # type: ignore
+    df["dt"] = (df[Df.TIME] - df[Df.TIME].min()).dt.total_seconds()  # type: ignore
+    gpd.GeoDataFrame(  # type: ignore
+        df,
+        geometry=gpd.points_from_xy(
+            df.loc[:, Df.LONG], df.loc[:, Df.LAT]
+        ),
+    ).set_crs("EPSG:4326")
+
+
+
 def get_bool_depth_below_threshold(df: pd.DataFrame, threshold: float) -> pd.Series:
     mask_is_none = df[Df.REGION].isnull()  # type: ignore
     df_coords_none_unique = df.loc[mask_is_none, [Df.LONG, Df.LAT]]  # type: ignore
@@ -316,5 +347,7 @@ def update_flag_history_series(flag_history_series, test_name, bool_, flag_on_tr
         index=bool_.loc[bool_].index,
     )
 
-    history_series = hist_tmp.combine(flag_history_series, merge_json_str, fill_value=json.dumps({}))
+    history_series = hist_tmp.combine(
+        flag_history_series, merge_json_str, fill_value=json.dumps({})
+    )
     return history_series

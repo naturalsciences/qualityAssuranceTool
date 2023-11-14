@@ -13,18 +13,19 @@ data_api:
         - 2023-07-02 12:00
         - 3003-01-01 00:00
 location:
-  connection:
-    database: seavox_areas
-    user: sevox
-    host: localhost
-    port: 5432
-    passphrase: ChangeMe
+  # connection:
+  #   database: seavox_areas
+  #   user: sevox
+  #   host: localhost
+  #   # port: 5432
+  #   port: 8901
+  #   passphrase: ChangeMe
   crs: EPSG:4326 # not fully used
   time_window: 5min
-  max_dx_dt: 6.89
+  max_dx_dt: 6.89 # check units
 QC_dependent:
   - independent: 69
-    dependent: 124
+    dependent: 124 # list/array
     dt_tolerance: 0.5s
     QC:
       range:
