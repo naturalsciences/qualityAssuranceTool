@@ -1,11 +1,13 @@
 import copy
 import json
 import logging
-from datetime import datetime
 import operator
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
+from geopandas import GeoDataFrame, points_from_xy
+from pandas import DataFrame, Series
 from stapy import Entity, Query
 
 from models.constants import ISO_STR_FORMAT, ISO_STR_FORMAT2
@@ -94,7 +96,7 @@ def find_nearest_idx(array, value):
 def get_absolute_path_to_base():
     current_file = Path(__file__)
     idx_src = current_file.parts.index("src")
-    out = current_file.parents[len(current_file.parts)-idx_src -1]
+    out = current_file.parents[len(current_file.parts) - idx_src - 1]
     return out
 
 
@@ -102,7 +104,7 @@ def combine_dicts(a, b, op=operator.add):
     return a | b | dict([(k, op(a[k], b[k])) for k in set(b) & set(a)])
 
 
-def merge_json_str(jsonstr1:str, jsonstr2: str) -> str:
+def merge_json_str(jsonstr1: str, jsonstr2: str) -> str:
     d1 = json.loads(jsonstr1)
     d2 = json.loads(jsonstr2)
     # d_out = {key: value for (key, value) in (d1.items() + d2.items())}
@@ -110,3 +112,36 @@ def merge_json_str(jsonstr1:str, jsonstr2: str) -> str:
 
     jsonstr_out = json.dumps(d_out)
     return jsonstr_out
+
+
+def get_dt_series(df: DataFrame) -> Series:
+    dt = (df[Df.TIME].shift(-1) - df[Df.TIME]).dt.total_seconds().abs()
+    return dt
+
+
+def get_distance_series(df: DataFrame) -> Series:
+    geodf = GeoDataFrame(  # type: ignore
+        df.loc[:, [Df.TIME, Df.LAT, Df.LONG]],
+        geometry=points_from_xy(df.loc[:, Df.LONG], df.loc[:, Df.LAT]),
+    ).set_crs("EPSG:4326")
+    distance = (
+        geodf.to_crs("EPSG:4087").distance(geodf.to_crs("EPSG:4087").shift(-1)).abs() #type: ignore
+    )
+    return distance
+
+
+def get_velocity_series(df: DataFrame) -> Series:
+    dt = get_dt_series(df)
+    distance = get_distance_series(df)
+    velocity = distance / dt
+
+    return velocity
+
+
+def get_acceleration_series(df: DataFrame) -> Series:
+    dt = get_dt_series(df)
+    distance = get_distance_series(df)
+
+    accdt = distance.shift(-1) - distance
+    acc = accdt / dt
+    return acc

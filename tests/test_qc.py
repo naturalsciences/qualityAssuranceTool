@@ -14,6 +14,7 @@ from services.df import df_type_conversions
 from services.qc import (
     CAT_TYPE,
     calc_gradient_results,
+    get_bool_exceed_max_speed,
     get_bool_land_region,
     get_bool_null_region,
     get_bool_out_of_range,
@@ -90,10 +91,10 @@ def df_testing() -> gpd.GeoDataFrame:
             Df.QC_FLAG
             + "_ref": pd.Series(qc_ref_base * MULTIPL_FACTOR, dtype=CAT_TYPE),
             Df.QC_FLAG: pd.Series(
-                QualityFlags.NO_QUALITY_CONTROL,
+                QualityFlags.NO_QUALITY_CONTROL,  # type: ignore
                 index=datastream_id_series.index,
                 dtype=CAT_TYPE,
-            ),
+            ),  # type: ignore
             Df.DATASTREAM_ID: pd.Series(
                 list(
                     sum(  # to convert list of tuples to flat list
@@ -109,9 +110,9 @@ def df_testing() -> gpd.GeoDataFrame:
                     add,
                     base_results * MULTIPL_FACTOR,
                     [i * 10 for i in datastream_id_series.to_list()],
-                ),
+                ),  # type: ignore
                 dtype=float,
-            ),
+            ),  # type: ignore
             Df.OBSERVATION_TYPE: pd.Series(
                 base_observation_type * MULTIPL_FACTOR, dtype="category"
             ),
@@ -210,6 +211,34 @@ def test_location_outlier(df_testing, idx, dx, columns):
         df_testing, max_dx_dt=10.0, time_window="5min"
     )
     assert all(res[idx])
+
+
+@pytest.mark.parametrize(
+    "idx,dx,columns",
+    [
+        ([1, 4], 1, [Df.LONG]),
+        ([3, 4], 1, [Df.LAT]),
+        ([3, 4], -0.1, [Df.LONG]),
+        ([3, 4], -0.1, [Df.LAT, Df.LONG]),
+        ([3, 6], -1, [Df.LAT]),
+    ],
+)
+def test_exceed_max_speed(df_testing, idx, dx, columns):
+    df_testing[Df.LONG] = df_testing.index * 0.001 + 50.0
+    df_testing[Df.LAT] = df_testing.index * 0.001 + 50.0
+
+    for idx_i, col_i in product(idx, columns):
+        df_testing.iloc[idx_i, df_testing.columns.get_loc(col_i)] -= dx
+
+    df_testing["geometry"] = gpd.points_from_xy(df_testing[Df.LONG], df_testing[Df.LAT])
+    df_testing = df_testing.set_crs("EPSG:4326")
+
+    res = get_bool_exceed_max_speed(df_testing, max_speed=10000.0)
+    assert all(res[idx])
+
+
+def test_exceed_max_acceleration():
+    assert 0
 
 
 @pytest.mark.parametrize(
@@ -396,8 +425,13 @@ def test_qc_dependent_quantities_base_3streams(df_testing, n):
 
 @pytest.mark.parametrize("n", tuple(range(len(base_list_region))))
 @pytest.mark.parametrize("n_rel_del", tuple(range(1, len(base_list_region))))
-@pytest.mark.parametrize("independent_id, dependent_id", [(0,1), (1,0)],)
-def test_qc_dependent_quantities_base_3streams_missing(df_testing, n, n_rel_del, independent_id, dependent_id):
+@pytest.mark.parametrize(
+    "independent_id, dependent_id",
+    [(0, 1), (1, 0)],
+)
+def test_qc_dependent_quantities_base_3streams_missing(
+    df_testing, n, n_rel_del, independent_id, dependent_id
+):
     df_additional = df_testing.loc[df_testing[Df.DATASTREAM_ID] == dependent_id]
     df_additional.loc[:, Df.DATASTREAM_ID] = 10
     df_additional.loc[:, Df.IOT_ID] = (
@@ -409,7 +443,17 @@ def test_qc_dependent_quantities_base_3streams_missing(df_testing, n, n_rel_del,
     df_testing[Df.QC_FLAG] = QualityFlags.GOOD
 
     idx_ = df_testing.loc[df_testing[Df.DATASTREAM_ID] == independent_id].index[n]
-    idx_delete = next(islice(cycle(df_testing.loc[df_testing[Df.DATASTREAM_ID] == independent_id].index.values), n+n_rel_del, None))
+    idx_delete = next(
+        islice(
+            cycle(
+                df_testing.loc[
+                    df_testing[Df.DATASTREAM_ID] == independent_id
+                ].index.values
+            ),
+            n + n_rel_del,
+            None,
+        )
+    )
     df_testing.loc[idx_, Df.QC_FLAG] = QualityFlags.BAD
     df_testing = df_testing.drop(idx_delete).reset_index()
 
@@ -418,16 +462,26 @@ def test_qc_dependent_quantities_base_3streams_missing(df_testing, n, n_rel_del,
         QualityFlags.BAD: 3,
     }
     qc_update = qc_dependent_quantity_base(
-        df_testing, independent=independent_id, dependent=dependent_id, dt_tolerance="0.5s", flag_when_missing=QualityFlags.BAD
+        df_testing,
+        independent=independent_id,
+        dependent=dependent_id,
+        dt_tolerance="0.5s",
+        flag_when_missing=QualityFlags.BAD,
     )
     df_testing = df_testing.set_index(Df.IOT_ID)
     df_testing[Df.QC_FLAG].update(qc_update)
     assert df_testing[Df.QC_FLAG].value_counts().to_dict() == qc_flag_count_ref
 
+
 @pytest.mark.parametrize("n", tuple(range(len(base_list_region))))
 @pytest.mark.parametrize("n_rel_del", tuple(range(1, len(base_list_region))))
-@pytest.mark.parametrize("independent_id, dependent_id", [(0,1), (1,0)],)
-def test_qc_dependent_quantities_base_3streams_missing_dependent(df_testing, n, n_rel_del, independent_id, dependent_id):
+@pytest.mark.parametrize(
+    "independent_id, dependent_id",
+    [(0, 1), (1, 0)],
+)
+def test_qc_dependent_quantities_base_3streams_missing_dependent(
+    df_testing, n, n_rel_del, independent_id, dependent_id
+):
     df_additional = df_testing.loc[df_testing[Df.DATASTREAM_ID] == dependent_id]
     df_additional.loc[:, Df.DATASTREAM_ID] = 10
     df_additional.loc[:, Df.IOT_ID] = (
@@ -439,7 +493,17 @@ def test_qc_dependent_quantities_base_3streams_missing_dependent(df_testing, n, 
     df_testing[Df.QC_FLAG] = QualityFlags.GOOD
 
     idx_ = df_testing.loc[df_testing[Df.DATASTREAM_ID] == independent_id].index[n]
-    idx_delete = next(islice(cycle(df_testing.loc[df_testing[Df.DATASTREAM_ID] == dependent_id].index.values), n+n_rel_del, None))
+    idx_delete = next(
+        islice(
+            cycle(
+                df_testing.loc[
+                    df_testing[Df.DATASTREAM_ID] == dependent_id
+                ].index.values
+            ),
+            n + n_rel_del,
+            None,
+        )
+    )
     df_testing.loc[idx_, Df.QC_FLAG] = QualityFlags.BAD
     df_testing = df_testing.drop(idx_delete).reset_index()
 
@@ -448,16 +512,26 @@ def test_qc_dependent_quantities_base_3streams_missing_dependent(df_testing, n, 
         QualityFlags.BAD: 2,
     }
     qc_update = qc_dependent_quantity_base(
-        df_testing, independent=independent_id, dependent=dependent_id, dt_tolerance="0.5s", flag_when_missing=QualityFlags.BAD
+        df_testing,
+        independent=independent_id,
+        dependent=dependent_id,
+        dt_tolerance="0.5s",
+        flag_when_missing=QualityFlags.BAD,
     )
     df_testing = df_testing.set_index(Df.IOT_ID)
     df_testing[Df.QC_FLAG].update(qc_update)
     assert df_testing[Df.QC_FLAG].value_counts().to_dict() == qc_flag_count_ref
 
+
 @pytest.mark.parametrize("n", tuple(range(len(base_list_region))))
 @pytest.mark.parametrize("n_rel_del", tuple(range(1, len(base_list_region))))
-@pytest.mark.parametrize("independent_id, dependent_id", [(0,1), (1,0)],)
-def test_qc_dependent_quantities_base_3streams_missing_noflag(df_testing, n, n_rel_del, independent_id, dependent_id):
+@pytest.mark.parametrize(
+    "independent_id, dependent_id",
+    [(0, 1), (1, 0)],
+)
+def test_qc_dependent_quantities_base_3streams_missing_noflag(
+    df_testing, n, n_rel_del, independent_id, dependent_id
+):
     df_additional = df_testing.loc[df_testing[Df.DATASTREAM_ID] == dependent_id]
     df_additional.loc[:, Df.DATASTREAM_ID] = 10
     df_additional.loc[:, Df.IOT_ID] = (
@@ -469,7 +543,17 @@ def test_qc_dependent_quantities_base_3streams_missing_noflag(df_testing, n, n_r
     df_testing[Df.QC_FLAG] = QualityFlags.GOOD
 
     idx_ = df_testing.loc[df_testing[Df.DATASTREAM_ID] == independent_id].index[n]
-    idx_delete = next(islice(cycle(df_testing.loc[df_testing[Df.DATASTREAM_ID] == independent_id].index.values), n+n_rel_del, None))
+    idx_delete = next(
+        islice(
+            cycle(
+                df_testing.loc[
+                    df_testing[Df.DATASTREAM_ID] == independent_id
+                ].index.values
+            ),
+            n + n_rel_del,
+            None,
+        )
+    )
     df_testing.loc[idx_, Df.QC_FLAG] = QualityFlags.BAD
     df_testing = df_testing.drop(idx_delete).reset_index()
 
@@ -478,16 +562,28 @@ def test_qc_dependent_quantities_base_3streams_missing_noflag(df_testing, n, n_r
         QualityFlags.BAD: 2,
     }
     qc_update = qc_dependent_quantity_base(
-        df_testing, independent=independent_id, dependent=dependent_id, dt_tolerance="0.5s", flag_when_missing=None
+        df_testing,
+        independent=independent_id,
+        dependent=dependent_id,
+        dt_tolerance="0.5s",
+        flag_when_missing=None,
     )
     df_testing = df_testing.set_index(Df.IOT_ID)
     df_testing.update(qc_update)
     assert df_testing[Df.QC_FLAG].value_counts().to_dict() == qc_flag_count_ref
 
+
 @pytest.mark.parametrize("bad_value", (100.0,))
 @pytest.mark.parametrize("n", (0, 2, 4))
-@pytest.mark.parametrize("independent_id, dependent_id", [(0,1),],)
-def test_qc_dependent_quantities_secondary_fct(df_testing, bad_value, n, independent_id, dependent_id):
+@pytest.mark.parametrize(
+    "independent_id, dependent_id",
+    [
+        (0, 1),
+    ],
+)
+def test_qc_dependent_quantities_secondary_fct(
+    df_testing, bad_value, n, independent_id, dependent_id
+):
     qc_flag_count_ref = {
         QualityFlags.GOOD: df_testing.shape[0] - 1,
         QualityFlags.BAD: 1,
@@ -498,7 +594,11 @@ def test_qc_dependent_quantities_secondary_fct(df_testing, bad_value, n, indepen
     df_testing.loc[idx_, Df.RESULT] = bad_value
 
     qc_update = qc_dependent_quantity_secondary(
-        df_testing, independent=independent_id, dependent=dependent_id, range_=(0.0, 10.0), dt_tolerance="0.5s"
+        df_testing,
+        independent=independent_id,
+        dependent=dependent_id,
+        range_=(0.0, 10.0),
+        dt_tolerance="0.5s",
     )
     df_testing = df_testing.set_index(Df.IOT_ID)
     df_testing.update(qc_update)

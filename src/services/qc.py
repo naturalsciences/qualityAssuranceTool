@@ -9,10 +9,9 @@ import pandas as pd
 from pandas.api.types import CategoricalDtype
 
 from models.enums import Df, QualityFlags
-
 # from services.df import df_type_conversions
 from services.regions_query import get_depth_from_etop
-from utils.utils import merge_json_str
+from utils.utils import get_velocity_series, merge_json_str
 
 log = logging.getLogger(__name__)
 
@@ -243,14 +242,14 @@ def get_qc_flag_from_bool(
     flag_on_true: QualityFlags,
     flag_on_false: QualityFlags | None = None,
 ) -> pd.Series:
-    qc_flag_series = pd.Series(flag_on_true, index=bool_.index, dtype=CAT_TYPE).loc[
+    qc_flag_series = pd.Series(flag_on_true, index=bool_.index, dtype=CAT_TYPE).loc[  # type: ignore
         bool_
     ]
     if flag_on_false:
         qc_flag_series = pd.concat(
             [
                 qc_flag_series,
-                pd.Series(flag_on_false, index=bool_.index, dtype=CAT_TYPE).loc[~bool_],
+                pd.Series(flag_on_false, index=bool_.index, dtype=CAT_TYPE).loc[~bool_],  # type: ignore
             ]
         )
     return qc_flag_series
@@ -313,18 +312,10 @@ def get_bool_spacial_outlier_compared_to_median(
 
 
 def get_bool_exceed_max_speed(df: pd.DataFrame, max_speed: float) -> pd.Series:
-    df["dt"] = df[Df.TIME].diff().fillna(pd.to_timedelta("0")).dt.total_seconds()  # type: ignore
-    df["dt"] = (df[Df.TIME] - df[Df.TIME].min()).dt.total_seconds()  # type: ignore
+    velocity = get_velocity_series(df)
 
-    df["dt"] = df[Df.TIME].diff().fillna(pd.to_timedelta("0")).dt.total_seconds()  # type: ignore
-    df["dt"] = (df[Df.TIME] - df[Df.TIME].min()).dt.total_seconds()  # type: ignore
-    gpd.GeoDataFrame(  # type: ignore
-        df,
-        geometry=gpd.points_from_xy(
-            df.loc[:, Df.LONG], df.loc[:, Df.LAT]
-        ),
-    ).set_crs("EPSG:4326")
-
+    bool_velocity = velocity > max_speed
+    return bool_velocity
 
 
 def get_bool_depth_below_threshold(df: pd.DataFrame, threshold: float) -> pd.Series:

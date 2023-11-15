@@ -55,7 +55,6 @@ class MockResponseFullObs:
         return out
 
 
-
 @pytest.fixture
 def mock_response(monkeypatch):
     def mock_get(*args, **kwargs):
@@ -74,6 +73,7 @@ def mock_response_full(monkeypatch):
         return MockResponseFull()
 
     monkeypatch.setattr(u.Query, "get_with_retry", mock_get)
+
 
 @pytest.fixture
 def mock_response_full_obs(monkeypatch):
@@ -98,13 +98,9 @@ class TestUtils:
             "two": "two",
             "three": "threeee",
             "four": "four",
-            "list": list(range(5))
+            "list": list(range(5)),
         }
-        update = {
-            "one": "that",
-            "two": "two",
-            "list": list(range(5,11))
-        }
+        update = {"one": "that", "two": "two", "list": list(range(5, 11))}
         d = u.update_response(d, update)
 
         ref = {
@@ -112,6 +108,15 @@ class TestUtils:
             "two": "two",
             "three": "threeee",
             "four": "four",
-            "list": list(range(11))
+            "list": list(range(11)),
         }
         assert d == ref
+
+    def test_get_velocity(self):
+        assert 0
+
+    def test_get_distance(self):
+        assert 0
+
+    def test_get_acceleration(self):
+        assert 0
