@@ -4,6 +4,7 @@ from copy import deepcopy
 from itertools import compress
 
 import geopandas as gpd
+from geopy import Point as gp_point
 import numpy as np
 import pandas as pd
 from pandas.api.types import CategoricalDtype
@@ -11,7 +12,7 @@ from pandas.api.types import CategoricalDtype
 from models.enums import Df, QualityFlags
 # from services.df import df_type_conversions
 from services.regions_query import get_depth_from_etop
-from utils.utils import get_acceleration_series, get_velocity_series, merge_json_str
+from utils.utils import get_acceleration_series, get_distance_geopy_series, get_velocity_series, merge_json_str
 
 log = logging.getLogger(__name__)
 
@@ -297,16 +298,15 @@ def get_bool_spacial_outlier_compared_to_median(
     ref_point = gpd.GeoDataFrame(  # type: ignore
         rolling_median,
         geometry=gpd.points_from_xy(
-            rolling_median.loc[:, Df.LONG], rolling_median.loc[:, Df.LAT]
+            rolling_median.loc[:, Df.LONG], rolling_median.loc[:, Df.LAT], crs="EPSG:4326"
         ),
-    ).set_crs("EPSG:4326")
+    )
     ref_point["dt"] = rolling_time["dt"]
+    df["geo_ref"] = ref_point.geometry
+    distance = get_distance_geopy_series(df, column1="geometry", column2="geo_ref")
     bool_series = (
-        df.sort_values(Df.TIME)
-        .loc[:, "geometry"]
-        .to_crs("EPSG:4087")
-        .distance(ref_point.loc[:, "geometry"].to_crs("EPSG:4087"))
-        > ref_point["dt"] * max_dx_dt  # type: ignore
+        distance.values
+        > (ref_point["dt"] * max_dx_dt).values  # type: ignore
     )
     return bool_series
 

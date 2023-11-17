@@ -226,13 +226,13 @@ def test_location_outlier(df_testing, idx, dx, columns):
     for idx_i, col_i in product(idx, columns):
         df_testing.iloc[idx_i, df_testing.columns.get_loc(col_i)] -= dx
 
-    df_testing["geometry"] = gpd.points_from_xy(df_testing[Df.LONG], df_testing[Df.LAT])
-    df_testing = df_testing.set_crs("EPSG:4326")
+    df_testing["geometry"] = gpd.points_from_xy(df_testing[Df.LONG], df_testing[Df.LAT], crs="EPSG:4326")
 
     res = get_bool_spacial_outlier_compared_to_median(
-        df_testing, max_dx_dt=10.0, time_window="5min"
+        df_testing, max_dx_dt=111.0+78., time_window="5min"
     )
-    assert all(res[idx])
+    mask = np.ma.masked_array(res, mask=res)
+    assert all(res[idx]) and ~mask.any() and (sum(res) == len(idx))
 
 
 def test_exceed_max_velocity(df_velocity_acceleration):

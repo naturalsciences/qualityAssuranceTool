@@ -4,6 +4,7 @@ import logging
 import operator
 from datetime import datetime
 from pathlib import Path
+from functools import partial
 
 import numpy as np
 from geopandas import GeoDataFrame, points_from_xy
@@ -131,10 +132,10 @@ def get_distance_projection_series(df: DataFrame) -> Series:
     )
     return distance
 
-def get_distance_geopy_series(df: GeoDataFrame) -> Series:
-    def get_distance_geopy_i(row_i):
-        point1 = row_i["geometry"]
-        point2 = row_i["geometry_shifted"]
+def get_distance_geopy_series(df: GeoDataFrame, column1: str="geometry", column2: str="None") -> Series:
+    def get_distance_geopy_i(row_i, column1=column1, column2=column2):
+        point1 = row_i[column1]
+        point2 = row_i[column2]
         if not point2:
             return None
         lat1: float = point1.y
@@ -142,8 +143,10 @@ def get_distance_geopy_series(df: GeoDataFrame) -> Series:
         lat2: float = point2.y
         lon2: float = point2.x
         return geopy_distance.distance((lat1, lon1), (lat2, lon2)).meters
-    df["geometry_shifted"] = df["geometry"].shift(-1) # type: ignore
-    distances_series = df.apply(get_distance_geopy_i, axis=1)
+    if column2 == "None":
+        df["geometry_shifted"] = df["geometry"].shift(-1) # type: ignore
+        column2 = "geometry_shifted"
+    distances_series = df.apply(partial(get_distance_geopy_i, column1=column1, column2=column2), axis=1)
     return distances_series # type: ignore
 
 
