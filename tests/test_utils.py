@@ -1,4 +1,9 @@
 import json
+import geopandas as gpd
+import geopy.distance as gp_distance
+from geopy import Point as gp_point
+import pandas as pd
+import pandas.testing as pdt
 
 import pytest
 import stapy
@@ -6,6 +11,8 @@ from hydra import compose, initialize
 from omegaconf import DictConfig
 
 import utils.utils as u
+from utils.utils import get_acceleration_series, get_distance_geopy_series, get_velocity_series
+from models.enums import Df
 
 
 @pytest.fixture(scope="session")
@@ -83,6 +90,24 @@ def mock_response_full_obs(monkeypatch):
     monkeypatch.setattr(u.Query, "get_with_retry", mock_get)
 
 
+@pytest.fixture
+def df_velocity_acceleration() -> gpd.GeoDataFrame:
+    df_t = pd.read_csv("./resources/data_velocity_acc.csv", header=0)
+    df_t[Df.TIME] = pd.to_timedelta(df_t["Time (s)"], "s") + pd.Timestamp("now")
+
+    p0 = gp_point(longitude=3.1840709669760137, latitude=51.37115902107277)
+    for index, row_i in df_t.iterrows():
+        di = gp_distance.distance(meters=row_i["Distance (m)"])
+        pi = di.destination(point=p0, bearing=row_i["Heading (degrees)"])
+
+        df_t.loc[index, [Df.LONG, Df.LAT]] = pi.longitude, pi.latitude  # type: ignore
+        p0 = pi
+
+    df_t = df_t.drop(columns=["Time (s)", "Distance (m)", "Heading (degrees)"])
+    df_t = gpd.GeoDataFrame(df_t, geometry=gpd.points_from_xy(df_t[Df.LONG], df_t[Df.LAT], crs="EPSG:4326"))  # type: ignore
+    return df_t
+
+
 class TestUtils:
     def test_hydra_is_loaded(self):
         print(cfg)
@@ -112,11 +137,35 @@ class TestUtils:
         }
         assert d == ref
 
-    def test_get_velocity(self):
-        assert 0
 
-    def test_get_distance(self):
-        assert 0
+def test_get_velocity(df_velocity_acceleration):
+    df_file = pd.read_csv("./resources/data_velocity_acc.csv", header=0)
+    velocity = get_velocity_series(df_velocity_acceleration).fillna(0.0)
 
-    def test_get_acceleration(self):
-        assert 0
+    pdt.assert_series_equal(df_file["Velocity (m/s)"], velocity, check_names=False)
+
+
+def test_get_acceleration(df_velocity_acceleration):
+    df_file = pd.read_csv("./resources/data_velocity_acc.csv", header=0)
+    acceleration = get_acceleration_series(df_velocity_acceleration).fillna(0.0)
+
+    pdt.assert_series_equal(df_file["Acceleration (m/s²)"], acceleration, check_names=False)
+
+
+def test_get_distance_geopy_Ghent_Brussels():
+    lat_g, lon_g = 51.053562, 3.720867
+    lat_b, lon_b = 50.846279, 4.354727
+    points = gpd.points_from_xy([lon_g, lon_b], [lat_g, lat_b], crs="EPSG:4326")
+    dfg = gpd.GeoDataFrame(geometry=points)  # type: ignore
+    distance_series = get_distance_geopy_series(dfg)
+    assert pytest.approx(50.03e3, rel=3e-3) == distance_series.iloc[0]
+
+
+def test_fixture_velocity_acceleration(df_velocity_acceleration):
+    df_file = pd.read_csv("./resources/data_velocity_acc.csv", header=0)
+    pdt.assert_series_equal(
+        get_distance_geopy_series(df_velocity_acceleration).iloc[:-1],
+        df_file["Distance (m)"].iloc[1:],
+        check_index=False,
+        check_names=False,
+    )

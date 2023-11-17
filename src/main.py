@@ -136,7 +136,7 @@ def main(cfg: QCconf):
 
     ## outliers location
     bool_outlier = get_bool_spacial_outlier_compared_to_median(
-        df_all, max_dx_dt=cfg.location.max_dx_dt, time_window=cfg.location.time_window
+        df_all, max_dx_dt=cfg.location.max_dx_dt, time_window=cfg.location.time_window # type: ignore
     )
     df_all[Df.QC_FLAG] = (
         df_all[Df.QC_FLAG]
@@ -231,7 +231,7 @@ def main(cfg: QCconf):
             df_all,
             independent=independent,
             dependent=dependent,
-            range_=tuple(dependent_i.QC.range),
+            range_=tuple(dependent_i.QC.range), # type: ignore
             dt_tolerance=cfg.QC_dependent[0].dt_tolerance,
         )
         df_all[Df.QC_FLAG].update(secondary_flags)

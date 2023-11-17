@@ -4,6 +4,10 @@ from operator import add
 from typing import Sequence
 
 import geopandas as gpd
+from shapely.geometry import Point
+import geopy.distance as gp_distance
+from geopy import Point as gp_point
+import pyproj
 import numpy as np
 import pandas as pd
 import pandas.testing as pdt
@@ -14,7 +18,7 @@ from services.df import df_type_conversions
 from services.qc import (
     CAT_TYPE,
     calc_gradient_results,
-    get_bool_exceed_max_speed,
+    get_bool_exceed_max_velocity,
     get_bool_land_region,
     get_bool_null_region,
     get_bool_out_of_range,
@@ -121,6 +125,24 @@ def df_testing() -> gpd.GeoDataFrame:
     return df_out
 
 
+@pytest.fixture
+def df_velocity_acceleration() -> gpd.GeoDataFrame:
+    df_t = pd.read_csv("./resources/data_velocity_acc.csv", header=0)
+    df_t[Df.TIME] = pd.to_timedelta(df_t["Time (s)"], "s") + pd.Timestamp("now")
+
+    p0 = gp_point(longitude=3.1840709669760137, latitude=51.37115902107277)
+    for index, row_i in df_t.iterrows():
+        di = gp_distance.distance(meters=row_i["Distance (m)"])
+        pi = di.destination(point=p0, bearing=row_i["Heading (degrees)"])
+
+        df_t.loc[index, [Df.LONG, Df.LAT]] = pi.longitude, pi.latitude  # type: ignore
+        p0 = pi
+
+    df_t = df_t.drop(columns=["Time (s)", "Distance (m)", "Heading (degrees)"])
+    df_t = gpd.GeoDataFrame(df_t, geometry=gpd.points_from_xy(df_t[Df.LONG], df_t[Df.LAT], crs="EPSG:4326"))  # type: ignore
+    return df_t
+
+
 MULTIPL_FACTOR: int = 2
 LENGTH: int = len(base_list_region) * MULTIPL_FACTOR
 LENGTH_SLICE: int = len(base_list_region)
@@ -213,30 +235,26 @@ def test_location_outlier(df_testing, idx, dx, columns):
     assert all(res[idx])
 
 
-@pytest.mark.parametrize(
-    "idx,dx,columns",
-    [
-        ([1, 4], 1, [Df.LONG]),
-        ([3, 4], 1, [Df.LAT]),
-        ([3, 4], -0.1, [Df.LONG]),
-        ([3, 4], -0.1, [Df.LAT, Df.LONG]),
-        ([3, 6], -1, [Df.LAT]),
-    ],
-)
-def test_exceed_max_speed(df_testing, idx, dx, columns):
-    df_testing[Df.LONG] = df_testing.index * 0.001 + 50.0
-    df_testing[Df.LAT] = df_testing.index * 0.001 + 50.0
-
-    for idx_i, col_i in product(idx, columns):
-        df_testing.iloc[idx_i, df_testing.columns.get_loc(col_i)] -= dx
-
-    df_testing["geometry"] = gpd.points_from_xy(df_testing[Df.LONG], df_testing[Df.LAT])
-    df_testing = df_testing.set_crs("EPSG:4326")
-
-    res = get_bool_exceed_max_speed(df_testing, max_speed=10000.0)
-    assert all(res[idx])
+def test_exceed_max_velocity(df_velocity_acceleration):
+    res = get_bool_exceed_max_velocity(df_velocity_acceleration, max_velocity=90)
+    assert all(~res)
 
 
+def test_exceed_max_velocity_2(df_velocity_acceleration):
+    res = get_bool_exceed_max_velocity(df_velocity_acceleration, max_velocity=0)
+    assert all(res[:-1])
+
+
+def test_exceed_max_velocity_3(df_velocity_acceleration):
+    bool_ref = get_bool_exceed_max_velocity(df_velocity_acceleration, max_velocity=1e12)
+    bool_ref.loc[3] = True # type: ignore
+    df_velocity_acceleration[Df.TIME].loc[4] = df_velocity_acceleration[Df.TIME].loc[3] + pd.Timedelta(nanoseconds=1) # type: ignore
+    res = get_bool_exceed_max_velocity(df_velocity_acceleration, max_velocity=90)
+
+    pdt.assert_series_equal(res, bool_ref, check_names=False)
+
+
+@pytest.mark.skip("Not yet implemented")
 def test_exceed_max_acceleration():
     assert 0
 

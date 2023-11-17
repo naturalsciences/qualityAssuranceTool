@@ -8,7 +8,9 @@ from pathlib import Path
 import numpy as np
 from geopandas import GeoDataFrame, points_from_xy
 from pandas import DataFrame, Series
+from shapely import Point
 from stapy import Entity, Query
+from geopy import distance as geopy_distance
 
 from models.constants import ISO_STR_FORMAT, ISO_STR_FORMAT2
 from models.enums import Df, Entities, Properties
@@ -119,7 +121,7 @@ def get_dt_series(df: DataFrame) -> Series:
     return dt
 
 
-def get_distance_series(df: DataFrame) -> Series:
+def get_distance_projection_series(df: DataFrame) -> Series:
     geodf = GeoDataFrame(  # type: ignore
         df.loc[:, [Df.TIME, Df.LAT, Df.LONG]],
         geometry=points_from_xy(df.loc[:, Df.LONG], df.loc[:, Df.LAT]),
@@ -129,19 +131,34 @@ def get_distance_series(df: DataFrame) -> Series:
     )
     return distance
 
+def get_distance_geopy_series(df: GeoDataFrame) -> Series:
+    def get_distance_geopy_i(row_i):
+        point1 = row_i["geometry"]
+        point2 = row_i["geometry_shifted"]
+        if not point2:
+            return None
+        lat1: float = point1.y
+        lon1: float = point1.x
+        lat2: float = point2.y
+        lon2: float = point2.x
+        return geopy_distance.distance((lat1, lon1), (lat2, lon2)).meters
+    df["geometry_shifted"] = df["geometry"].shift(-1) # type: ignore
+    distances_series = df.apply(get_distance_geopy_i, axis=1)
+    return distances_series # type: ignore
 
-def get_velocity_series(df: DataFrame) -> Series:
+
+def get_velocity_series(df: GeoDataFrame) -> Series:
     dt = get_dt_series(df)
-    distance = get_distance_series(df)
+    distance = get_distance_geopy_series(df)
     velocity = distance / dt
 
     return velocity
 
 
-def get_acceleration_series(df: DataFrame) -> Series:
+def get_acceleration_series(df: GeoDataFrame) -> Series:
     dt = get_dt_series(df)
-    distance = get_distance_series(df)
+    velocity = get_velocity_series(df)
 
-    accdt = distance.shift(-1) - distance
+    accdt = velocity.shift(-1) - velocity
     acc = accdt / dt
     return acc

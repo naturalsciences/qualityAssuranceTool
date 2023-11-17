@@ -11,7 +11,7 @@ from pandas.api.types import CategoricalDtype
 from models.enums import Df, QualityFlags
 # from services.df import df_type_conversions
 from services.regions_query import get_depth_from_etop
-from utils.utils import get_velocity_series, merge_json_str
+from utils.utils import get_acceleration_series, get_velocity_series, merge_json_str
 
 log = logging.getLogger(__name__)
 
@@ -311,11 +311,18 @@ def get_bool_spacial_outlier_compared_to_median(
     return bool_series
 
 
-def get_bool_exceed_max_speed(df: pd.DataFrame, max_speed: float) -> pd.Series:
+def get_bool_exceed_max_velocity(df: gpd.GeoDataFrame, max_velocity: float) -> pd.Series:
     velocity = get_velocity_series(df)
 
-    bool_velocity = velocity > max_speed
+    bool_velocity = velocity > max_velocity
     return bool_velocity
+
+    
+def gt_bool_exceed_max_acceleration(df: gpd.GeoDataFrame, max_acceleration: float) -> pd.Series:
+    acceleration = get_acceleration_series(df)
+
+    bool_acceleration = acceleration > max_acceleration
+    return bool_acceleration
 
 
 def get_bool_depth_below_threshold(df: pd.DataFrame, threshold: float) -> pd.Series:
