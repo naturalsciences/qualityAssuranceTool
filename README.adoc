@@ -42,6 +42,17 @@ WARNING: the layers don't seem to follow the coastlines very accurately. For _in
 
 === Locations
 
+==== Velocity
+
+The velocity, calculated based on the distance traveled from the current point to the next is compared with a maximal (allowed) velocity.
+When a single record is flagged, it is possibly an issue with the timestamp.
+If two or more records are flagged, it is possibly related  to the gps location.
+
+==== Acceleration
+
+The acceleration, calculated from the difference between consecutive distances (calculated between this and the next point) are compared with a maximal acceleration value.
+One incorrect location, can give rise to multiple flagged records.
+
 ==== Outliers
 
 A rolling windows (see pandas documentation for more information) is used to calculate the median latitude and longitude.
