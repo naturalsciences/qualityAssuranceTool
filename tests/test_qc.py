@@ -23,6 +23,7 @@ from services.qc import (
     get_bool_null_region,
     get_bool_out_of_range,
     get_qc_flag_from_bool,
+    get_bool_exceed_max_acceleration,
     qc_dependent_quantity_base,
     qc_dependent_quantity_secondary,
     qc_region,
@@ -254,9 +255,14 @@ def test_exceed_max_velocity_3(df_velocity_acceleration):
     pdt.assert_series_equal(res, bool_ref, check_names=False)
 
 
-@pytest.mark.skip("Not yet implemented")
-def test_exceed_max_acceleration():
-    assert 0
+def test_exceed_max_acceleration(df_velocity_acceleration):
+    bool_ref = get_bool_exceed_max_acceleration(df_velocity_acceleration, max_acceleration=1e12)
+    bool_ref.loc[2] = True # type: ignore
+    bool_ref.loc[3] = True # type: ignore
+    df_velocity_acceleration[Df.TIME].loc[4] = df_velocity_acceleration[Df.TIME].loc[3] + pd.Timedelta(nanoseconds=1) # type: ignore
+    res = get_bool_exceed_max_acceleration(df_velocity_acceleration, max_acceleration=25)
+
+    pdt.assert_series_equal(res, bool_ref, check_names=False)
 
 
 @pytest.mark.parametrize(

@@ -318,8 +318,8 @@ def get_bool_exceed_max_velocity(df: gpd.GeoDataFrame, max_velocity: float) -> p
     return bool_velocity
 
     
-def gt_bool_exceed_max_acceleration(df: gpd.GeoDataFrame, max_acceleration: float) -> pd.Series:
-    acceleration = get_acceleration_series(df)
+def get_bool_exceed_max_acceleration(df: gpd.GeoDataFrame, max_acceleration: float) -> pd.Series:
+    acceleration = get_acceleration_series(df).abs()
 
     bool_acceleration = acceleration > max_acceleration
     return bool_acceleration
