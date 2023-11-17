@@ -308,21 +308,24 @@ def get_bool_spacial_outlier_compared_to_median(
         distance.values
         > (ref_point["dt"] * max_dx_dt).values  # type: ignore
     )
-    return bool_series
+    bool_out = pd.Series(bool_series, index=df.index)
+    return bool_out
 
 
 def get_bool_exceed_max_velocity(df: gpd.GeoDataFrame, max_velocity: float) -> pd.Series:
     velocity = get_velocity_series(df)
 
     bool_velocity = velocity > max_velocity
-    return bool_velocity
+    bool_out = pd.Series(bool_velocity, index=df.index)
+    return bool_out
 
     
 def get_bool_exceed_max_acceleration(df: gpd.GeoDataFrame, max_acceleration: float) -> pd.Series:
     acceleration = get_acceleration_series(df).abs()
 
     bool_acceleration = acceleration > max_acceleration
-    return bool_acceleration
+    bool_out = pd.Series(bool_acceleration, index=df.index)
+    return bool_out
 
 
 def get_bool_depth_below_threshold(df: pd.DataFrame, threshold: float) -> pd.Series:

@@ -23,6 +23,7 @@ location:
   crs: EPSG:4326 # not fully used
   time_window: 5min
   max_dx_dt: 6.89 # check units
+  max_ddx_dtdt: 1.
 QC_dependent:
   - independent: 69
     dependent: 124 # list/array

@@ -13,6 +13,8 @@ from services.qc import (
     CAT_TYPE,
     calc_gradient_results,
     get_bool_depth_below_threshold,
+    get_bool_exceed_max_acceleration,
+    get_bool_exceed_max_velocity,
     get_bool_land_region,
     get_bool_null_region,
     get_bool_out_of_range,
@@ -66,7 +68,7 @@ def main(cfg: QCconf):
     ## find region
 
     t_region0 = time.time()
-    if cfg.location.connection:
+    if getattr(cfg, "location", {}).get("connection", None):
         df_all = intersect_df_region(
             db_credentials=cfg.location.connection,
             df=df_all,
@@ -134,6 +136,46 @@ def main(cfg: QCconf):
             flag_on_true=QualityFlags.BAD,
         )
 
+    ## velocity
+    bool_velocity = get_bool_exceed_max_velocity(df_all, max_velocity=cfg.location.max_dx_dt) # type: ignore
+    df_all[Df.QC_FLAG] = (
+        df_all[Df.QC_FLAG]
+        .combine(
+            get_qc_flag_from_bool(
+                bool_=bool_velocity,
+                flag_on_true=QualityFlags.PROBABLY_BAD,
+            ),
+            max,
+            fill_value=QualityFlags.NO_QUALITY_CONTROL,
+        )
+        .astype(CAT_TYPE)
+    )
+    history_series = update_flag_history_series(
+        history_series,
+        test_name="velocity outlier",
+        bool_=bool_velocity,
+        flag_on_true=QualityFlags.BAD,
+    )
+    ## acceleration
+    bool_acceleration = get_bool_exceed_max_acceleration(df_all, max_acceleration=cfg.location.max_ddx_dtdt) # type: ignore
+    df_all[Df.QC_FLAG] = (
+        df_all[Df.QC_FLAG]
+        .combine(
+            get_qc_flag_from_bool(
+                bool_=bool_acceleration,
+                flag_on_true=QualityFlags.PROBABLY_BAD,
+            ),
+            max,
+            fill_value=QualityFlags.NO_QUALITY_CONTROL,
+        )
+        .astype(CAT_TYPE)
+    )
+    history_series = update_flag_history_series(
+        history_series,
+        test_name="acceleration outlier",
+        bool_=bool_velocity,
+        flag_on_true=QualityFlags.BAD,
+    )
     ## outliers location
     bool_outlier = get_bool_spacial_outlier_compared_to_median(
         df_all, max_dx_dt=cfg.location.max_dx_dt, time_window=cfg.location.time_window # type: ignore
