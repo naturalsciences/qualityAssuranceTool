@@ -3,15 +3,14 @@ import json
 import logging
 import operator
 from datetime import datetime
-from pathlib import Path
 from functools import partial
+from pathlib import Path
 
 import numpy as np
 from geopandas import GeoDataFrame, points_from_xy
-from pandas import DataFrame, Series
-from shapely import Point
-from stapy import Entity, Query
 from geopy import distance as geopy_distance
+from pandas import DataFrame, Series
+from stapy import Entity, Query
 
 from models.constants import ISO_STR_FORMAT, ISO_STR_FORMAT2
 from models.enums import Df, Entities, Properties

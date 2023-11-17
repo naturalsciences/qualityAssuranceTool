@@ -1,35 +1,26 @@
 from copy import deepcopy
-from itertools import product, islice, cycle
+from itertools import cycle, islice, product
 from operator import add
 from typing import Sequence
 
 import geopandas as gpd
-from shapely.geometry import Point
 import geopy.distance as gp_distance
-from geopy import Point as gp_point
-import pyproj
 import numpy as np
 import pandas as pd
 import pandas.testing as pdt
 import pytest
+from geopy import Point as gp_point
 
 from models.enums import Df, QualityFlags
 from services.df import df_type_conversions
-from services.qc import (
-    CAT_TYPE,
-    calc_gradient_results,
-    get_bool_exceed_max_velocity,
-    get_bool_land_region,
-    get_bool_null_region,
-    get_bool_out_of_range,
-    get_qc_flag_from_bool,
-    get_bool_exceed_max_acceleration,
-    qc_dependent_quantity_base,
-    qc_dependent_quantity_secondary,
-    qc_region,
-)
-from services.qc import get_bool_spacial_outlier_compared_to_median
-from services.regions_query import build_points_query, build_query_points
+from services.qc import (CAT_TYPE, calc_gradient_results,
+                         get_bool_exceed_max_acceleration,
+                         get_bool_exceed_max_velocity, get_bool_land_region,
+                         get_bool_null_region, get_bool_out_of_range,
+                         get_bool_spacial_outlier_compared_to_median,
+                         get_qc_flag_from_bool, qc_dependent_quantity_base,
+                         qc_dependent_quantity_secondary)
+from services.regions_query import build_points_query
 
 
 @pytest.fixture

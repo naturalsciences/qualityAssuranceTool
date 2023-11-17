@@ -9,21 +9,15 @@ import stapy
 from models.enums import Df, QualityFlags
 from services.config import QCconf, filter_cfg_to_query
 from services.df import intersect_df_region
-from services.qc import (
-    CAT_TYPE,
-    calc_gradient_results,
-    get_bool_depth_below_threshold,
-    get_bool_exceed_max_acceleration,
-    get_bool_exceed_max_velocity,
-    get_bool_land_region,
-    get_bool_null_region,
-    get_bool_out_of_range,
-    get_bool_spacial_outlier_compared_to_median,
-    get_qc_flag_from_bool,
-    qc_dependent_quantity_base,
-    qc_dependent_quantity_secondary,
-)
-from services.qc import update_flag_history_series
+from services.qc import (CAT_TYPE, calc_gradient_results,
+                         get_bool_depth_below_threshold,
+                         get_bool_exceed_max_acceleration,
+                         get_bool_exceed_max_velocity, get_bool_land_region,
+                         get_bool_null_region, get_bool_out_of_range,
+                         get_bool_spacial_outlier_compared_to_median,
+                         get_qc_flag_from_bool, qc_dependent_quantity_base,
+                         qc_dependent_quantity_secondary,
+                         update_flag_history_series)
 from services.requests import get_all_data, get_elev_netcdf, patch_qc_flags
 
 log = logging.getLogger(__name__)

@@ -1,10 +1,8 @@
 import json
 import logging
 from copy import deepcopy
-from itertools import compress
 
 import geopandas as gpd
-from geopy import Point as gp_point
 import numpy as np
 import pandas as pd
 from pandas.api.types import CategoricalDtype
@@ -12,7 +10,8 @@ from pandas.api.types import CategoricalDtype
 from models.enums import Df, QualityFlags
 # from services.df import df_type_conversions
 from services.regions_query import get_depth_from_etop
-from utils.utils import get_acceleration_series, get_distance_geopy_series, get_velocity_series, merge_json_str
+from utils.utils import (get_acceleration_series, get_distance_geopy_series,
+                         get_velocity_series, merge_json_str)
 
 log = logging.getLogger(__name__)
 
