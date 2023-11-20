@@ -206,7 +206,7 @@ def main(cfg: QCconf):
             get_qc_flag_from_bool(
                 bool_=bool_range,
                 flag_on_true=QualityFlags.BAD,
-                flag_on_false=QualityFlags.GOOD,
+                flag_on_false=QualityFlags.PROBABLY_GOOD,
             ),
             max,
             fill_value=QualityFlags.NO_QUALITY_CONTROL,
@@ -229,7 +229,7 @@ def main(cfg: QCconf):
             get_qc_flag_from_bool(
                 bool_=bool_gradient,
                 flag_on_true=QualityFlags.BAD,
-                flag_on_false=QualityFlags.GOOD,
+                flag_on_false=QualityFlags.PROBABLY_GOOD,
             ),
             max,
             fill_value=QualityFlags.NO_QUALITY_CONTROL,
@@ -281,7 +281,8 @@ def main(cfg: QCconf):
     t_qc1 = time.time()
     t_patch0 = time.time()
     t3 = time.time()
-    url = "http://localhost:8080/FROST-Server/v1.1/$batch"
+    # url = "http://192.168.0.25:8080/FROST-Server/v1.1/$batch"
+    url = cfg.data_api.base_url + "/$batch"
     counter = patch_qc_flags(df_all.reset_index(), url=url)
     t_patch1 = time.time()
     tend = time.time()
