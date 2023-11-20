@@ -32,6 +32,19 @@ The _order_/_priority_ of the flags are determined by the order in which they ar
 
 == _Possible_ Quality checks
 
+== Docker
+
+=== Build image
+
+```bash
+docker buildx build -t qc_sensorthings . 
+```
+
+=== Run container
+
+```bash
+docker run -v ./conf:/app/conf -v ./outputs:/app/outputs --network frost-docker_frosty_net qc_sensorthings "data_api.filter.phenomenonTime.range=[2023-01-04 12:00, 2025-01-01 10:00]"
+```
 === Regions
 
 1. The location associated with each observation is compared with the SeaVox database.
