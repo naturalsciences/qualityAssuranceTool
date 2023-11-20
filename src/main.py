@@ -22,11 +22,20 @@ from services.requests import get_all_data, get_elev_netcdf, patch_qc_flags
 
 log = logging.getLogger(__name__)
 
-
 @hydra.main(config_path="../conf", config_name="config.yaml", version_base="1.2")
 def main(cfg: QCconf):
+    log_extra = logging.getLogger(name="extra")
+    log_extra.setLevel(logging.INFO)
+    rootlog = logging.getLogger()
+    file_handler_extra = logging.FileHandler("/tmp/extraInfo.log")
+    file_handler_extra.setFormatter(rootlog.handlers[0].formatter)
+    log_extra.addHandler(file_handler_extra)
+
+
     t0 = time.time()
     log.info("Start")
+    log.info(f"{log.name=}")
+    log_extra.info("Test2")
 
     history_series = pd.Series()
 
@@ -294,6 +303,7 @@ def main(cfg: QCconf):
     log.info(f"Patch duration: {t_patch1 - t_patch0}")
     log.info(f"Total duration: {tend-t0}")
     log.info("End")
+    log_extra.info(history_series.to_json())
 
 
 if __name__ == "__main__":
