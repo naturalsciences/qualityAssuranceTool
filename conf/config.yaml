@@ -3,7 +3,9 @@ hydra:
   verbose: __main__
 data_api:
   # base_url: https://sensors.naturalsciences.be/sta/v1.1
-  base_url: http://localhost:8080/FROST-Server/v1.1
+  # base_url: http://frost_web:8080/FROST-Server/v1.1
+  base_url: http://192.168.0.25:8080/FROST-Server/v1.1
+  # base_url: http://frost-docker_frosty_net:8080/FROST-Server/v1.1
   things:
     id: 1
   filter:
@@ -11,7 +13,7 @@ data_api:
       format: "%Y-%m-%d %H:%M"
       range:
         - 2023-07-02 12:00
-        - 3003-01-01 00:00
+        - 2023-08-02 12:00
 location:
   # connection:
   #   database: seavox_areas
