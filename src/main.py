@@ -1,6 +1,7 @@
 import logging
 import time
 
+from dotenv import load_dotenv
 import geopandas as gpd
 import hydra
 import pandas as pd
@@ -28,6 +29,7 @@ from services.requests import get_all_data, get_elev_netcdf, patch_qc_flags
 
 log = logging.getLogger(__name__)
 
+load_dotenv()
 
 @hydra.main(config_path="../conf", config_name="config.yaml", version_base="1.2")
 def main(cfg: QCconf):
@@ -41,7 +43,6 @@ def main(cfg: QCconf):
     t0 = time.time()
     log.info("Start")
     log.info(f"{log.name=}")
-    log_extra.info("Test2")
 
     history_series = pd.Series()
 
@@ -298,6 +299,7 @@ def main(cfg: QCconf):
     t3 = time.time()
     # url = "http://192.168.0.25:8080/FROST-Server/v1.1/$batch"
     url = cfg.data_api.base_url + "/$batch"
+    log.info(f"{cfg.data_api.auth.username=}")
     counter = patch_qc_flags(df_all.reset_index(), url=url, auth=(cfg.data_api.auth.username, cfg.data_api.auth.passphrase))
     t_patch1 = time.time()
     tend = time.time()

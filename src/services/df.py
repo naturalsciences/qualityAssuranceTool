@@ -69,10 +69,12 @@ def response_obs_to_df(response_obs: dict) -> pd.DataFrame:
 def response_single_datastream_to_df(response_datastream: dict) -> pd.DataFrame:
     df = pd.DataFrame()
     observations_list = response_datastream.get(Entities.OBSERVATIONS, [])
+    log.info(f"{observations_list=}")
     if observations_list:
         df_i = pd.DataFrame(observations_list).astype(
             {Properties.IOT_ID: int, Df.RESULT: float}
         )
+        df_i[Df.QC_FLAG] = df_i.get(Df.QC_FLAG, None)
         df_i[Df.QC_FLAG] = df_i[Df.QC_FLAG].fillna(0).astype(int).apply(QualityFlags).astype(CAT_TYPE)  # type: ignore
         df_i[Df.DATASTREAM_ID] = int(response_datastream.get(Properties.IOT_ID, -1))
         df_i[Properties.PHENOMENONTIME] = df_i[Properties.PHENOMENONTIME].apply(
