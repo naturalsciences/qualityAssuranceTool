@@ -279,21 +279,30 @@ def set_qc_flag_range_check(
 def get_bool_spacial_outlier_compared_to_median(
     df: gpd.GeoDataFrame, max_dx_dt: float, time_window: str
 ) -> pd.Series:
-    df["dt"] = df[Df.TIME].diff().fillna(pd.to_timedelta("0")).dt.total_seconds()  # type: ignore
-    df["dt"] = (df[Df.TIME] - df[Df.TIME].min()).dt.total_seconds()  # type: ignore
+    df_time_sorted = df.sort_values(Df.TIME)
+    df_time_sorted["dt"] = df_time_sorted[Df.TIME].diff().fillna(pd.to_timedelta("0")).dt.total_seconds()  # type: ignore
+    df_time_sorted["dt"] = (df_time_sorted[Df.TIME] - df_time_sorted[Df.TIME].min()).dt.total_seconds()  # type: ignore
+
+    bool_series_lat_eq_long = df_time_sorted[Df.LAT] == df_time_sorted[Df.LONG]
+    log.info(f"{bool_series_lat_eq_long.value_counts(dropna=False)=}")
 
     rolling_median = (
-        df.loc[:, [Df.TIME, Df.LONG, Df.LAT]]
+        df_time_sorted.loc[~bool_series_lat_eq_long, [Df.TIME, Df.LONG, Df.LAT]]
         .sort_values(Df.TIME)
         .rolling(time_window, on=Df.TIME, center=True)
         .apply(np.median)
     )
     rolling_time = (
-        df.loc[:, [Df.TIME, "dt"]]
+        df_time_sorted.loc[:, [Df.TIME, "dt"]]
         .sort_values(Df.TIME)
         .rolling(time_window, on=Df.TIME, center=True)
         .apply(np.sum)
     )
+
+    rolling_median = rolling_median.reindex(index=rolling_time.index, fill_value=None)
+    rolling_median.loc[bool_series_lat_eq_long, Df.TIME] = rolling_time.loc[bool_series_lat_eq_long, Df.TIME]
+    rolling_median = rolling_median.ffill().bfill()
+
     ref_point = gpd.GeoDataFrame(  # type: ignore
         rolling_median,
         geometry=gpd.points_from_xy(
@@ -301,13 +310,14 @@ def get_bool_spacial_outlier_compared_to_median(
         ),
     )
     ref_point["dt"] = rolling_time["dt"]
-    df["geo_ref"] = ref_point.geometry
-    distance = get_distance_geopy_series(df, column1="geometry", column2="geo_ref")
+    df_time_sorted["geo_ref"] = ref_point.geometry
+    df_time_sorted = gpd.GeoDataFrame(df_time_sorted)
+    distance = get_distance_geopy_series(df_time_sorted, column1="geometry", column2="geo_ref")
     bool_series = (
         distance.values
         > (ref_point["dt"] * max_dx_dt).values  # type: ignore
     )
-    bool_out = pd.Series(bool_series, index=df.index)
+    bool_out = pd.Series(bool_series, index=df_time_sorted.index)
     return bool_out
 
 

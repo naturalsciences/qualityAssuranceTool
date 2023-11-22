@@ -3,17 +3,21 @@ hydra:
   verbose: __main__
 data_api:
   # base_url: https://sensors.naturalsciences.be/sta/v1.1
-  base_url: http://localhost:8080/FROST-Server/v1.1
+  # base_url: http://localhost:8080/FROST-Server/v1.1
   # base_url: http://192.168.0.25:8080/FROST-Server/v1.1
   # base_url: http://frost-docker_frosty_net:8080/FROST-Server/v1.1
+  base_url: https://dev-sensors.naturalsciences.be/sta/v1.1
+  auth:
+    username: ${oc.env:DEV_SENSORS_USER}
+    passphrase: ${oc.env:DEV_SENSORS_PASS}
   things:
     id: 1
   filter:
     phenomenonTime:
       format: "%Y-%m-%d %H:%M"
       range:
-        - 2023-07-02 12:00
-        - 2023-08-02 12:00
+        - 2023-06-15 00:00
+        - 2023-06-30 00:00
 location:
   # connection:
   #   database: seavox_areas
@@ -23,7 +27,7 @@ location:
   #   port: 8901
   #   passphrase: ChangeMe
   crs: EPSG:4326 # not fully used
-  time_window: 5min
+  time_window: 24H
   max_dx_dt: 6.89 # check units
   max_ddx_dtdt: .1
 QC_dependent:

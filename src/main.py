@@ -9,18 +9,25 @@ import stapy
 from models.enums import Df, QualityFlags
 from services.config import QCconf, filter_cfg_to_query
 from services.df import intersect_df_region
-from services.qc import (CAT_TYPE, calc_gradient_results,
-                         get_bool_depth_below_threshold,
-                         get_bool_exceed_max_acceleration,
-                         get_bool_exceed_max_velocity, get_bool_land_region,
-                         get_bool_null_region, get_bool_out_of_range,
-                         get_bool_spacial_outlier_compared_to_median,
-                         get_qc_flag_from_bool, qc_dependent_quantity_base,
-                         qc_dependent_quantity_secondary,
-                         update_flag_history_series)
+from services.qc import (
+    CAT_TYPE,
+    calc_gradient_results,
+    get_bool_depth_below_threshold,
+    get_bool_exceed_max_acceleration,
+    get_bool_exceed_max_velocity,
+    get_bool_land_region,
+    get_bool_null_region,
+    get_bool_out_of_range,
+    get_bool_spacial_outlier_compared_to_median,
+    get_qc_flag_from_bool,
+    qc_dependent_quantity_base,
+    qc_dependent_quantity_secondary,
+    update_flag_history_series,
+)
 from services.requests import get_all_data, get_elev_netcdf, patch_qc_flags
 
 log = logging.getLogger(__name__)
+
 
 @hydra.main(config_path="../conf", config_name="config.yaml", version_base="1.2")
 def main(cfg: QCconf):
@@ -30,7 +37,6 @@ def main(cfg: QCconf):
     file_handler_extra = logging.FileHandler("/tmp/extraInfo.log")
     file_handler_extra.setFormatter(rootlog.handlers[0].formatter)
     log_extra.addHandler(file_handler_extra)
-
 
     t0 = time.time()
     log.info("Start")
@@ -139,8 +145,30 @@ def main(cfg: QCconf):
             flag_on_true=QualityFlags.BAD,
         )
 
+    bool_outlier = get_bool_spacial_outlier_compared_to_median(
+        df_all, max_dx_dt=cfg.location.max_dx_dt, time_window=cfg.location.time_window  # type: ignore
+    )
+    df_all[Df.QC_FLAG] = (
+        df_all[Df.QC_FLAG]
+        .combine(
+            get_qc_flag_from_bool(
+                bool_=bool_outlier,
+                flag_on_true=QualityFlags.BAD,
+            ),
+            max,
+            fill_value=QualityFlags.NO_QUALITY_CONTROL,
+        )
+        .astype(CAT_TYPE)
+    )
+    history_series = update_flag_history_series(
+        history_series,
+        test_name="Location outlier",
+        bool_=bool_outlier,
+        flag_on_true=QualityFlags.BAD,
+    )
+
     ## velocity
-    bool_velocity = get_bool_exceed_max_velocity(df_all, max_velocity=cfg.location.max_dx_dt) # type: ignore
+    bool_velocity = get_bool_exceed_max_velocity(df_all.loc[~bool_outlier], max_velocity=cfg.location.max_dx_dt)  # type: ignore
     df_all[Df.QC_FLAG] = (
         df_all[Df.QC_FLAG]
         .combine(
@@ -160,7 +188,7 @@ def main(cfg: QCconf):
         flag_on_true=QualityFlags.BAD,
     )
     ## acceleration
-    bool_acceleration = get_bool_exceed_max_acceleration(df_all, max_acceleration=cfg.location.max_ddx_dtdt) # type: ignore
+    bool_acceleration = get_bool_exceed_max_acceleration(df_all[~bool_outlier], max_acceleration=cfg.location.max_ddx_dtdt)  # type: ignore
     df_all[Df.QC_FLAG] = (
         df_all[Df.QC_FLAG]
         .combine(
@@ -177,28 +205,6 @@ def main(cfg: QCconf):
         history_series,
         test_name="acceleration outlier",
         bool_=bool_velocity,
-        flag_on_true=QualityFlags.BAD,
-    )
-    ## outliers location
-    bool_outlier = get_bool_spacial_outlier_compared_to_median(
-        df_all, max_dx_dt=cfg.location.max_dx_dt, time_window=cfg.location.time_window # type: ignore
-    )
-    df_all[Df.QC_FLAG] = (
-        df_all[Df.QC_FLAG]
-        .combine(
-            get_qc_flag_from_bool(
-                bool_=bool_outlier,
-                flag_on_true=QualityFlags.BAD,
-            ),
-            max,
-            fill_value=QualityFlags.NO_QUALITY_CONTROL,
-        )
-        .astype(CAT_TYPE)
-    )
-    history_series = update_flag_history_series(
-        history_series,
-        test_name="Location outlier",
-        bool_=bool_outlier,
         flag_on_true=QualityFlags.BAD,
     )
 
@@ -276,7 +282,7 @@ def main(cfg: QCconf):
             df_all,
             independent=independent,
             dependent=dependent,
-            range_=tuple(dependent_i.QC.range), # type: ignore
+            range_=tuple(dependent_i.QC.range),  # type: ignore
             dt_tolerance=cfg.QC_dependent[0].dt_tolerance,
         )
         df_all[Df.QC_FLAG].update(secondary_flags)
@@ -292,7 +298,7 @@ def main(cfg: QCconf):
     t3 = time.time()
     # url = "http://192.168.0.25:8080/FROST-Server/v1.1/$batch"
     url = cfg.data_api.base_url + "/$batch"
-    counter = patch_qc_flags(df_all.reset_index(), url=url)
+    # counter = patch_qc_flags(df_all.reset_index(), url=url, auth=(cfg.data_api.auth.username, cfg.data_api.auth.passphrase))
     t_patch1 = time.time()
     tend = time.time()
     log.info(f"df requests/construction duration: {t_df1 - t_df0}")

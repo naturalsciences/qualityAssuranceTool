@@ -23,10 +23,17 @@ class FilterEntry:
 
 
 @dataclass
+class SensorThingsAuth:
+    username: str
+    passphrase: str
+
+
+@dataclass
 class DataApi:
     base_url: str
     things: ThingConfig
     filter: FilterEntry
+    auth: SensorThingsAuth
 
 
 @dataclass

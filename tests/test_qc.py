@@ -131,7 +131,7 @@ def df_velocity_acceleration() -> gpd.GeoDataFrame:
         p0 = pi
 
     df_t = df_t.drop(columns=["Time (s)", "Distance (m)", "Heading (degrees)"])
-    df_t = gpd.GeoDataFrame(df_t, geometry=gpd.points_from_xy(df_t[Df.LONG], df_t[Df.LAT], crs="EPSG:4326"))  # type: ignore
+    df_t = gpd.GeoDataFrame(df_t, geometry=gpd.points_from_xy(df_t[Df.LONG], df_t[Df.LAT], crs="EPSG:4326")) # type: ignore
     return df_t
 
 
@@ -213,10 +213,39 @@ def test_qc_region_to_flag(df_testing):
 )
 def test_location_outlier(df_testing, idx, dx, columns):
     df_testing[Df.LONG] = df_testing.index * 0.001 + 50.0
-    df_testing[Df.LAT] = df_testing.index * 0.001 + 50.0
+    df_testing[Df.LAT] = df_testing.index * 0.001 + 20.0
 
     for idx_i, col_i in product(idx, columns):
         df_testing.iloc[idx_i, df_testing.columns.get_loc(col_i)] -= dx
+
+    df_testing["geometry"] = gpd.points_from_xy(df_testing[Df.LONG], df_testing[Df.LAT], crs="EPSG:4326")
+
+    res = get_bool_spacial_outlier_compared_to_median(
+        df_testing, max_dx_dt=111.0+78., time_window="5min"
+    )
+    mask = np.ma.masked_array(res, mask=res)
+    assert all(res[idx]) and ~mask.any() and (sum(res) == len(idx))
+
+
+@pytest.mark.parametrize(
+    "idx,dx,columns",
+    [
+        ([1, 4], 1, [Df.LONG]),
+        ([3, 4], 1, [Df.LAT]),
+        ([3, 4], -0.1, [Df.LONG]),
+        ([3, 4], -0.1, [Df.LAT, Df.LONG]),
+        ([3, 6], -1, [Df.LAT]),
+    ],
+)
+def test_location_outlier_long_eq_lat(df_testing, idx, dx, columns):
+    df_testing[Df.LONG] = df_testing.index * 0.001 + 50.0
+    df_testing[Df.LAT] = df_testing.index * 0.001 + 20.0
+
+    for idx_i, col_i in product(idx, columns):
+        df_testing.iloc[idx_i, df_testing.columns.get_loc(col_i)] -= dx
+        other_column = [Df.LAT, Df.LONG][col_i==Df.LAT]
+        changed_to_value = df_testing.iloc[idx_i, df_testing.columns.get_loc(col_i)]
+        df_testing.iloc[idx_i, df_testing.columns.get_loc(other_column)] = changed_to_value
 
     df_testing["geometry"] = gpd.points_from_xy(df_testing[Df.LONG], df_testing[Df.LAT], crs="EPSG:4326")
 

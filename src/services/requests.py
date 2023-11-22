@@ -363,7 +363,7 @@ def get_datetime_latest_observation():
     return latest_phenomenonTime
 
 
-def patch_qc_flags(df: pd.DataFrame, url) -> Counter:
+def patch_qc_flags(df: pd.DataFrame, url: str, auth:Tuple[str,str] | None = None) -> Counter:
     df["patch_dict"] = df[[Df.IOT_ID, Df.QC_FLAG]].apply(series_to_patch_dict, axis=1)
 
     final_json = {"requests": df["patch_dict"].to_list()}
@@ -372,6 +372,7 @@ def patch_qc_flags(df: pd.DataFrame, url) -> Counter:
         headers={"Content-Type": "application/json"},
         url=url,
         data=json.dumps(final_json),
+        auth=auth
     )
     count_res = Counter([ri["status"] for ri in response.json()["responses"]])
     log.info("End batch patch query")
