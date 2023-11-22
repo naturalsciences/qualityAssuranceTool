@@ -79,6 +79,10 @@ def calc_gradient_results(df: pd.DataFrame, groupby: Df):
     log.debug(f"Start gradient calculations per {groupby}.")
 
     def grad_function(group):
+        nb_row, nb_columns = group.shape
+        if nb_row < 2:
+            group[Df.GRADIENT] = None
+            return group
         g = np.gradient(
             group.result, group.phenomenonTime.astype("datetime64[s]").astype("int64")
         )
