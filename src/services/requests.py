@@ -374,7 +374,14 @@ def patch_qc_flags(df: pd.DataFrame, url: str, auth:Tuple[str,str] | None = None
         data=json.dumps(final_json),
         auth=auth
     )
-    count_res = Counter([ri["status"] for ri in response.json()["responses"]])
+    try:
+        responses = response.json()["responses"]
+    except:
+        log.error("Something went wrong while posing. Is there a valid authentication?")
+        log.error(f"{response}")
+        raise IOError("{response}")
+        
+    count_res = Counter([ri["status"] for ri in responses])
     log.info("End batch patch query")
     log.info(f"{json.dumps(count_res)}")
     return count_res
