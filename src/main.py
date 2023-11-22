@@ -34,7 +34,7 @@ def main(cfg: QCconf):
     log_extra = logging.getLogger(name="extra")
     log_extra.setLevel(logging.INFO)
     rootlog = logging.getLogger()
-    file_handler_extra = logging.FileHandler("/tmp/extraInfo.log")
+    file_handler_extra = logging.FileHandler("history.log")
     file_handler_extra.setFormatter(rootlog.handlers[0].formatter)
     log_extra.addHandler(file_handler_extra)
 
@@ -298,7 +298,7 @@ def main(cfg: QCconf):
     t3 = time.time()
     # url = "http://192.168.0.25:8080/FROST-Server/v1.1/$batch"
     url = cfg.data_api.base_url + "/$batch"
-    # counter = patch_qc_flags(df_all.reset_index(), url=url, auth=(cfg.data_api.auth.username, cfg.data_api.auth.passphrase))
+    counter = patch_qc_flags(df_all.reset_index(), url=url, auth=(cfg.data_api.auth.username, cfg.data_api.auth.passphrase))
     t_patch1 = time.time()
     tend = time.time()
     log.info(f"df requests/construction duration: {t_df1 - t_df0}")
