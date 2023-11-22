@@ -13,13 +13,19 @@ from geopy import Point as gp_point
 
 from models.enums import Df, QualityFlags
 from services.df import df_type_conversions
-from services.qc import (CAT_TYPE, calc_gradient_results,
-                         get_bool_exceed_max_acceleration,
-                         get_bool_exceed_max_velocity, get_bool_land_region,
-                         get_bool_null_region, get_bool_out_of_range,
-                         get_bool_spacial_outlier_compared_to_median,
-                         get_qc_flag_from_bool, qc_dependent_quantity_base,
-                         qc_dependent_quantity_secondary)
+from services.qc import (
+    CAT_TYPE,
+    calc_gradient_results,
+    get_bool_exceed_max_acceleration,
+    get_bool_exceed_max_velocity,
+    get_bool_land_region,
+    get_bool_null_region,
+    get_bool_out_of_range,
+    get_bool_spacial_outlier_compared_to_median,
+    get_qc_flag_from_bool,
+    qc_dependent_quantity_base,
+    qc_dependent_quantity_secondary,
+)
 from services.regions_query import build_points_query
 
 
@@ -131,7 +137,7 @@ def df_velocity_acceleration() -> gpd.GeoDataFrame:
         p0 = pi
 
     df_t = df_t.drop(columns=["Time (s)", "Distance (m)", "Heading (degrees)"])
-    df_t = gpd.GeoDataFrame(df_t, geometry=gpd.points_from_xy(df_t[Df.LONG], df_t[Df.LAT], crs="EPSG:4326")) # type: ignore
+    df_t = gpd.GeoDataFrame(df_t, geometry=gpd.points_from_xy(df_t[Df.LONG], df_t[Df.LAT], crs="EPSG:4326"))  # type: ignore
     return df_t
 
 
@@ -218,10 +224,12 @@ def test_location_outlier(df_testing, idx, dx, columns):
     for idx_i, col_i in product(idx, columns):
         df_testing.iloc[idx_i, df_testing.columns.get_loc(col_i)] -= dx
 
-    df_testing["geometry"] = gpd.points_from_xy(df_testing[Df.LONG], df_testing[Df.LAT], crs="EPSG:4326")
+    df_testing["geometry"] = gpd.points_from_xy(
+        df_testing[Df.LONG], df_testing[Df.LAT], crs="EPSG:4326"
+    )
 
     res = get_bool_spacial_outlier_compared_to_median(
-        df_testing, max_dx_dt=111.0+78., time_window="5min"
+        df_testing, max_dx_dt=111.0 + 78.0, time_window="5min"
     )
     mask = np.ma.masked_array(res, mask=res)
     assert all(res[idx]) and ~mask.any() and (sum(res) == len(idx))
@@ -243,14 +251,18 @@ def test_location_outlier_long_eq_lat(df_testing, idx, dx, columns):
 
     for idx_i, col_i in product(idx, columns):
         df_testing.iloc[idx_i, df_testing.columns.get_loc(col_i)] -= dx
-        other_column = [Df.LAT, Df.LONG][col_i==Df.LAT]
+        other_column = [Df.LAT, Df.LONG][col_i == Df.LAT]
         changed_to_value = df_testing.iloc[idx_i, df_testing.columns.get_loc(col_i)]
-        df_testing.iloc[idx_i, df_testing.columns.get_loc(other_column)] = changed_to_value
+        df_testing.iloc[
+            idx_i, df_testing.columns.get_loc(other_column)
+        ] = changed_to_value
 
-    df_testing["geometry"] = gpd.points_from_xy(df_testing[Df.LONG], df_testing[Df.LAT], crs="EPSG:4326")
+    df_testing["geometry"] = gpd.points_from_xy(
+        df_testing[Df.LONG], df_testing[Df.LAT], crs="EPSG:4326"
+    )
 
     res = get_bool_spacial_outlier_compared_to_median(
-        df_testing, max_dx_dt=111.0+78., time_window="5min"
+        df_testing, max_dx_dt=111.0 + 78.0, time_window="5min"
     )
     mask = np.ma.masked_array(res, mask=res)
     assert all(res[idx]) and ~mask.any() and (sum(res) == len(idx))
@@ -268,19 +280,23 @@ def test_exceed_max_velocity_2(df_velocity_acceleration):
 
 def test_exceed_max_velocity_3(df_velocity_acceleration):
     bool_ref = get_bool_exceed_max_velocity(df_velocity_acceleration, max_velocity=1e12)
-    bool_ref.loc[3] = True # type: ignore
-    df_velocity_acceleration[Df.TIME].loc[4] = df_velocity_acceleration[Df.TIME].loc[3] + pd.Timedelta(nanoseconds=1) # type: ignore
+    bool_ref.loc[3] = True  # type: ignore
+    df_velocity_acceleration[Df.TIME].loc[4] = df_velocity_acceleration[Df.TIME].loc[3] + pd.Timedelta(nanoseconds=1)  # type: ignore
     res = get_bool_exceed_max_velocity(df_velocity_acceleration, max_velocity=90)
 
     pdt.assert_series_equal(res, bool_ref, check_names=False)
 
 
 def test_exceed_max_acceleration(df_velocity_acceleration):
-    bool_ref = get_bool_exceed_max_acceleration(df_velocity_acceleration, max_acceleration=1e12)
-    bool_ref.loc[2] = True # type: ignore
-    bool_ref.loc[3] = True # type: ignore
-    df_velocity_acceleration[Df.TIME].loc[4] = df_velocity_acceleration[Df.TIME].loc[3] + pd.Timedelta(nanoseconds=1) # type: ignore
-    res = get_bool_exceed_max_acceleration(df_velocity_acceleration, max_acceleration=25)
+    bool_ref = get_bool_exceed_max_acceleration(
+        df_velocity_acceleration, max_acceleration=1e12
+    )
+    bool_ref.loc[2] = True  # type: ignore
+    bool_ref.loc[3] = True  # type: ignore
+    df_velocity_acceleration[Df.TIME].loc[4] = df_velocity_acceleration[Df.TIME].loc[3] + pd.Timedelta(nanoseconds=1)  # type: ignore
+    res = get_bool_exceed_max_acceleration(
+        df_velocity_acceleration, max_acceleration=25
+    )
 
     pdt.assert_series_equal(res, bool_ref, check_names=False)
 
