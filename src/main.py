@@ -1,48 +1,43 @@
 import logging
 import time
+from pathlib import Path
 
-from dotenv import load_dotenv
 import geopandas as gpd
 import hydra
 import pandas as pd
 import stapy
+from dotenv import load_dotenv
 
 from models.enums import Df, QualityFlags
 from services.config import QCconf, filter_cfg_to_query
 from services.df import intersect_df_region
-from services.qc import (
-    CAT_TYPE,
-    calc_gradient_results,
-    get_bool_depth_below_threshold,
-    get_bool_exceed_max_acceleration,
-    get_bool_exceed_max_velocity,
-    get_bool_land_region,
-    get_bool_null_region,
-    get_bool_out_of_range,
-    get_bool_spacial_outlier_compared_to_median,
-    get_qc_flag_from_bool,
-    qc_dependent_quantity_base,
-    qc_dependent_quantity_secondary,
-    update_flag_history_series,
-)
+from services.qc import (CAT_TYPE, calc_gradient_results,
+                         get_bool_depth_below_threshold,
+                         get_bool_exceed_max_acceleration,
+                         get_bool_exceed_max_velocity, get_bool_land_region,
+                         get_bool_null_region, get_bool_out_of_range,
+                         get_bool_spacial_outlier_compared_to_median,
+                         get_qc_flag_from_bool, qc_dependent_quantity_base,
+                         qc_dependent_quantity_secondary,
+                         update_flag_history_series)
 from services.requests import get_all_data, get_elev_netcdf, patch_qc_flags
 
 log = logging.getLogger(__name__)
 
 load_dotenv()
 
+
 @hydra.main(config_path="../conf", config_name="config.yaml", version_base="1.2")
 def main(cfg: QCconf):
     log_extra = logging.getLogger(name="extra")
     log_extra.setLevel(logging.INFO)
     rootlog = logging.getLogger()
-    file_handler_extra = logging.FileHandler("history.log")
+    extra_log_file = Path(getattr(rootlog.handlers[1], "baseFilename", "./")).parent.joinpath("history.log")
+    file_handler_extra = logging.FileHandler(extra_log_file)
     file_handler_extra.setFormatter(rootlog.handlers[0].formatter)
     log_extra.addHandler(file_handler_extra)
-
     t0 = time.time()
     log.info("Start")
-    log.info(f"{log.name=}")
 
     history_series = pd.Series()
 
@@ -57,6 +52,9 @@ def main(cfg: QCconf):
 
     # get data in dataframe
     df_all = get_all_data(thing_id=thing_id, filter_cfg=filter_cfg)
+    if df_all.shape == (0, 0):
+        log.warning("No data, nothing to do")
+        return 0
     nb_observations = df_all.shape[0]
     df_all = gpd.GeoDataFrame(df_all, geometry=gpd.points_from_xy(df_all[Df.LONG], df_all[Df.LAT]), crs=cfg.location.crs)  # type: ignore
     # get qc check df (try to find clearer name)
@@ -300,7 +298,11 @@ def main(cfg: QCconf):
     # url = "http://192.168.0.25:8080/FROST-Server/v1.1/$batch"
     url = cfg.data_api.base_url + "/$batch"
     log.info(f"{cfg.data_api.auth.username=}")
-    counter = patch_qc_flags(df_all.reset_index(), url=url, auth=(cfg.data_api.auth.username, cfg.data_api.auth.passphrase))
+    counter = patch_qc_flags(
+        df_all.reset_index(),
+        url=url,
+        auth=(cfg.data_api.auth.username, cfg.data_api.auth.passphrase),
+    )
     t_patch1 = time.time()
     tend = time.time()
     log.info(f"df requests/construction duration: {t_df1 - t_df0}")
