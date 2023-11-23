@@ -5,6 +5,7 @@ import operator
 from datetime import datetime
 from functools import partial
 from pathlib import Path
+from typing import List
 
 import numpy as np
 from geopandas import GeoDataFrame, points_from_xy
@@ -60,16 +61,45 @@ def extend_summary_with_result_inspection(summary_dict: dict[str, list]):
     return summary_out
 
 
-def series_to_patch_dict(x, group_per_x=1000):
-    # qc_fla is hardcoded!
+def series_to_patch_dict(
+    x,
+    group_per_x=1000,
+    url_entity: Entities = Entities.OBSERVATIONS,
+    columns: List[Df] = [Df.IOT_ID, Df.QC_FLAG],
+    json_body_template: str | None = None,
+):
+    # qc_flag is hardcoded!
     # atomicityGroup seems to improve performance, but amount of groups seems irrelevant (?)
     # UNLESS multiple runs are done simultaneously?
+    body_default = '{"resultQuality": "{value}"}'
+    if not json_body_template:
+        json_body_template = body_default
+
+    def create_json(template, value):
+        # Load the JSON template
+        template_json = json.loads(template)
+
+        def replace_value(template_json, value):
+            # Replace the placeholder with the given value
+            for key, val in template_json.items():
+                if isinstance(val, dict):
+                    replace_value(val, value)
+                elif isinstance(val, str) and "{value}" in val:
+                    if isinstance(value, int):
+                        template_json[key] = int(val.format(value=value))
+                    elif isinstance(value, float):
+                        template_json[key] = float(val.format(value))
+                    else:
+                        template_json[key] = val.format(value=value)
+        replace_value(template_json, value)
+        return template_json
+
     d_out = {
         "id": str(x.name + 1),
         "atomicityGroup": f"Group{(int(x.name/group_per_x)+1)}",
         "method": "patch",
-        "url": f"Observations({x.get(Properties.IOT_ID)})",
-        "body": {"resultQuality": str(x.get(Df.QC_FLAG))},
+        "url": f"{url_entity}({x.get(columns[0])})",
+        "body": create_json(json_body_template, int(str(x.get(columns[1])))),
     }
     return d_out
 
@@ -127,11 +157,14 @@ def get_distance_projection_series(df: DataFrame) -> Series:
         geometry=points_from_xy(df.loc[:, Df.LONG], df.loc[:, Df.LAT]),
     ).set_crs("EPSG:4326")
     distance = (
-        geodf.to_crs("EPSG:4087").distance(geodf.to_crs("EPSG:4087").shift(-1)).abs() #type: ignore
+        geodf.to_crs("EPSG:4087").distance(geodf.to_crs("EPSG:4087").shift(-1)).abs()  # type: ignore
     )
     return distance
 
-def get_distance_geopy_series(df: GeoDataFrame, column1: str="geometry", column2: str="None") -> Series:
+
+def get_distance_geopy_series(
+    df: GeoDataFrame, column1: str = "geometry", column2: str = "None"
+) -> Series:
     def get_distance_geopy_i(row_i, column1=column1, column2=column2):
         point1 = row_i[column1]
         point2 = row_i[column2]
@@ -142,11 +175,14 @@ def get_distance_geopy_series(df: GeoDataFrame, column1: str="geometry", column2
         lat2: float = point2.y
         lon2: float = point2.x
         return geopy_distance.distance((lat1, lon1), (lat2, lon2)).meters
+
     if column2 == "None":
-        df["geometry_shifted"] = df["geometry"].shift(-1) # type: ignore
+        df["geometry_shifted"] = df["geometry"].shift(-1)  # type: ignore
         column2 = "geometry_shifted"
-    distances_series = df.apply(partial(get_distance_geopy_i, column1=column1, column2=column2), axis=1)
-    return distances_series # type: ignore
+    distances_series = df.apply(
+        partial(get_distance_geopy_i, column1=column1, column2=column2), axis=1
+    )
+    return distances_series  # type: ignore
 
 
 def get_velocity_series(df: GeoDataFrame) -> Series:

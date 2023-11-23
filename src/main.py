@@ -8,7 +8,7 @@ import pandas as pd
 import stapy
 from dotenv import load_dotenv
 
-from models.enums import Df, QualityFlags
+from models.enums import Df, Entities, QualityFlags
 from services.config import QCconf, filter_cfg_to_query
 from services.df import intersect_df_region
 from services.qc import (CAT_TYPE, calc_gradient_results,
@@ -43,6 +43,8 @@ def main(cfg: QCconf):
 
     # setup
     t_df0 = time.time()
+    url_batch = cfg.data_api.base_url + "/$batch"
+
     stapy.set_sta_url(cfg.data_api.base_url)
 
     thing_id = cfg.data_api.things.id
@@ -155,7 +157,7 @@ def main(cfg: QCconf):
                 flag_on_true=QualityFlags.BAD,
             ),
             max,
-            fill_value=QualityFlags.NO_QUALITY_CONTROL,
+            fill_value=QualityFlags.PROBABLY_GOOD,
         )
         .astype(CAT_TYPE)
     )
@@ -165,6 +167,19 @@ def main(cfg: QCconf):
         bool_=bool_outlier,
         flag_on_true=QualityFlags.BAD,
     )
+
+    features_body_template = '{"properties": {"resultQuality": "{value}"}}'
+    auth_tuple = (getattr(cfg.data_api, "auth", {}).get("username", None), getattr(cfg.data_api,"auth", {}).get("passphrase", None))
+    auth_in = [None, auth_tuple][all(auth_tuple)]
+    counter_flag_outliers = patch_qc_flags(
+        df_all.reset_index(),
+        url=url_batch,
+        auth=auth_in,
+        columns=[Df.FEATURE_ID, Df.QC_FLAG],
+        url_entity=Entities.FEATURESOFINTEREST,
+        json_body_template = features_body_template,
+    )
+
 
     ## velocity
     bool_velocity = get_bool_exceed_max_velocity(df_all.loc[~bool_outlier], max_velocity=cfg.location.max_dx_dt)  # type: ignore
@@ -296,12 +311,12 @@ def main(cfg: QCconf):
     t_patch0 = time.time()
     t3 = time.time()
     # url = "http://192.168.0.25:8080/FROST-Server/v1.1/$batch"
-    url = cfg.data_api.base_url + "/$batch"
-    log.info(f"{cfg.data_api.auth.username=}")
+    auth_tuple = (getattr(cfg.data_api, "auth", {}).get("username", None), getattr(cfg.data_api,"auth", {}).get("passphrase", None))
+    auth_in = [None, auth_tuple][all(auth_tuple)]
     counter = patch_qc_flags(
         df_all.reset_index(),
-        url=url,
-        auth=(cfg.data_api.auth.username, cfg.data_api.auth.passphrase),
+        url=url_batch,
+        auth=auth_in,
     )
     t_patch1 = time.time()
     tend = time.time()

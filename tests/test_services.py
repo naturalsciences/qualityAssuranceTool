@@ -165,7 +165,7 @@ class TestDf:
     def test_shape_datastreams_request_to_df(self, mock_response_full):
         response_in = get_results_n_datastreams("random")[1]
         df = response_datastreams_to_df(response_in)
-        assert df.shape == (27, 10)
+        assert df.shape == (27, 11)
 
     @pytest.mark.skip(reason="fails after including qc flag")
     def test_num_dtypes_datastreams_request_to_df(self, mock_response_full):

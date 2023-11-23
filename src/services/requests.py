@@ -1,19 +1,36 @@
 import json
 import logging
 from collections import Counter
-from typing import Literal, Tuple
+from typing import List, Literal, Tuple
+from functools import partial
 
 import pandas as pd
 from requests import get, post
 from stapy import Entity, Query
 
-from models.enums import (Df, Entities, Filter, Order, OrderOption, Properties,
-                          Qactions, Settings)
+from models.enums import (
+    Df,
+    Entities,
+    Filter,
+    Order,
+    OrderOption,
+    Properties,
+    Qactions,
+    Settings,
+)
 from services.config import filter_cfg_to_query
-from services.df import (df_type_conversions, features_request_to_df,
-                         response_single_datastream_to_df)
-from utils.utils import (convert_to_datetime, get_absolute_path_to_base, log,
-                         series_to_patch_dict, update_response)
+from services.df import (
+    df_type_conversions,
+    features_request_to_df,
+    response_single_datastream_to_df,
+)
+from utils.utils import (
+    convert_to_datetime,
+    get_absolute_path_to_base,
+    log,
+    series_to_patch_dict,
+    update_response,
+)
 
 log = logging.getLogger(__name__)
 
@@ -125,7 +142,11 @@ def get_results_n_datastreams_query(
                 Qactions.EXPAND(
                     [
                         Entities.FEATUREOFINTEREST(
-                            [Qactions.SELECT([Properties.COORDINATES])]
+                            [
+                                Qactions.SELECT(
+                                    [Properties.COORDINATES, Properties.IOT_ID]
+                                )
+                            ]
                         )
                     ]
                 ),
@@ -363,8 +384,23 @@ def get_datetime_latest_observation():
     return latest_phenomenonTime
 
 
-def patch_qc_flags(df: pd.DataFrame, url: str, auth:Tuple[str,str] | None = None) -> Counter:
-    df["patch_dict"] = df[[Df.IOT_ID, Df.QC_FLAG]].apply(series_to_patch_dict, axis=1)
+def patch_qc_flags(
+    df: pd.DataFrame,
+    url: str,
+    auth: Tuple[str, str] | None = None,
+    columns: List[Df] = [Df.IOT_ID, Df.QC_FLAG],
+    url_entity: Entities = Entities.OBSERVATIONS,
+    json_body_template: str | None = None,
+) -> Counter:
+    df["patch_dict"] = df[columns].apply(
+        partial(
+            series_to_patch_dict,
+            columns=columns,
+            url_entity=url_entity,
+            json_body_template=json_body_template,
+        ),
+        axis=1,
+    )
 
     final_json = {"requests": df["patch_dict"].to_list()}
     log.info("Start batch patch query")
@@ -372,7 +408,7 @@ def patch_qc_flags(df: pd.DataFrame, url: str, auth:Tuple[str,str] | None = None
         headers={"Content-Type": "application/json"},
         url=url,
         data=json.dumps(final_json),
-        auth=auth
+        auth=auth,
     )
     try:
         responses = response.json()["responses"]
@@ -380,7 +416,7 @@ def patch_qc_flags(df: pd.DataFrame, url: str, auth:Tuple[str,str] | None = None
         log.error("Something went wrong while posing. Is there a valid authentication?")
         log.error(f"{response}")
         raise IOError("{response}")
-        
+
     count_res = Counter([ri["status"] for ri in responses])
     log.info("End batch patch query")
     log.info(f"{json.dumps(count_res)}")

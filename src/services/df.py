@@ -94,6 +94,9 @@ def response_single_datastream_to_df(response_datastream: dict) -> pd.DataFrame:
                 lambda x: x.get("feature").get("coordinates")
             )
         )
+        df_i[Df.FEATURE_ID] = df_i[str(Entities.FEATUREOFINTEREST)].apply(
+            lambda x: x.get(str(Properties.IOT_ID))
+        )
         del df_i[str(Entities.FEATUREOFINTEREST)]
         # df_i.drop(columns=str(Entities.FEATUREOFINTEREST))
         df = pd.concat([df, df_i], ignore_index=True)

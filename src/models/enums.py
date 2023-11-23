@@ -35,6 +35,7 @@ class Entities(StrEnum):
     OBSERVEDPROPERTY = "ObservedProperty"
     OBSERVATIONS = "Observations"
     FEATUREOFINTEREST = "FeatureOfInterest"
+    FEATURESOFINTEREST = "FeaturesOfInterest"
 
     def __call__(self, args: list[Properties] | list["Qactions"] | list[str]):
         out = f"{self}({';'.join(list(filter(None, args)))})"
@@ -127,3 +128,4 @@ class Df(StrEnum):
     LONG = "long"
     LAT = "lat"
     OBSERVED_PROPERTY_ID = "observed_property_id"
+    FEATURE_ID = "feature_id"

@@ -43,7 +43,8 @@ docker buildx build -t qc_sensorthings .
 === Run container
 
 ```bash
-docker run -v ./conf:/app/conf -v ./outputs:/app/outputs --network frost-docker_frosty_net qc_sensorthings "data_api.filter.phenomenonTime.range=[2023-01-04 12:00, 2025-01-01 10:00]"
+source .env
+docker run --rm -v ./conf:/app/conf -v ./outputs:/app/outputs -e DEV_SENSORS_USER=$DEV_SENSORS_USER -e DEV_SENSORS_PASS=$DEV_SENSORS_PASS qc_sensorthings "data_api.filter.phenomenonTime.range=[2023-06-01 00:00, 2023-07-01 00:00]"
 ```
 === Regions
 
