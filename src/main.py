@@ -45,6 +45,7 @@ def main(cfg: QCconf):
     history_series = pd.Series()
 
     # setup
+    log.info("Setup")
     t_df0 = time.time()
     stapy.set_sta_url(cfg.data_api.base_url)
     url_batch = cfg.data_api.base_url + "/$batch"
@@ -343,7 +344,7 @@ def main(cfg: QCconf):
     log.info(f"Patch duration: {t_patch1 - t_patch0}")
     log.info(f"Total duration: {tend-t0}")
     log.info("End")
-    log_extra.info(history_series.to_json())
+    log_extra.debug(history_series.to_json())
 
 
 if __name__ == "__main__":

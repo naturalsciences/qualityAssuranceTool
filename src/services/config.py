@@ -1,3 +1,4 @@
+import logging
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Tuple
@@ -5,6 +6,8 @@ from typing import Tuple
 from models.constants import ISO_STR_FORMAT
 from models.enums import Properties
 
+
+log = logging.getLogger(__name__)
 
 @dataclass
 class PhenomenonTimeFilter:
@@ -92,4 +95,5 @@ def filter_cfg_to_query(filter_cfg: FilterEntry) -> str:
             f"{Properties.PHENOMENONTIME} gt {t0.strftime(ISO_STR_FORMAT)} and "
             f"{Properties.PHENOMENONTIME} lt {t1.strftime(ISO_STR_FORMAT)}"
         )
+    log.debug(f"Configure filter: {filter_condition=}")
     return filter_condition

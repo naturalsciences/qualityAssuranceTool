@@ -114,6 +114,52 @@ def build_query_observations(
     return Q_out
 
 
+def get_observations_count_thing_query(
+    entity_id: int,
+    filter_condition: str = "",
+    skip_n: int = 0,
+) -> Literal:
+    # https://dev-sensors.naturalsciences.be/sta/v1.1/Things(1)/Datastreams?$expand=Observations($count=True;$top=0)&$select=Observations/@iot.count
+    # expand_list = [
+        # Entities.OBSERVATIONS(
+            # [
+                # Filter.FILTER(filter_condition),
+                # Settings.COUNT("true"),
+                # Settings.TOP(0),
+            # ]
+        # )
+    # ]
+    Q = Qactions.EXPAND(
+        [
+            Entities.DATASTREAMS(
+                [
+                    Settings.SKIP(skip_n),
+                    Qactions.EXPAND(
+                        [
+                            Entities.OBSERVATIONS,
+                        ]
+                    ),
+                    Qactions.SELECT(
+                        [
+                            "Observations/@iot.count",
+                        ]
+                    ),
+                    # Qactions.EXPAND(expand_list),
+                ]
+            )
+        ]
+    )
+    Q_out = (
+        Query(Entity.Thing)
+        .entity_id(entity_id)
+        .select(Entities.DATASTREAMS)
+        .get_query()
+        + "&"
+        + Q
+    )
+    return Q_out
+ 
+
 def get_results_n_datastreams_query(
     entity_id: int,
     n: int | None = None,
@@ -249,7 +295,18 @@ def response_datastreams_to_df(response: dict) -> pd.DataFrame:
 
 
 def get_all_data(thing_id: int, filter_cfg: str):
+    log.info(f"Retrieving data of Thing {thing_id}.")
     log.debug("Get all data of thing {thing_id} with filter {filter_cfg}")
+
+    observations_count = 0
+    skip_streams = 0
+    query_observations_count = get_observations_count_thing_query(entity_id=thing_id, filter_condition=filter_cfg, skip_n=skip_streams)
+    while query_observations_count:
+        _, response_observations_count = get_results_n_datastreams(query_observations_count)
+        observations_count += sum([ds_i["Observations@iot.count"] for ds_i in response_observations_count["Datastreams"]])
+        skip_streams += len(response_observations_count["Datastreams"])
+        query_observations_count = get_observations_count_thing_query(entity_id=thing_id, filter_condition=filter_cfg, skip_n=skip_streams)
+
     status_code, response = 0, {}
     query = get_results_n_datastreams_query(
         entity_id=thing_id, filter_condition=filter_cfg
@@ -431,7 +488,9 @@ def get_elev_netcdf() -> None:
     )
 
     if not local_file.exists():
+        log.info("Downloading netCDF elevation file.")
         r = get(url_ETOPO, stream=True)
         with open(local_file, "wb") as f:
             for chunk in r.iter_content():
                 f.write(chunk)
+        log.info("Download completed.")

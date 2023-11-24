@@ -12,6 +12,8 @@ ADD resources /app/resources
 RUN ls /app
 ADD __init__.py /app/
 
+# groupid and userid are hardcoded
+# option to change to `id -g` and `id -u` from cli?
 RUN groupadd -g 1001 usergroup && useradd -m -u 1001 -g 1001 myuser && chown -R myuser /app
 USER myuser
 
