@@ -19,12 +19,16 @@ from models.enums import Df, Entities, Properties
 log = logging.getLogger(__name__)
 
 
-def convert_to_datetime(value):
+def convert_to_datetime(value: str) -> datetime:
     try:
         d_out = datetime.strptime(value, ISO_STR_FORMAT)
-    except ValueError:
+        return d_out
+    except ValueError as e:
         d_out = datetime.strptime(value, ISO_STR_FORMAT2)
-    return d_out
+        return d_out
+    except Exception as e:
+        log.exception(e)
+        raise e
 
 
 def extend_summary_with_result_inspection(summary_dict: dict[str, list]):

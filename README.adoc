@@ -37,7 +37,7 @@ The _order_/_priority_ of the flags are determined by the order in which they ar
 === Build image
 
 ```bash
-docker buildx build -t qc_sensorthings . 
+docker buildx build --build-arg ID_U=$(id -u) -t qc_sensorthings . 
 ```
 
 === Run container
