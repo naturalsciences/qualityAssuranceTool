@@ -42,10 +42,18 @@ docker buildx build -t qc_sensorthings .
 
 === Run container
 
+Run (single) docker container
 ```bash
 source .env
 docker run --rm -v ./conf:/app/conf -v ./outputs:/app/outputs -e DEV_SENSORS_USER=$DEV_SENSORS_USER -e DEV_SENSORS_PASS=$DEV_SENSORS_PASS qc_sensorthings "data_api.filter.phenomenonTime.range=[2023-06-01 00:00, 2023-07-01 00:00]"
 ```
+
+run multiple docker containers with different time periods
+```bash
+source .env
+for f in $(seq -f "%02g" 1 11); do docker run --rm -v ./conf:/app/conf -v ./outputs:/app/outputs -e DEV_SENSORS_USER=$DEV_SENSORS_USER -e DEV_SENSORS_PASS=$DEV_SENSORS_PASS qc_sensorthings "data_api.filter.phenomenonTime.range=[2023-$((f))-01 00:00, 2023-$((f+1))-15 00:00]"; done
+```
+
 === Regions
 
 1. The location associated with each observation is compared with the SeaVox database.

@@ -1,4 +1,5 @@
 FROM python:3.11
+ENV TZ="Europe/Brussels"
 
 WORKDIR /app
 COPY requirements.txt .

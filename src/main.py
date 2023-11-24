@@ -26,6 +26,9 @@ log = logging.getLogger(__name__)
 
 load_dotenv()
 
+RESET_FLAGS = False
+QUIT_AFTER_RESET = False
+
 
 @hydra.main(config_path="../conf", config_name="config.yaml", version_base="1.2")
 def main(cfg: QCconf):
@@ -43,9 +46,11 @@ def main(cfg: QCconf):
 
     # setup
     t_df0 = time.time()
+    stapy.set_sta_url(cfg.data_api.base_url)
     url_batch = cfg.data_api.base_url + "/$batch"
 
-    stapy.set_sta_url(cfg.data_api.base_url)
+    auth_tuple = (getattr(cfg.data_api, "auth", {}).get("username", None), getattr(cfg.data_api,"auth", {}).get("passphrase", None))
+    auth_in = [None, auth_tuple][all(auth_tuple)]
 
     thing_id = cfg.data_api.things.id
 
@@ -74,6 +79,17 @@ def main(cfg: QCconf):
 
     t_df1 = time.time()
     t_qc0 = time.time()
+
+    ## reset flags
+    if RESET_FLAGS:
+        df_all[Df.QC_FLAG] = QualityFlags.NO_QUALITY_CONTROL
+        counter_reset = patch_qc_flags(
+            df_all.reset_index(),
+            url=url_batch,
+            auth=auth_in,
+        )
+        if QUIT_AFTER_RESET:
+            return 0
 
     ## find region
 
@@ -169,8 +185,7 @@ def main(cfg: QCconf):
     )
 
     features_body_template = '{"properties": {"resultQuality": "{value}"}}'
-    auth_tuple = (getattr(cfg.data_api, "auth", {}).get("username", None), getattr(cfg.data_api,"auth", {}).get("passphrase", None))
-    auth_in = [None, auth_tuple][all(auth_tuple)]
+    
     counter_flag_outliers = patch_qc_flags(
         df_all.reset_index(),
         url=url_batch,
