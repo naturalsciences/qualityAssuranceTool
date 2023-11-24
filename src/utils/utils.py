@@ -21,9 +21,9 @@ log = logging.getLogger(__name__)
 
 def convert_to_datetime(value):
     try:
-        d_out = datetime.strptime(value, ISO_STR_FORMAT)
-    except ValueError:
         d_out = datetime.strptime(value, ISO_STR_FORMAT2)
+    except ValueError:
+        d_out = datetime.strptime(value, ISO_STR_FORMAT)
     return d_out
 
 
