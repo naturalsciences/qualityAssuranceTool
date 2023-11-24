@@ -83,6 +83,7 @@ def main(cfg: QCconf):
 
     ## reset flags
     if RESET_FLAGS:
+        log.warning("Flags are reset!")
         df_all[Df.QC_FLAG] = QualityFlags.NO_QUALITY_CONTROL
         counter_reset = patch_qc_flags(
             df_all.reset_index(),
@@ -163,6 +164,8 @@ def main(cfg: QCconf):
             flag_on_true=QualityFlags.BAD,
         )
 
+    
+    # find geographical outliers
     bool_outlier = get_bool_spacial_outlier_compared_to_median(
         df_all, max_dx_dt=cfg.location.max_dx_dt, time_window=cfg.location.time_window  # type: ignore
     )
@@ -178,6 +181,7 @@ def main(cfg: QCconf):
         )
         .astype(CAT_TYPE)
     )
+    log.info(f"{df_all.loc[bool_outlier].describe=}")
     history_series = update_flag_history_series(
         history_series,
         test_name="Location outlier",

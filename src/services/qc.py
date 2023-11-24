@@ -76,7 +76,7 @@ def qc_region(
 
 # TODO: refactor, complete df is not needed
 def calc_gradient_results(df: pd.DataFrame, groupby: Df):
-    log.debug(f"Start gradient calculations per {groupby}.")
+    log.info(f"Start gradient calculations per {groupby}.")
 
     def grad_function(group):
         nb_row, nb_columns = group.shape
@@ -288,7 +288,7 @@ def get_bool_spacial_outlier_compared_to_median(
     df_time_sorted["dt"] = (df_time_sorted[Df.TIME] - df_time_sorted[Df.TIME].min()).dt.total_seconds()  # type: ignore
 
     bool_series_lat_eq_long = df_time_sorted[Df.LAT] == df_time_sorted[Df.LONG]
-    log.info(f"{bool_series_lat_eq_long.value_counts(dropna=False)=}")
+    log.debug(f"{bool_series_lat_eq_long.value_counts(dropna=False)=} (excluded from median calculations)")
 
     rolling_median = (
         df_time_sorted.loc[~bool_series_lat_eq_long, [Df.TIME, Df.LONG, Df.LAT]]
@@ -296,6 +296,7 @@ def get_bool_spacial_outlier_compared_to_median(
         .rolling(time_window, on=Df.TIME, center=True)
         .apply(np.median)
     )
+
     rolling_time = (
         df_time_sorted.loc[:, [Df.TIME, "dt"]]
         .sort_values(Df.TIME)

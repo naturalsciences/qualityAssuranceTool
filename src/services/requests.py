@@ -121,13 +121,13 @@ def get_observations_count_thing_query(
 ) -> Literal:
     # https://dev-sensors.naturalsciences.be/sta/v1.1/Things(1)/Datastreams?$expand=Observations($count=True;$top=0)&$select=Observations/@iot.count
     # expand_list = [
-        # Entities.OBSERVATIONS(
-            # [
-                # Filter.FILTER(filter_condition),
-                # Settings.COUNT("true"),
-                # Settings.TOP(0),
-            # ]
-        # )
+    # Entities.OBSERVATIONS(
+    # [
+    # Filter.FILTER(filter_condition),
+    # Settings.COUNT("true"),
+    # Settings.TOP(0),
+    # ]
+    # )
     # ]
     Q = Qactions.EXPAND(
         [
@@ -138,7 +138,7 @@ def get_observations_count_thing_query(
                         [
                             Entities.OBSERVATIONS(
                                 [
-                                Filter.FILTER(filter_condition),
+                                    Filter.FILTER(filter_condition),
                                 ],
                             )
                         ]
@@ -162,7 +162,7 @@ def get_observations_count_thing_query(
         + Q
     )
     return Q_out
- 
+
 
 def get_results_n_datastreams_query(
     entity_id: int,
@@ -285,45 +285,53 @@ def response_datastreams_to_df(response: dict) -> pd.DataFrame:
     return df_out
 
 
-# def get_datastream_based_observations_batch(datastreams: Sequence) -> pd.DataFrame:
-#     df_out = pd.DataFrame()
-#     id = 1
-#     request = ""
-#     d_batch = {
-#         "id": id,
-#         "atomicityGroup": f"Get_{id}",
-#         "method": "get",
-#         "url": request,
-#     }
-#     return df_out
-
-
 def get_all_data(thing_id: int, filter_cfg: str):
     log.info(f"Retrieving data of Thing {thing_id}.")
     log.debug("Get all data of thing {thing_id} with filter {filter_cfg}")
 
+    # get total count of observations to be retrieved
     total_observations_count = 0
     skip_streams = 0
-    query_observations_count = get_observations_count_thing_query(entity_id=thing_id, filter_condition=filter_cfg, skip_n=skip_streams)
+    query_observations_count = get_observations_count_thing_query(
+        entity_id=thing_id, filter_condition=filter_cfg, skip_n=skip_streams
+    )
     bool_nextlink = True
     while bool_nextlink:
-        _, response_observations_count = get_results_n_datastreams(query_observations_count)
-        total_observations_count += sum([ds_i["Observations@iot.count"] for ds_i in response_observations_count["Datastreams"]])
+        _, response_observations_count = get_results_n_datastreams(
+            query_observations_count
+        )
+        total_observations_count += sum(
+            [
+                ds_i["Observations@iot.count"]
+                for ds_i in response_observations_count["Datastreams"]
+            ]
+        )
         skip_streams += len(response_observations_count["Datastreams"])
-        query_observations_count = get_observations_count_thing_query(entity_id=thing_id, filter_condition=filter_cfg, skip_n=skip_streams)
-        bool_nextlink = response_observations_count.get("Datastreams@iot.nextLink", False)
+        query_observations_count = get_observations_count_thing_query(
+            entity_id=thing_id, filter_condition=filter_cfg, skip_n=skip_streams
+        )
+        bool_nextlink = response_observations_count.get(
+            "Datastreams@iot.nextLink", False
+        )
         log.info(f"temp count: {total_observations_count=}")
-    log.info(f"Total number of observations to be retrieved: {total_observations_count}")
+    log.info(
+        f"Total number of observations to be retrieved: {total_observations_count}"
+    )
 
+    # get the actual data
     status_code, response = 0, {}
     query = get_results_n_datastreams_query(
         entity_id=thing_id, filter_condition=filter_cfg
     )
 
+    # TODO: refactor:
+    #       due to different response from query constructed as above and iot.nextLink, not possible in same loop
+    #       should rewrite code to get consistent result?
+    #       might not be possible as initial query return complete structure
     status_code, response_i = get_results_n_datastreams(query)
     response = update_response(response, response_i)
+    # follow nextLinks (Datastreams)
     query = response_i.get(Entities.DATASTREAMS + "@iot.nextLink", None)
-
     while query:
         status_code, response_i = get_results_n_datastreams(query)
         if status_code != 200.0:
@@ -340,12 +348,11 @@ def get_all_data(thing_id: int, filter_cfg: str):
     for ds_i in response.get(Entities.DATASTREAMS, {}):  # type: ignore
         query = ds_i.get(Entities.OBSERVATIONS + "@iot.nextLink", None)
         while query:
-            retrieved_nb_observations = count_observations + len(ds_i[Entities.OBSERVATIONS])
-            log.debug(
-                f"Number of observations: {retrieved_nb_observations}"
+            retrieved_nb_observations = count_observations + len(
+                ds_i[Entities.OBSERVATIONS]
             )
+            log.debug(f"Number of observations: {retrieved_nb_observations}")
 
-            
             status_code, response_i = get_results_n_datastreams(query)
 
             ds_i[Entities.OBSERVATIONS] = (
@@ -355,9 +362,11 @@ def get_all_data(thing_id: int, filter_cfg: str):
             ds_i[Entities.OBSERVATIONS + "@iot.nextLink"] = query
         count_observations += len(ds_i[Entities.OBSERVATIONS])
         if len(ds_i[Entities.OBSERVATIONS]) > 0:
-            x_ = int(60*count_observations/total_observations_count)
-            y_ = 60-x_
-            log.info(f"[{u'█'*x_}{('.'*(y_))}] {int(100.*count_observations/total_observations_count)}%")
+            x_ = int(60 * count_observations / total_observations_count)
+            y_ = 60 - x_
+            log.info(
+                f"[{u'█'*x_}{('.'*(y_))}] {int(100.*count_observations/total_observations_count)}%"
+            )
 
     df_out = response_datastreams_to_df(response)
     log.info(f"Constructed dataframe of thing {thing_id}: {df_out.shape=}")
