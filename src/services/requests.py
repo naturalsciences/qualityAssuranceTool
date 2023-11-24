@@ -301,11 +301,15 @@ def get_all_data(thing_id: int, filter_cfg: str):
     observations_count = 0
     skip_streams = 0
     query_observations_count = get_observations_count_thing_query(entity_id=thing_id, filter_condition=filter_cfg, skip_n=skip_streams)
-    while query_observations_count:
+    bool_nextlink = True
+    while bool_nextlink:
         _, response_observations_count = get_results_n_datastreams(query_observations_count)
         observations_count += sum([ds_i["Observations@iot.count"] for ds_i in response_observations_count["Datastreams"]])
         skip_streams += len(response_observations_count["Datastreams"])
         query_observations_count = get_observations_count_thing_query(entity_id=thing_id, filter_condition=filter_cfg, skip_n=skip_streams)
+        bool_nextlink = response_observations_count.get("Datastreams@iot.nextLink", False)
+        log.info(f"temp count: {observations_count=}")
+    log.info(f"Total number of observations to be retrieved: {observations_count}")
 
     status_code, response = 0, {}
     query = get_results_n_datastreams_query(
