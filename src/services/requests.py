@@ -274,6 +274,7 @@ def get_nb_datastreams_of_thing(thing_id: int) -> int:
 
 
 def response_datastreams_to_df(response: dict) -> pd.DataFrame:
+    log.info("Building dataframe.")
     df_out = pd.DataFrame()
     for ds_i in response[Entities.DATASTREAMS]:
         nextLink = ds_i.get(f"{Entities.OBSERVATIONS}@iot.nextLink", None)
@@ -282,6 +283,7 @@ def response_datastreams_to_df(response: dict) -> pd.DataFrame:
         # df_i = datastreams_response_to_df(ds_i)
         df_i = response_single_datastream_to_df(ds_i)
         df_out = df_type_conversions(pd.concat([df_out, df_i], ignore_index=True))
+    log.info(f"Dataframe constructed with {df_out.shape[0]} rows.")
     return df_out
 
 
@@ -369,7 +371,10 @@ def get_all_data(thing_id: int, filter_cfg: str):
             )
 
     df_out = response_datastreams_to_df(response)
-    log.info(f"Constructed dataframe of thing {thing_id}: {df_out.shape=}")
+    log.debug(f"Columns of constructed df: {df_out.columns}.")
+    log.debug(f"Datastreams observation types: {df_out[Df.OBSERVATION_TYPE].unique()}")
+    if df_out.isna().any().any():
+        log.warning(f"The dataframe has NAN values.")
     return df_out
 
 
@@ -482,7 +487,7 @@ def patch_qc_flags(
     )
 
     final_json = {"requests": df["patch_dict"].to_list()}
-    log.info("Start batch patch query")
+    log.info(f"Start batch patch query {url_entity}.")
     response = post(
         headers={"Content-Type": "application/json"},
         url=url,
@@ -498,7 +503,9 @@ def patch_qc_flags(
 
     count_res = Counter([ri["status"] for ri in responses])
     log.info("End batch patch query")
-    log.info(f"{json.dumps(count_res)}")
+    # log.info(f"{json.dumps(count_res)}")
+    if (set(count_res.keys()) != set([200,])):
+        log.error("Didn't succeed patching.")
     return count_res
 
 

@@ -69,7 +69,7 @@ def response_obs_to_df(response_obs: dict) -> pd.DataFrame:
 def response_single_datastream_to_df(response_datastream: dict) -> pd.DataFrame:
     df = pd.DataFrame()
     observations_list = response_datastream.get(Entities.OBSERVATIONS, [])
-    log.info(f"{observations_list=}")
+    log.debug(f"{observations_list=}")
     if observations_list:
         df_i = pd.DataFrame(observations_list).astype(
             {Properties.IOT_ID: int, Df.RESULT: float}

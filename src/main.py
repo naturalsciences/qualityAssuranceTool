@@ -30,6 +30,12 @@ RESET_FLAGS = False
 QUIT_AFTER_RESET = False
 
 
+# def get_start_flagged_blocks(df: pd.DataFrame | gpd.GeoDataFrame, bool_series: pd.Series) -> list:
+#     index_diff = df.loc[bool_series].index.astype(int).diff() # type: ignore
+#     out = list(df.loc[bool_series].index.where(index_diff>1).dropna().astype(int).unique())
+#     return out
+
+
 @hydra.main(config_path="../conf", config_name="config.yaml", version_base="1.2")
 def main(cfg: QCconf):
     log_extra = logging.getLogger(name="extra")
@@ -181,7 +187,9 @@ def main(cfg: QCconf):
         )
         .astype(CAT_TYPE)
     )
-    log.info(f"{df_all.loc[bool_outlier].describe=}")
+    log.info(f"Detected number of spacial outliers: {df_all.loc[bool_outlier].shape[0]}.")
+    # log.debug(f"Indices of first elements of a flagged *block*: {get_start_flagged_blocks(df_all, bool_outlier)}") # type: ignore
+
     history_series = update_flag_history_series(
         history_series,
         test_name="Location outlier",
