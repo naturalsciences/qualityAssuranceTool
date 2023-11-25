@@ -12,6 +12,7 @@ from geopandas import GeoDataFrame, points_from_xy
 from geopy import distance as geopy_distance
 from pandas import DataFrame, Series
 from stapy import Entity, Query
+from tqdm import tqdm
 
 from models.constants import ISO_STR_FORMAT, ISO_STR_FORMAT2
 from models.enums import Df, Entities, Properties
@@ -95,6 +96,7 @@ def series_to_patch_dict(
                         template_json[key] = float(val.format(value))
                     else:
                         template_json[key] = val.format(value=value)
+
         replace_value(template_json, value)
         return template_json
 
@@ -169,6 +171,9 @@ def get_distance_projection_series(df: DataFrame) -> Series:
 def get_distance_geopy_series(
     df: GeoDataFrame, column1: str = "geometry", column2: str = "None"
 ) -> Series:
+    tqdm.pandas()
+    df_copy = copy.deepcopy(df)
+
     def get_distance_geopy_i(row_i, column1=column1, column2=column2):
         point1 = row_i[column1]
         point2 = row_i[column2]
@@ -181,9 +186,11 @@ def get_distance_geopy_series(
         return geopy_distance.distance((lat1, lon1), (lat2, lon2)).meters
 
     if column2 == "None":
-        df["geometry_shifted"] = df["geometry"].shift(-1)  # type: ignore
         column2 = "geometry_shifted"
-    distances_series = df.apply(
+        shifted_geometry_values = copy.deepcopy(df["geometry"].shift(-1)).values  # type: ignore
+        df_copy[column2] = shifted_geometry_values
+    log.info("Start distance calculations.")
+    distances_series = df_copy.progress_apply(  # type: ignore
         partial(get_distance_geopy_i, column1=column1, column2=column2), axis=1
     )
     return distances_series  # type: ignore

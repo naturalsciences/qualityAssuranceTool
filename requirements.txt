@@ -23,3 +23,4 @@ pydap
 xarray
 
 python-dotenv
+tqdm

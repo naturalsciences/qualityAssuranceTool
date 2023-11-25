@@ -2,6 +2,7 @@ import json
 import logging
 from copy import deepcopy
 
+from tqdm import tqdm
 import geopandas as gpd
 import numpy as np
 import pandas as pd
@@ -76,6 +77,7 @@ def qc_region(
 
 # TODO: refactor, complete df is not needed
 def calc_gradient_results(df: pd.DataFrame, groupby: Df):
+    # tqdm.pandas()
     log.info(f"Start gradient calculations per {groupby}.")
 
     def grad_function(group):
@@ -90,6 +92,7 @@ def calc_gradient_results(df: pd.DataFrame, groupby: Df):
         return group
 
     df_out = df.sort_values(Df.TIME)
+    # df_out = df.groupby([groupby], group_keys=False).progress_apply(grad_function) # type: ignore
     df_out = df.groupby([groupby], group_keys=False).apply(grad_function)
     return df_out
 
@@ -233,7 +236,7 @@ def qc_dependent_quantity_secondary(
     )
     df_pivot.loc[bool_qc, (Df.QC_FLAG, str(dependent))] = QualityFlags.BAD  # type: ignore Don"t know how to fix this
 
-    df_pivot = df_pivot.drop(["qc_drange_min", "qc_drange_max"], axis=1)
+    df_pivot = df_pivot.drop(["qc_drange_min", "qc_drange_max"], axis=1, level=0)
     df_unpivot = df_pivot.stack().reset_index().set_index(Df.IOT_ID)
     df = df.set_index(Df.IOT_ID)
     df.loc[df_unpivot.index, Df.QC_FLAG] = df_unpivot[Df.QC_FLAG]
@@ -283,6 +286,8 @@ def set_qc_flag_range_check(
 def get_bool_spacial_outlier_compared_to_median(
     df: gpd.GeoDataFrame, max_dx_dt: float, time_window: str
 ) -> pd.Series:
+    tqdm.pandas()
+    log.info("Start calculating spacial outliers.")
     df_time_sorted = df.sort_values(Df.TIME)
     df_time_sorted["dt"] = df_time_sorted[Df.TIME].diff().fillna(pd.to_timedelta("0")).dt.total_seconds()  # type: ignore
     df_time_sorted["dt"] = (df_time_sorted[Df.TIME] - df_time_sorted[Df.TIME].min()).dt.total_seconds()  # type: ignore
@@ -290,18 +295,21 @@ def get_bool_spacial_outlier_compared_to_median(
     bool_series_lat_eq_long = df_time_sorted[Df.LAT] == df_time_sorted[Df.LONG]
     log.debug(f"{bool_series_lat_eq_long.value_counts(dropna=False)=} (excluded from median calculations)")
 
+    log.debug("Start rolling median calculations.")
     rolling_median = (
         df_time_sorted.loc[~bool_series_lat_eq_long, [Df.TIME, Df.LONG, Df.LAT]]
         .sort_values(Df.TIME)
         .rolling(time_window, on=Df.TIME, center=True)
-        .apply(np.median)
+        .progress_apply(np.median)  # type: ignore
     )
 
+    log.debug("Start rolling time calculations.")
+    # calculates the time delta in each windows
     rolling_time = (
         df_time_sorted.loc[:, [Df.TIME, "dt"]]
         .sort_values(Df.TIME)
         .rolling(time_window, on=Df.TIME, center=True)
-        .apply(np.sum)
+        .progress_apply(np.sum)
     )
 
     rolling_median = rolling_median.reindex(index=rolling_time.index, fill_value=None)
@@ -327,18 +335,22 @@ def get_bool_spacial_outlier_compared_to_median(
 
 
 def get_bool_exceed_max_velocity(df: gpd.GeoDataFrame, max_velocity: float) -> pd.Series:
+    log.info("Calculating velocity outliers.")
     velocity = get_velocity_series(df)
 
     bool_velocity = velocity > max_velocity
     bool_out = pd.Series(bool_velocity, index=df.index)
+    bool_out = bool_out.drop(index=velocity.loc[velocity.isnull()].index, axis=1)
     return bool_out
 
     
 def get_bool_exceed_max_acceleration(df: gpd.GeoDataFrame, max_acceleration: float) -> pd.Series:
+    log.info("Calculating acceleration outliers.")
     acceleration = get_acceleration_series(df).abs()
 
     bool_acceleration = acceleration > max_acceleration
     bool_out = pd.Series(bool_acceleration, index=df.index)
+    bool_out = bool_out.drop(index=acceleration.loc[acceleration.isnull()].index, axis=1)
     return bool_out
 
 

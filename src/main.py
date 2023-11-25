@@ -211,7 +211,7 @@ def main(cfg: QCconf):
 
     ## velocity
     bool_velocity = get_bool_exceed_max_velocity(df_all.loc[~bool_outlier], max_velocity=cfg.location.max_dx_dt)  # type: ignore
-    df_all[Df.QC_FLAG] = (
+    df_all.loc[:, Df.QC_FLAG] = (
         df_all[Df.QC_FLAG]
         .combine(
             get_qc_flag_from_bool(
@@ -230,8 +230,8 @@ def main(cfg: QCconf):
         flag_on_true=QualityFlags.BAD,
     )
     ## acceleration
-    bool_acceleration = get_bool_exceed_max_acceleration(df_all[~bool_outlier], max_acceleration=cfg.location.max_ddx_dtdt)  # type: ignore
-    df_all[Df.QC_FLAG] = (
+    bool_acceleration = get_bool_exceed_max_acceleration(df_all.loc[~bool_outlier], max_acceleration=cfg.location.max_ddx_dtdt)  # type: ignore
+    df_all.loc[:, Df.QC_FLAG] = (
         df_all[Df.QC_FLAG]
         .combine(
             get_qc_flag_from_bool(
@@ -257,7 +257,7 @@ def main(cfg: QCconf):
         raise RuntimeError("Not all observations are included in the dataframe.")
 
     bool_range = get_bool_out_of_range(df=df_all, qc_on=Df.RESULT, qc_type="range")
-    df_all[Df.QC_FLAG] = (
+    df_all.loc[:, Df.QC_FLAG] = (
         df_all[Df.QC_FLAG]
         .combine(
             get_qc_flag_from_bool(
@@ -280,7 +280,7 @@ def main(cfg: QCconf):
     bool_gradient = get_bool_out_of_range(
         df=df_all, qc_on=Df.GRADIENT, qc_type="gradient"
     )
-    df_all[Df.QC_FLAG] = (
+    df_all.loc[:, Df.QC_FLAG] = (
         df_all[Df.QC_FLAG]
         .combine(
             get_qc_flag_from_bool(
@@ -331,9 +331,9 @@ def main(cfg: QCconf):
     t_dependent1 = time.time()
 
     log.info(f"{df_all[Df.QC_FLAG].value_counts(dropna=False).to_json()=}")
-    log.info(
-        f"{df_all[[Df.OBSERVATION_TYPE, Df.QC_FLAG]].value_counts(dropna=False).to_json()=}"
-    )
+    log.info(f"Observation types flagged as {QualityFlags.PROBABLY_BAD} or worse.")
+    for obst_i in df_all.loc[((df_all[Df.QC_FLAG] >= QualityFlags.PROBABLY_BAD) & (~bool_outlier)), Df.OBSERVATION_TYPE].unique():
+        log.info(f"{'.'*10}{obst_i}")
 
     t_qc1 = time.time()
     t_patch0 = time.time()
@@ -348,13 +348,13 @@ def main(cfg: QCconf):
     )
     t_patch1 = time.time()
     tend = time.time()
-    log.info(f"df requests/construction duration: {t_df1 - t_df0}")
-    # log.info(f"Region check duration: {t_region1 - t_region0}")
-    log.info(f"Ranges check duration: {t_ranges1 - t_ranges0}")
-    log.info(f"Flagging ranges duration: {t_flag_ranges1 - t_flag_ranges0}")
-    log.info(f"Total QC check duration: {t_qc1 - t_qc0}")
-    log.info(f"Patch duration: {t_patch1 - t_patch0}")
-    log.info(f"Total duration: {tend-t0}")
+    log.info(f"df requests/construction duration: {(t_df1 - t_df0):.2f}")
+    log.info(f"Region check duration: {(t_region1 - t_region0):.2f}")
+    log.info(f"Ranges check duration: {(t_ranges1 - t_ranges0):.2f}")
+    log.info(f"Flagging ranges duration: {(t_flag_ranges1 - t_flag_ranges0):.2f}")
+    log.info(f"Total QC check duration: {(t_qc1 - t_qc0):.2f}")
+    log.info(f"Patch duration: {(t_patch1 - t_patch0):.2f}")
+    log.info(f"Total duration: {(tend-t0):.2f}")
     log.info("End")
     log_extra.debug(history_series.to_json())
 
