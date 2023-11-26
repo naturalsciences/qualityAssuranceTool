@@ -1,13 +1,14 @@
+from dataclasses import dataclass
 import json
 import logging
 from copy import deepcopy
+from typing import Callable
 
 from tqdm import tqdm
 import geopandas as gpd
 import numpy as np
 import pandas as pd
 from pandas.api.types import CategoricalDtype
-from main import QCFlagConfig
 
 from models.enums import Df, QualityFlags
 # from services.df import df_type_conversions
@@ -367,6 +368,32 @@ def get_bool_depth_below_threshold(df: pd.DataFrame, threshold: float) -> pd.Ser
     )
     bool_out = pd.Series(bool_depth, index=df.loc[mask_is_none].index)  # type: ignore
     return bool_out
+
+
+@dataclass
+class QCFlagConfig:
+    label: str
+    bool_function: Callable
+    bool_merge_function: Callable
+    flag_on_true: QualityFlags
+    flag_on_nan: QualityFlags | None
+    bool_series: pd.Series | None = None
+
+    def execute(self, df: pd.DataFrame | gpd.GeoDataFrame):
+        self.bool_series = self.bool_function(df)
+        series_out = (
+            df[Df.QC_FLAG]
+            .combine(  # type: ignore
+                get_qc_flag_from_bool(
+                    bool_=self.bool_series,
+                    flag_on_true=self.flag_on_true,
+                ),  # type: ignore
+                self.bool_merge_function,
+                fill_value=self.flag_on_nan,  # type: ignore
+            )
+            .astype(CAT_TYPE)
+        )
+        return series_out
 
 
 # def update_flag_history_series(flag_history_series, test_name, bool_, flag_on_true):

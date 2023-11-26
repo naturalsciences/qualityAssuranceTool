@@ -3,8 +3,6 @@ import logging
 import time
 from pathlib import Path
 
-from dataclasses import dataclass
-from typing import Callable
 import geopandas as gpd
 import hydra
 import pandas as pd
@@ -13,6 +11,7 @@ from dotenv import load_dotenv
 
 from models.enums import Df, Entities, QualityFlags
 from services.config import QCconf, filter_cfg_to_query
+from services.qc import QCFlagConfig
 from services.df import intersect_df_region
 from services.qc import (
     CAT_TYPE,
@@ -37,55 +36,6 @@ load_dotenv()
 
 RESET_FLAGS = False
 QUIT_AFTER_RESET = False
-
-
-# def get_start_flagged_blocks(df: pd.DataFrame | gpd.GeoDataFrame, bool_series: pd.Series) -> list:
-#     index_diff = df.loc[bool_series].index.astype(int).diff() # type: ignore
-#     out = list(df.loc[bool_series].index.where(index_diff>1).dropna().astype(int).unique())
-#     return out
-
-
-@dataclass
-class QCFlagConfig:
-    label: str
-    bool_function: Callable
-    bool_merge_function: Callable
-    flag_on_true: QualityFlags
-    flag_on_nan: QualityFlags | None
-    bool_series: pd.Series | None = None
-
-    def execute(self, df: pd.DataFrame | gpd.GeoDataFrame):
-        self.bool_series = self.bool_function(df)
-        series_out = (
-            df[Df.QC_FLAG]
-            .combine(  # type: ignore
-                get_qc_flag_from_bool(
-                    bool_=self.bool_series,
-                    flag_on_true=self.flag_on_true,
-                ),  # type: ignore
-                self.bool_merge_function,
-                fill_value=self.flag_on_nan,  # type: ignore
-            )
-            .astype(CAT_TYPE)
-        )
-        return series_out
-
-
-def do_qc(df: pd.DataFrame | gpd.GeoDataFrame, flag_config: QCFlagConfig) -> pd.Series:
-    bool_nan = flag_config.bool_function(df)
-    out = (
-        df[Df.QC_FLAG]
-        .combine(  # type: ignore
-            get_qc_flag_from_bool(
-                bool_=bool_nan,
-                flag_on_true=flag_config.flag_on_true,  # type: ignore
-            ),
-            flag_config.bool_merge_function,
-            fill_value=flag_config.flag_on_nan,  # type: ignore
-        )
-        .astype(CAT_TYPE)
-    )  # type: ignore
-    return out  # type: ignore
 
 
 @hydra.main(config_path="../conf", config_name="config.yaml", version_base="1.2")

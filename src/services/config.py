@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Tuple
 
+
 from models.constants import ISO_STR_FORMAT
 from models.enums import Properties
 
@@ -97,3 +98,11 @@ def filter_cfg_to_query(filter_cfg: FilterEntry) -> str:
         )
     log.debug(f"Configure filter: {filter_condition=}")
     return filter_condition
+
+
+# def get_start_flagged_blocks(df: pd.DataFrame | gpd.GeoDataFrame, bool_series: pd.Series) -> list:
+#     index_diff = df.loc[bool_series].index.astype(int).diff() # type: ignore
+#     out = list(df.loc[bool_series].index.where(index_diff>1).dropna().astype(int).unique())
+#     return out
+
+

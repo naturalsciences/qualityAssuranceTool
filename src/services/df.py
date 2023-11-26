@@ -1,13 +1,15 @@
 import logging
 from copy import deepcopy
 from typing import Sequence
+import geopandas as gpd
 
 import numpy as np
 import pandas as pd
 from shapely.wkt import loads
 
 from models.enums import Df, Entities, Properties, QualityFlags
-from services.qc import CAT_TYPE
+from services.qc import QCFlagConfig
+from services.qc import CAT_TYPE, get_qc_flag_from_bool
 from services.regions_query import (build_points_query, build_query_points,
                                     connect)
 from utils.utils import convert_to_datetime
@@ -223,3 +225,20 @@ def intersect_df_region(db_credentials, df, max_queries, max_query_points):
     df_out = query_all_nan_regions(db_credentials, df_out)
     df_out = df_type_conversions(df_out)
     return df_out
+
+
+def do_qc(df: pd.DataFrame | gpd.GeoDataFrame, flag_config: QCFlagConfig) -> pd.Series:
+    bool_nan = flag_config.bool_function(df)
+    out = (
+        df[Df.QC_FLAG]
+        .combine(  # type: ignore
+            get_qc_flag_from_bool(
+                bool_=bool_nan,
+                flag_on_true=flag_config.flag_on_true,  # type: ignore
+            ),
+            flag_config.bool_merge_function,
+            fill_value=flag_config.flag_on_nan,  # type: ignore
+        )
+        .astype(CAT_TYPE)
+    )  # type: ignore
+    return out  # type: ignore
