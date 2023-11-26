@@ -3,12 +3,11 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Tuple
 
-
 from models.constants import ISO_STR_FORMAT
 from models.enums import Properties
 
-
 log = logging.getLogger(__name__)
+
 
 @dataclass
 class PhenomenonTimeFilter:
@@ -105,5 +104,3 @@ def filter_cfg_to_query(filter_cfg: FilterEntry) -> str:
 #     index_diff = df.loc[bool_series].index.astype(int).diff() # type: ignore
 #     out = list(df.loc[bool_series].index.where(index_diff>1).dropna().astype(int).unique())
 #     return out
-
-

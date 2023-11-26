@@ -1,6 +1,6 @@
-from functools import partial
 import logging
 import time
+from functools import partial
 from pathlib import Path
 
 import geopandas as gpd
@@ -11,23 +11,16 @@ from dotenv import load_dotenv
 
 from models.enums import Df, Entities, QualityFlags
 from services.config import QCconf, filter_cfg_to_query
-from services.qc import QCFlagConfig, get_bool_depth_above_treshold
 from services.df import intersect_df_region
-from services.qc import (
-    CAT_TYPE,
-    calc_gradient_results,
-    # get_bool_depth_below_threshold,
-    get_bool_exceed_max_acceleration,
-    get_bool_exceed_max_velocity,
-    get_bool_land_region,
-    get_bool_null_region,
-    get_bool_out_of_range,
-    get_bool_spacial_outlier_compared_to_median,
-    get_qc_flag_from_bool,
-    qc_dependent_quantity_base,
-    qc_dependent_quantity_secondary,
-    update_flag_history_series,
-)
+from services.qc import (QCFlagConfig, calc_gradient_results,
+                         get_bool_depth_above_treshold,
+                         get_bool_exceed_max_acceleration,
+                         get_bool_exceed_max_velocity, get_bool_land_region,
+                         get_bool_null_region, get_bool_out_of_range,
+                         get_bool_spacial_outlier_compared_to_median,
+                         qc_dependent_quantity_base,
+                         qc_dependent_quantity_secondary,
+                         update_flag_history_series)
 from services.requests import get_all_data, get_elev_netcdf, patch_qc_flags
 
 log = logging.getLogger(__name__)
@@ -167,21 +160,7 @@ def main(cfg: QCconf):
         flag_on_nan=QualityFlags.PROBABLY_GOOD,
     )
     df_all[Df.QC_FLAG] = qc_flag_config_outlier.execute(df_all)
-    # bool_outlier = get_bool_spacial_outlier_compared_to_median(
-    # df_all, max_dx_dt=cfg.location.max_dx_dt, time_window=cfg.location.time_window  # type: ignore
-    # )
-    # df_all[Df.QC_FLAG] = (
-    # df_all[Df.QC_FLAG]
-    # .combine(
-    # get_qc_flag_from_bool(
-    # bool_=bool_outlier,
-    # flag_on_true=QualityFlags.BAD,
-    # ),
-    # max,
-    # fill_value=QualityFlags.PROBABLY_GOOD,
-    # )
-    # .astype(CAT_TYPE)
-    # )
+    
     log.info(
         f"Detected number of spacial outliers: {df_all.loc[qc_flag_config_outlier.bool_series].shape[0]}."
     )
@@ -215,6 +194,7 @@ def main(cfg: QCconf):
     ] = qc_flag_config_velocity.execute(df_all.loc[~qc_flag_config_outlier.bool_series])
 
     history_series = update_flag_history_series(history_series, qc_flag_config_velocity)
+
     ## acceleration
     qc_flag_config_acceleration = QCFlagConfig(
         "Acceleration limit",
@@ -236,6 +216,7 @@ def main(cfg: QCconf):
     )
 
     t_region1 = time.time()
+
     df_all = df_all.merge(qc_df, on=Df.OBSERVATION_TYPE, how="left")
     df_all.set_index(Df.IOT_ID)
     if nb_observations != df_all.shape[0]:
@@ -255,7 +236,9 @@ def main(cfg: QCconf):
 
     qc_flag_config_gradient = QCFlagConfig(
         label="Gradient",
-        bool_function=partial(get_bool_out_of_range, qc_on=Df.RESULT, qc_type="gradient"),
+        bool_function=partial(
+            get_bool_out_of_range, qc_on=Df.RESULT, qc_type="gradient"
+        ),
         bool_merge_function=max,
         flag_on_true=QualityFlags.BAD,
         flag_on_false=QualityFlags.PROBABLY_GOOD,
@@ -298,7 +281,10 @@ def main(cfg: QCconf):
     log.info(f"{df_all[Df.QC_FLAG].value_counts(dropna=False).to_json()=}")
     log.info(f"Observation types flagged as {QualityFlags.PROBABLY_BAD} or worse.")
     for obst_i in df_all.loc[
-        ((df_all[Df.QC_FLAG] >= QualityFlags.PROBABLY_BAD) & (~qc_flag_config_outlier.bool_series)),
+        (
+            (df_all[Df.QC_FLAG] >= QualityFlags.PROBABLY_BAD)
+            & (~qc_flag_config_outlier.bool_series)
+        ),
         Df.OBSERVATION_TYPE,
     ].unique():
         log.info(f"{'.'*10}{obst_i}")

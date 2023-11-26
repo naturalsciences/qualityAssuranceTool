@@ -11,7 +11,6 @@ import pandas as pd
 from pandas.api.types import CategoricalDtype
 
 from models.enums import Df, QualityFlags
-# from services.df import df_type_conversions
 from services.regions_query import get_depth_from_etop
 from utils.utils import (get_acceleration_series, get_distance_geopy_series,
                          get_velocity_series, merge_json_str)
@@ -264,26 +263,6 @@ def get_qc_flag_from_bool(
     return qc_flag_series
 
 
-# test needed!
-def set_qc_flag_range_check(
-    df: pd.DataFrame, qc_type: str, qc_on: Df, flag_on_fail: QualityFlags
-) -> pd.DataFrame:
-    df_out = deepcopy(df)
-    df_out[Df.QC_FLAG] = df_out[Df.QC_FLAG].astype(CAT_TYPE)
-    # mask = get_null_mask(df_out, qc_type)
-    # bool_tmp = get_bool_out_of_range(df_out.loc[mask], qc_on=qc_on, qc_type=qc_type)
-    bool_tmp = get_bool_out_of_range(df_out, qc_on=qc_on, qc_type=qc_type)
-
-    df_tmp = get_qc_flag_from_bool(
-        # df_out.loc[mask],
-        bool_=bool_tmp,
-        flag_on_true=flag_on_fail,
-    )
-    df_out.loc[df_tmp.index, df_tmp.columns] = df_tmp
-
-    return df_out
-
-
 # TODO: refactor
 def get_bool_spacial_outlier_compared_to_median(
     df: gpd.GeoDataFrame, max_dx_dt: float, time_window: str
@@ -403,11 +382,10 @@ class QCFlagConfig:
         return series_out
 
 
-# def update_flag_history_series(flag_history_series, test_name, bool_, flag_on_true):
 def update_flag_history_series(flag_history_series, flag_config: QCFlagConfig):
     hist_tmp = pd.Series(
         json.dumps({str(flag_config.flag_on_true): [flag_config.label]}),
-        index=flag_config.bool_series.loc[flag_config.bool_series].index,  # type: ignore
+        index=flag_config.bool_series.loc[flag_config.bool_series].index,
     )
 
     history_series = hist_tmp.combine(
