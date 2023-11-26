@@ -74,6 +74,7 @@ class LocationConfig:
     crs: str
     time_window: str
     max_dx_dt: float
+    max_ddx_dtdt: float
 
 
 @dataclass

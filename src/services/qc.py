@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import field, dataclass
 import json
 import logging
 from copy import deepcopy
@@ -370,14 +370,20 @@ def get_bool_depth_below_threshold(df: pd.DataFrame, threshold: float) -> pd.Ser
     return bool_out
 
 
+def get_bool_depth_above_treshold(df: pd.DataFrame, threshold: float) -> pd.Series:
+    bool_out = get_bool_depth_below_threshold(df, threshold=threshold)
+    return ~bool_out
+
+
 @dataclass
 class QCFlagConfig:
     label: str
     bool_function: Callable
     bool_merge_function: Callable
     flag_on_true: QualityFlags
-    flag_on_nan: QualityFlags | None
-    bool_series: pd.Series | None = None
+    flag_on_false: QualityFlags | None = None
+    flag_on_nan: QualityFlags | None = None
+    bool_series: pd.Series = field(default_factory=pd.Series)
 
     def execute(self, df: pd.DataFrame | gpd.GeoDataFrame):
         self.bool_series = self.bool_function(df)
@@ -387,12 +393,13 @@ class QCFlagConfig:
                 get_qc_flag_from_bool(
                     bool_=self.bool_series,
                     flag_on_true=self.flag_on_true,
+                    flag_on_false=self.flag_on_false,
                 ),  # type: ignore
                 self.bool_merge_function,
                 fill_value=self.flag_on_nan,  # type: ignore
             )
             .astype(CAT_TYPE)
-        )
+        ).astype(CAT_TYPE)
         return series_out
 
 
