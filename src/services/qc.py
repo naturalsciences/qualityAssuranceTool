@@ -267,7 +267,7 @@ def get_qc_flag_from_bool(
 def get_bool_spacial_outlier_compared_to_median(
     df: gpd.GeoDataFrame, max_dx_dt: float, time_window: str
 ) -> pd.Series:
-    tqdm.pandas()
+    tqdm.pandas(bar_format='[------------------------------------------][INFO] -     {l_bar}{bar:56}{r_bar}{bar:-56b}')
     log.info("Start calculating spacial outliers.")
     df_time_sorted = df.sort_values(Df.TIME)
     df_time_sorted["dt"] = df_time_sorted[Df.TIME].diff().fillna(pd.to_timedelta("0")).dt.total_seconds()  # type: ignore
