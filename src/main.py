@@ -1,7 +1,10 @@
+from functools import partial
 import logging
 import time
 from pathlib import Path
 
+from dataclasses import dataclass
+from typing import Callable
 import geopandas as gpd
 import hydra
 import pandas as pd
@@ -11,15 +14,21 @@ from dotenv import load_dotenv
 from models.enums import Df, Entities, QualityFlags
 from services.config import QCconf, filter_cfg_to_query
 from services.df import intersect_df_region
-from services.qc import (CAT_TYPE, calc_gradient_results,
-                         get_bool_depth_below_threshold,
-                         get_bool_exceed_max_acceleration,
-                         get_bool_exceed_max_velocity, get_bool_land_region,
-                         get_bool_null_region, get_bool_out_of_range,
-                         get_bool_spacial_outlier_compared_to_median,
-                         get_qc_flag_from_bool, qc_dependent_quantity_base,
-                         qc_dependent_quantity_secondary,
-                         update_flag_history_series)
+from services.qc import (
+    CAT_TYPE,
+    calc_gradient_results,
+    get_bool_depth_below_threshold,
+    get_bool_exceed_max_acceleration,
+    get_bool_exceed_max_velocity,
+    get_bool_land_region,
+    get_bool_null_region,
+    get_bool_out_of_range,
+    get_bool_spacial_outlier_compared_to_median,
+    get_qc_flag_from_bool,
+    qc_dependent_quantity_base,
+    qc_dependent_quantity_secondary,
+    update_flag_history_series,
+)
 from services.requests import get_all_data, get_elev_netcdf, patch_qc_flags
 
 log = logging.getLogger(__name__)
@@ -36,12 +45,57 @@ QUIT_AFTER_RESET = False
 #     return out
 
 
+@dataclass
+class QCFlagConfig:
+    label: str
+    bool_function: Callable
+    bool_merge_function: Callable
+    flag_on_true: QualityFlags
+    flag_on_nan: QualityFlags | None
+    bool_series: pd.Series | None = None
+
+    def execute(self, df: pd.DataFrame | gpd.GeoDataFrame):
+        self.bool_series = self.bool_function(df)
+        series_out = (
+            df[Df.QC_FLAG]
+            .combine(  # type: ignore
+                get_qc_flag_from_bool(
+                    bool_=self.bool_series,
+                    flag_on_true=self.flag_on_true,
+                ),  # type: ignore
+                self.bool_merge_function,
+                fill_value=self.flag_on_nan,  # type: ignore
+            )
+            .astype(CAT_TYPE)
+        )
+        return series_out
+
+
+def do_qc(df: pd.DataFrame | gpd.GeoDataFrame, flag_config: QCFlagConfig) -> pd.Series:
+    bool_nan = flag_config.bool_function(df)
+    out = (
+        df[Df.QC_FLAG]
+        .combine(  # type: ignore
+            get_qc_flag_from_bool(
+                bool_=bool_nan,
+                flag_on_true=flag_config.flag_on_true,  # type: ignore
+            ),
+            flag_config.bool_merge_function,
+            fill_value=flag_config.flag_on_nan,  # type: ignore
+        )
+        .astype(CAT_TYPE)
+    )  # type: ignore
+    return out  # type: ignore
+
+
 @hydra.main(config_path="../conf", config_name="config.yaml", version_base="1.2")
 def main(cfg: QCconf):
     log_extra = logging.getLogger(name="extra")
     log_extra.setLevel(logging.INFO)
     rootlog = logging.getLogger()
-    extra_log_file = Path(getattr(rootlog.handlers[1], "baseFilename", "./")).parent.joinpath("history.log")
+    extra_log_file = Path(
+        getattr(rootlog.handlers[1], "baseFilename", "./")
+    ).parent.joinpath("history.log")
     file_handler_extra = logging.FileHandler(extra_log_file)
     file_handler_extra.setFormatter(rootlog.handlers[0].formatter)
     log_extra.addHandler(file_handler_extra)
@@ -56,7 +110,10 @@ def main(cfg: QCconf):
     stapy.set_sta_url(cfg.data_api.base_url)
     url_batch = cfg.data_api.base_url + "/$batch"
 
-    auth_tuple = (getattr(cfg.data_api, "auth", {}).get("username", None), getattr(cfg.data_api,"auth", {}).get("passphrase", None))
+    auth_tuple = (
+        getattr(cfg.data_api, "auth", {}).get("username", None),
+        getattr(cfg.data_api, "auth", {}).get("passphrase", None),
+    )
     auth_in = [None, auth_tuple][all(auth_tuple)]
 
     thing_id = cfg.data_api.things.id
@@ -110,45 +167,30 @@ def main(cfg: QCconf):
             max_query_points=20,
         )
 
-        bool_nan = get_bool_null_region(df_all)
-        df_all[Df.QC_FLAG] = (
-            df_all[Df.QC_FLAG]
-            .combine(
-                get_qc_flag_from_bool(
-                    bool_=bool_nan,
-                    flag_on_true=QualityFlags.PROBABLY_GOOD,
-                ),
-                max,
-                fill_value=QualityFlags.NO_QUALITY_CONTROL,
-            )
-            .astype(CAT_TYPE)
+        qc_flag_config_nan_region = QCFlagConfig(
+            "Region nan",
+            get_bool_null_region,
+            max,
+            QualityFlags.PROBABLY_GOOD,
+            QualityFlags.NO_QUALITY_CONTROL
         )
-        history_series = update_flag_history_series(
-            history_series,
-            test_name="Region nan",
-            bool_=bool_nan,
-            flag_on_true=QualityFlags.PROBABLY_GOOD,
-        )
+        df_all[Df.QC_FLAG] = qc_flag_config_nan_region.execute(df_all)
 
-        bool_mainland = get_bool_land_region(df_all)
-        df_all[Df.QC_FLAG] = (
-            df_all[Df.QC_FLAG]
-            .combine(
-                get_qc_flag_from_bool(
-                    bool_=bool_mainland,
-                    flag_on_true=QualityFlags.BAD,
-                ),
-                max,
-                fill_value=QualityFlags.NO_QUALITY_CONTROL,
-            )
-            .astype(CAT_TYPE)
-        )
         history_series = update_flag_history_series(
             history_series,
-            test_name="Region mainland",
-            bool_=bool_mainland,
-            flag_on_true=QualityFlags.BAD,
+            qc_flag_config_nan_region)
+
+        qc_flag_config_land_region = QCFlagConfig(
+            "Region mainland",
+            get_bool_land_region,
+            max,
+            QualityFlags.BAD,
+            QualityFlags.NO_QUALITY_CONTROL
         )
+        df_all[Df.QC_FLAG] = qc_flag_config_land_region.execute(df_all)
+        history_series = update_flag_history_series(
+            history_series,
+            qc_flag_config_land_region)
 
         bool_depth_above_0 = ~get_bool_depth_below_threshold(df_all, threshold=0.0)
         df_all[Df.QC_FLAG] = (
@@ -170,44 +212,54 @@ def main(cfg: QCconf):
             flag_on_true=QualityFlags.BAD,
         )
 
-    
     # find geographical outliers
-    bool_outlier = get_bool_spacial_outlier_compared_to_median(
-        df_all, max_dx_dt=cfg.location.max_dx_dt, time_window=cfg.location.time_window  # type: ignore
+    flag_config_outlier = QCFlagConfig(
+        "spacial_outliers",
+        bool_function=partial(
+            get_bool_spacial_outlier_compared_to_median,
+            max_dx_dt=cfg.location.max_dx_dt,
+            time_window=cfg.location.time_window,
+        ),
+        bool_merge_function=max,
+        flag_on_true=QualityFlags.BAD,
+        flag_on_nan=QualityFlags.PROBABLY_GOOD,
     )
-    df_all[Df.QC_FLAG] = (
-        df_all[Df.QC_FLAG]
-        .combine(
-            get_qc_flag_from_bool(
-                bool_=bool_outlier,
-                flag_on_true=QualityFlags.BAD,
-            ),
-            max,
-            fill_value=QualityFlags.PROBABLY_GOOD,
-        )
-        .astype(CAT_TYPE)
+    df_all[Df.QC_FLAG] = flag_config_outlier.execute(df_all)
+    # bool_outlier = get_bool_spacial_outlier_compared_to_median(
+    # df_all, max_dx_dt=cfg.location.max_dx_dt, time_window=cfg.location.time_window  # type: ignore
+    # )
+    # df_all[Df.QC_FLAG] = (
+    # df_all[Df.QC_FLAG]
+    # .combine(
+    # get_qc_flag_from_bool(
+    # bool_=bool_outlier,
+    # flag_on_true=QualityFlags.BAD,
+    # ),
+    # max,
+    # fill_value=QualityFlags.PROBABLY_GOOD,
+    # )
+    # .astype(CAT_TYPE)
+    # )
+    log.info(
+        f"Detected number of spacial outliers: {df_all.loc[flag_config_outlier.bool_series].shape[0]}."
     )
-    log.info(f"Detected number of spacial outliers: {df_all.loc[bool_outlier].shape[0]}.")
     # log.debug(f"Indices of first elements of a flagged *block*: {get_start_flagged_blocks(df_all, bool_outlier)}") # type: ignore
 
     history_series = update_flag_history_series(
         history_series,
-        test_name="Location outlier",
-        bool_=bool_outlier,
-        flag_on_true=QualityFlags.BAD,
+        flag_config_outlier
     )
 
     features_body_template = '{"properties": {"resultQuality": "{value}"}}'
-    
+
     counter_flag_outliers = patch_qc_flags(
         df_all.reset_index(),
         url=url_batch,
         auth=auth_in,
         columns=[Df.FEATURE_ID, Df.QC_FLAG],
         url_entity=Entities.FEATURESOFINTEREST,
-        json_body_template = features_body_template,
+        json_body_template=features_body_template,
     )
-
 
     ## velocity
     bool_velocity = get_bool_exceed_max_velocity(df_all.loc[~bool_outlier], max_velocity=cfg.location.max_dx_dt)  # type: ignore
@@ -332,14 +384,20 @@ def main(cfg: QCconf):
 
     log.info(f"{df_all[Df.QC_FLAG].value_counts(dropna=False).to_json()=}")
     log.info(f"Observation types flagged as {QualityFlags.PROBABLY_BAD} or worse.")
-    for obst_i in df_all.loc[((df_all[Df.QC_FLAG] >= QualityFlags.PROBABLY_BAD) & (~bool_outlier)), Df.OBSERVATION_TYPE].unique():
+    for obst_i in df_all.loc[
+        ((df_all[Df.QC_FLAG] >= QualityFlags.PROBABLY_BAD) & (~bool_outlier)),
+        Df.OBSERVATION_TYPE,
+    ].unique():
         log.info(f"{'.'*10}{obst_i}")
 
     t_qc1 = time.time()
     t_patch0 = time.time()
     t3 = time.time()
     # url = "http://192.168.0.25:8080/FROST-Server/v1.1/$batch"
-    auth_tuple = (getattr(cfg.data_api, "auth", {}).get("username", None), getattr(cfg.data_api,"auth", {}).get("passphrase", None))
+    auth_tuple = (
+        getattr(cfg.data_api, "auth", {}).get("username", None),
+        getattr(cfg.data_api, "auth", {}).get("passphrase", None),
+    )
     auth_in = [None, auth_tuple][all(auth_tuple)]
     counter = patch_qc_flags(
         df_all.reset_index(),

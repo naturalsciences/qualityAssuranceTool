@@ -7,6 +7,7 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 from pandas.api.types import CategoricalDtype
+from main import QCFlagConfig
 
 from models.enums import Df, QualityFlags
 # from services.df import df_type_conversions
@@ -76,7 +77,7 @@ def qc_region(
 
 
 # TODO: refactor, complete df is not needed
-def calc_gradient_results(df: pd.DataFrame, groupby: Df):
+def calc_gradient_results(df: pd.DataFrame, groupby: Df) -> pd.DataFrame:
     # tqdm.pandas()
     log.info(f"Start gradient calculations per {groupby}.")
 
@@ -94,7 +95,7 @@ def calc_gradient_results(df: pd.DataFrame, groupby: Df):
     df_out = df.sort_values(Df.TIME)
     # df_out = df.groupby([groupby], group_keys=False).progress_apply(grad_function) # type: ignore
     df_out = df.groupby([groupby], group_keys=False).apply(grad_function)
-    return df_out
+    return df_out  # type: ignore
 
 
 def dependent_quantity_merge_asof(
@@ -368,10 +369,11 @@ def get_bool_depth_below_threshold(df: pd.DataFrame, threshold: float) -> pd.Ser
     return bool_out
 
 
-def update_flag_history_series(flag_history_series, test_name, bool_, flag_on_true):
+# def update_flag_history_series(flag_history_series, test_name, bool_, flag_on_true):
+def update_flag_history_series(flag_history_series, flag_config: QCFlagConfig):
     hist_tmp = pd.Series(
-        json.dumps({str(flag_on_true): [test_name]}),
-        index=bool_.loc[bool_].index,
+        json.dumps({str(flag_config.flag_on_true): [flag_config.label]}),
+        index=flag_config.bool_series.loc[flag_config.bool_series].index,  # type: ignore
     )
 
     history_series = hist_tmp.combine(
