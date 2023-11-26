@@ -224,8 +224,9 @@ def test_location_outlier(df_testing, idx, dx, columns):
     for idx_i, col_i in product(idx, columns):
         df_testing.iloc[idx_i, df_testing.columns.get_loc(col_i)] -= dx
 
-    df_testing["geometry"] = gpd.points_from_xy(
-        df_testing[Df.LONG], df_testing[Df.LAT], crs="EPSG:4326"
+    # df_testing.set_geometry("geometry")
+    df_testing = df_testing.set_geometry(
+        gpd.points_from_xy(df_testing[Df.LONG], df_testing[Df.LAT], crs="EPSG:4326")
     )
 
     res = get_bool_spacial_outlier_compared_to_median(
@@ -257,8 +258,8 @@ def test_location_outlier_long_eq_lat(df_testing, idx, dx, columns):
             idx_i, df_testing.columns.get_loc(other_column)
         ] = changed_to_value
 
-    df_testing["geometry"] = gpd.points_from_xy(
-        df_testing[Df.LONG], df_testing[Df.LAT], crs="EPSG:4326"
+    df_testing = df_testing.set_geometry(
+        gpd.points_from_xy(df_testing[Df.LONG], df_testing[Df.LAT], crs="EPSG:4326")
     )
 
     res = get_bool_spacial_outlier_compared_to_median(
@@ -281,7 +282,7 @@ def test_exceed_max_velocity_2(df_velocity_acceleration):
 def test_exceed_max_velocity_3(df_velocity_acceleration):
     bool_ref = get_bool_exceed_max_velocity(df_velocity_acceleration, max_velocity=1e12)
     bool_ref.loc[3] = True  # type: ignore
-    df_velocity_acceleration[Df.TIME].loc[4] = df_velocity_acceleration[Df.TIME].loc[3] + pd.Timedelta(nanoseconds=1)  # type: ignore
+    df_velocity_acceleration.loc[4, Df.TIME] = df_velocity_acceleration.loc[3, Df.TIME] + pd.Timedelta(nanoseconds=1)  # type: ignore
     res = get_bool_exceed_max_velocity(df_velocity_acceleration, max_velocity=90)
 
     pdt.assert_series_equal(res, bool_ref, check_names=False)
@@ -293,7 +294,7 @@ def test_exceed_max_acceleration(df_velocity_acceleration):
     )
     bool_ref.loc[2] = True  # type: ignore
     bool_ref.loc[3] = True  # type: ignore
-    df_velocity_acceleration[Df.TIME].loc[4] = df_velocity_acceleration[Df.TIME].loc[3] + pd.Timedelta(nanoseconds=1)  # type: ignore
+    df_velocity_acceleration.loc[4, Df.TIME] = df_velocity_acceleration.loc[3, Df.TIME] + pd.Timedelta(nanoseconds=1)  # type: ignore
     res = get_bool_exceed_max_acceleration(
         df_velocity_acceleration, max_acceleration=25
     )
