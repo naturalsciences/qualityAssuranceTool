@@ -10,6 +10,7 @@ import stapy
 from dotenv import load_dotenv
 
 from models.enums import Df, Entities, QualityFlags
+from models.constants import FEATURES_BODY_TEMPLATE
 from services.config import QCconf, filter_cfg_to_query
 from services.df import intersect_df_region
 from services.qc import (QCFlagConfig, calc_gradient_results,
@@ -27,8 +28,8 @@ log = logging.getLogger(__name__)
 
 load_dotenv()
 
-RESET_FLAGS = False
-QUIT_AFTER_RESET = False
+RESET_FLAGS = True
+QUIT_AFTER_RESET = True
 
 
 @hydra.main(config_path="../conf", config_name="config.yaml", version_base="1.2")
@@ -89,13 +90,22 @@ def main(cfg: QCconf):
 
     ## reset flags
     if RESET_FLAGS:
-        log.warning("Flags are reset!")
+        log.warning("Flags will be reset!")
         df_all[Df.QC_FLAG] = QualityFlags.NO_QUALITY_CONTROL
         counter_reset = patch_qc_flags(
             df_all.reset_index(),
             url=url_batch,
             auth=auth_in,
         )
+        counter_reset_features = patch_qc_flags(
+            df_all.reset_index(),
+            url=url_batch,
+            auth=auth_in,
+            columns=[Df.FEATURE_ID, Df.QC_FLAG],
+            url_entity=Entities.FEATURESOFINTEREST,
+            json_body_template=FEATURES_BODY_TEMPLATE,
+        )
+
         if QUIT_AFTER_RESET:
             return 0
 
@@ -166,7 +176,7 @@ def main(cfg: QCconf):
 
     history_series = update_flag_history_series(history_series, qc_flag_config_outlier)
 
-    features_body_template = '{"properties": {"resultQuality": "{value}"}}'
+    
 
     counter_flag_outliers = patch_qc_flags(
         df_all.reset_index(),
@@ -174,7 +184,7 @@ def main(cfg: QCconf):
         auth=auth_in,
         columns=[Df.FEATURE_ID, Df.QC_FLAG],
         url_entity=Entities.FEATURESOFINTEREST,
-        json_body_template=features_body_template,
+        json_body_template=FEATURES_BODY_TEMPLATE,
     )
 
     ## velocity
