@@ -2,6 +2,7 @@ import logging
 import time
 from functools import partial
 from pathlib import Path
+import threading
 
 import geopandas as gpd
 import hydra
@@ -184,18 +185,28 @@ def main(cfg: QCconf):
 
     history_series = update_flag_history_series(history_series, qc_flag_config_outlier)
 
-    counter_flag_outliers = patch_qc_flags(
-        df_all.reset_index(),
-        url=url_batch,
-        auth=auth_in,
-        columns=[Df.FEATURE_ID, Df.QC_FLAG],
-        url_entity=Entities.FEATURESOFINTEREST,
-        json_body_template=FEATURES_BODY_TEMPLATE,
-    )
+    counter_flag_outliers = threading.Thread(target=patch_qc_flags, name="Patch_qc_spacial_outliers", kwargs={
+        "df":df_all.loc[qc_flag_config_outlier.bool_series].reset_index(),
+        "url":url_batch,
+        "auth":auth_in,
+        "columns":[Df.FEATURE_ID, Df.QC_FLAG],
+        "url_entity":Entities.FEATURESOFINTEREST,
+        "json_body_template":FEATURES_BODY_TEMPLATE,
+    })
+    counter_flag_outliers.start()
+
+    # counter_flag_outliers = patch_qc_flags(
+        # df=df_all.reset_index(),
+        # url=url_batch,
+        # auth=auth_in,
+        # columns=[Df.FEATURE_ID, Df.QC_FLAG],
+        # url_entity=Entities.FEATURESOFINTEREST,
+        # json_body_template=FEATURES_BODY_TEMPLATE,
+    # )
 
     ## velocity and acceleration calculations
     series_velocity_and_acceleration = get_velocity_and_acceleration_series(df_all.loc[~qc_flag_config_outlier.bool_series]) #  type: ignore
-    
+
     ## velocity
     qc_flag_config_velocity = QCFlagConfig(
         "Velocity limit",
@@ -315,6 +326,8 @@ def main(cfg: QCconf):
         getattr(cfg.data_api, "auth", {}).get("passphrase", None),
     )
     auth_in = [None, auth_tuple][all(auth_tuple)]
+    while counter_flag_outliers.is_alive():
+        time.sleep(5)
     counter = patch_qc_flags(
         df_all.reset_index(),
         url=url_batch,
