@@ -362,37 +362,6 @@ def get_all_data(thing_id: int, filter_cfg: str):
     return df_out
 
 
-# def get_all_datastreams_data(
-#     thing_id, nb_streams_per_call, top_observations, filter_cfg
-# ) -> pd.DataFrame:
-#     df_all = pd.DataFrame()
-#     nb_datastreams = get_nb_datastreams_of_thing(thing_id=thing_id)
-#     log.info(f"{nb_datastreams=}")
-#     for i in range(ceil(nb_datastreams / nb_streams_per_call)):
-#         log.info(f"nb {i} of {ceil(nb_datastreams/nb_streams_per_call)}")
-#         query = get_results_n_datastreams_query(
-#             entity_id=thing_id,
-#             n=nb_streams_per_call,
-#             skip=nb_streams_per_call * i,
-#             top_observations=top_observations,
-#             filter_condition=filter_cfg,
-#             # expand_feature_of_interest=True,
-#         )
-#         status_code, response = get_results_n_datastreams(query)
-#         if status_code != 200:
-#             raise IOError(f"Status code: {status_code}")
-#         df_response = response_datastreams_to_df(response)
-#         df_all = pd.concat([df_all, df_response], ignore_index=True)
-#         log.debug(f"DF_ALL shape {df_all.shape}")
-#         # for ds_i in response[Entities.DATASTREAMS]:
-#         #     if f"{Entities.OBSERVATIONS}@iot.nextLink" in ds_i:
-#         #         log.warning("Not all observations are extracted!")  # TODO: follow link!
-#         # df_i = datastreams_request_to_df(response[Entities.DATASTREAMS])
-#         # log.debug(f"{df_i.shape[0]=}")
-#         # df_all = pd.concat([df_all, df_i], ignore_index=True)
-#     return df_all
-
-
 def get_features_of_interest(filter_cfg, top_observations):
     filter_condition = filter_cfg_to_query(filter_cfg)
     base_query = Query(Entity.FeatureOfInterest).get_query()
