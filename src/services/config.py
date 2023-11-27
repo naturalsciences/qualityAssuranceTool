@@ -1,5 +1,5 @@
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Tuple
 
@@ -77,8 +77,17 @@ class LocationConfig:
 
 
 @dataclass
+class ResetConfig:
+    overwrite_flags: bool = field(default=False)
+    observation_flags: bool = field(default=False)
+    feature_flags: bool = field(default=False)
+    exit: bool = field(default=False)
+
+
+@dataclass
 class QCconf:
     data_api: DataApi
+    reset: ResetConfig
     location: LocationConfig
     QC_dependent: list[QcDependentEntry]
     QC: dict[str, QcEntry]

@@ -18,6 +18,11 @@ data_api:
       range:
         - 2023-06-15 00:00
         - 2023-06-30 00:00
+reset:
+  overwrite_flags: False
+  observation_flags: False
+  feature_flags: False
+  exit: False
 location:
   # connection:
   #   database: seavox_areas
