@@ -1,15 +1,16 @@
-from dataclasses import field, dataclass
 import json
 import logging
 from copy import deepcopy
+from dataclasses import dataclass, field
 from typing import Callable
 
-from tqdm import tqdm
 import geopandas as gpd
 import numpy as np
 import pandas as pd
 from pandas.api.types import CategoricalDtype
+from tqdm import tqdm
 
+from models.constants import TQDM_BAR_FORMAT, TQDM_DESC_FORMAT
 from models.enums import Df, QualityFlags
 from services.regions_query import get_depth_from_etop
 from utils.utils import (get_acceleration_series, get_distance_geopy_series,
@@ -265,7 +266,6 @@ def get_qc_flag_from_bool(
 def get_bool_spacial_outlier_compared_to_median(
     df: gpd.GeoDataFrame, max_dx_dt: float, time_window: str
 ) -> pd.Series:
-    # tqdm.pandas(total=df.shape[0], bar_format='[------------------------------------------][INFO] -     {l_bar}{bar:56}{r_bar}{bar:-56b}')
     log.info("Start calculating spacial outliers.")
     df_time_sorted = df.sort_values(Df.TIME)
     df_time_sorted["dt"] = df_time_sorted[Df.TIME].diff().fillna(pd.to_timedelta("0")).dt.total_seconds()  # type: ignore
@@ -274,7 +274,7 @@ def get_bool_spacial_outlier_compared_to_median(
     bool_series_lat_eq_long = df_time_sorted[Df.LAT] == df_time_sorted[Df.LONG]
     log.debug(f"{bool_series_lat_eq_long.value_counts(dropna=False)=} (excluded from median calculations)")
 
-    tqdm.pandas(total=df.shape[0], desc="Rolling median")
+    tqdm.pandas(total=df.shape[0], desc=TQDM_DESC_FORMAT.format("Rolling median"), bar_format=TQDM_BAR_FORMAT)
     log.debug("Start rolling median calculations.")
     rolling_median = (
         df_time_sorted.loc[~bool_series_lat_eq_long, [Df.TIME, Df.LONG, Df.LAT]]
@@ -283,7 +283,7 @@ def get_bool_spacial_outlier_compared_to_median(
         .progress_apply(np.median)  # type: ignore
     )
 
-    tqdm.pandas(total=df.shape[0], desc="Rolling time")
+    tqdm.pandas(total=df.shape[0], desc=TQDM_DESC_FORMAT.format("Rolling time"), bar_format=TQDM_BAR_FORMAT)
     log.debug("Start rolling time calculations.")
     # calculates the time delta in each windows
     rolling_time = (

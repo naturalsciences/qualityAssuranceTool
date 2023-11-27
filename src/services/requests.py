@@ -5,11 +5,11 @@ from functools import partial
 from typing import List, Literal, Tuple
 
 import pandas as pd
-from requests import HTTPError, get, post
+from requests import get, post
 from stapy import Entity, Query
-from stapy.common.retry import retry
 from tqdm import tqdm
 
+from models.constants import TQDM_BAR_FORMAT, TQDM_DESC_FORMAT
 from models.enums import (Df, Entities, Filter, Order, OrderOption, Properties,
                           Qactions, Settings)
 from services.config import filter_cfg_to_query
@@ -61,15 +61,8 @@ def build_query_datastreams(entity_id: int) -> str:
     return out_query.get_query() + "&" + additional_query
 
 
-@retry(HTTPError, tries=5, delay=1, backoff=2)
-def get_with_retry(path):
-    response = get(path, stream=True)
-    return get(path)
-
-
 def get_request(query: str) -> Tuple[int, dict]:
-    # request = Query(Entity.Thing).entity_id(0).get_with_retry(query)
-    request = get_with_retry(query)
+    request = Query(Entity.Thing).entity_id(0).get_with_retry(query)
     request_out = request.json()
     return request.status_code, request_out
 
@@ -339,7 +332,7 @@ def get_all_data(thing_id: int, filter_cfg: str):
         query = response_i.get("@iot.nextLink", None)
         response[Entities.DATASTREAMS + "@iot.nextLink"] = str(query)
 
-    pbar = tqdm(total=total_observations_count, desc="Observations count")
+    pbar = tqdm(total=total_observations_count, desc=TQDM_DESC_FORMAT.format("Observations count"), bar_format=TQDM_BAR_FORMAT)
     count_observations = 0
     for ds_i in response.get(Entities.DATASTREAMS, {}):  # type: ignore
         query = ds_i.get(Entities.OBSERVATIONS + "@iot.nextLink", None)
@@ -365,6 +358,7 @@ def get_all_data(thing_id: int, filter_cfg: str):
     log.debug(f"Datastreams observation types: {df_out[Df.OBSERVATION_TYPE].unique()}")
     if df_out.isna().any().any():
         log.warning(f"The dataframe has NAN values.")
+    log.info(f"Quality flag counts as downloaded: {df_out[Df.QC_FLAG].value_counts(dropna=False).to_json()}")
     return df_out
 
 

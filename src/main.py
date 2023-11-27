@@ -100,7 +100,6 @@ def main(cfg: QCconf):
             return 0
 
     ## find region
-
     t_region0 = time.time()
     if getattr(cfg, "location", {}).get("connection", None):
         df_all = intersect_df_region(
@@ -164,7 +163,6 @@ def main(cfg: QCconf):
     log.info(
         f"Detected number of spacial outliers: {df_all.loc[qc_flag_config_outlier.bool_series].shape[0]}."
     )
-    # log.debug(f"Indices of first elements of a flagged *block*: {get_start_flagged_blocks(df_all, bool_outlier)}") # type: ignore
 
     history_series = update_flag_history_series(history_series, qc_flag_config_outlier)
 

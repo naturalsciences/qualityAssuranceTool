@@ -15,6 +15,7 @@ from stapy import Entity, Query
 from tqdm import tqdm
 
 from models.constants import ISO_STR_FORMAT, ISO_STR_FORMAT2
+from models.constants import TQDM_BAR_FORMAT, TQDM_DESC_FORMAT
 from models.enums import Df, Entities, Properties
 
 log = logging.getLogger(__name__)
@@ -171,8 +172,6 @@ def get_distance_projection_series(df: DataFrame) -> Series:
 def get_distance_geopy_series(
     df: GeoDataFrame, column1: str = "geometry", column2: str = "None"
 ) -> Series:
-    # tqdm.pandas(bar_format='[------------------------------------------][INFO] - {l_bar}{bar:56}{r_bar}{bar:-56b}')
-    tqdm.pandas(total=df.shape[0], desc="Calcuate distances")
     df_copy = copy.deepcopy(df)
 
     def get_distance_geopy_i(row_i, column1=column1, column2=column2):
@@ -191,6 +190,7 @@ def get_distance_geopy_series(
         shifted_geometry_values = copy.deepcopy(df["geometry"].shift(-1)).values  # type: ignore
         df_copy[column2] = shifted_geometry_values
     log.info("Start distance calculations.")
+    tqdm.pandas(total=df.shape[0], bar_format=TQDM_BAR_FORMAT, desc=TQDM_DESC_FORMAT.format("Calculate distance"))
     distances_series = df_copy.progress_apply(  # type: ignore
         partial(get_distance_geopy_i, column1=column1, column2=column2), axis=1
     )
