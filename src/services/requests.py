@@ -442,6 +442,9 @@ def patch_qc_flags(
         ),
         axis=1,
     )
+    if df["patch_dict"].empty:
+        log.warning("Nothing to patch.")
+        return Counter([])
 
     final_json = {"requests": df["patch_dict"].to_list()}
     log.info(f"Start batch patch query {url_entity}.")
