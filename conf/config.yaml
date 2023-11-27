@@ -3,21 +3,21 @@ hydra:
   verbose: __main__
 data_api:
   # base_url: https://sensors.naturalsciences.be/sta/v1.1
-  # base_url: http://localhost:8080/FROST-Server/v1.1
+  base_url: http://localhost:8080/FROST-Server/v1.1
   # base_url: http://192.168.0.25:8080/FROST-Server/v1.1
   # base_url: http://frost-docker_frosty_net:8080/FROST-Server/v1.1
-  base_url: https://dev-sensors.naturalsciences.be/sta/v1.1
-  auth:
-    username: ${oc.env:DEV_SENSORS_USER}
-    passphrase: ${oc.env:DEV_SENSORS_PASS}
+  # base_url: https://dev-sensors.naturalsciences.be/sta/v1.1
+  # auth:
+    # username: ${oc.env:DEV_SENSORS_USER}
+    # passphrase: ${oc.env:DEV_SENSORS_PASS}
   things:
     id: 1
   filter:
     phenomenonTime:
       format: "%Y-%m-%d %H:%M"
       range:
-        - 2023-06-15 00:00
-        - 2023-06-30 00:00
+        - 2023-01-01 00:00
+        - 2024-01-01 00:00
 reset:
   overwrite_flags: False
   observation_flags: False
