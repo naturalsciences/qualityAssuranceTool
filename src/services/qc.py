@@ -78,7 +78,6 @@ def qc_region(
 
 # TODO: refactor, complete df is not needed
 def calc_gradient_results(df: pd.DataFrame, groupby: Df) -> pd.DataFrame:
-    # tqdm.pandas()
     log.info(f"Start gradient calculations per {groupby}.")
 
     def grad_function(group):
@@ -93,7 +92,6 @@ def calc_gradient_results(df: pd.DataFrame, groupby: Df) -> pd.DataFrame:
         return group
 
     df_out = df.sort_values(Df.TIME)
-    # df_out = df.groupby([groupby], group_keys=False).progress_apply(grad_function) # type: ignore
     df_out = df.groupby([groupby], group_keys=False).apply(grad_function)
     return df_out  # type: ignore
 
@@ -267,7 +265,7 @@ def get_qc_flag_from_bool(
 def get_bool_spacial_outlier_compared_to_median(
     df: gpd.GeoDataFrame, max_dx_dt: float, time_window: str
 ) -> pd.Series:
-    tqdm.pandas(bar_format='[------------------------------------------][INFO] -     {l_bar}{bar:56}{r_bar}{bar:-56b}')
+    # tqdm.pandas(total=df.shape[0], bar_format='[------------------------------------------][INFO] -     {l_bar}{bar:56}{r_bar}{bar:-56b}')
     log.info("Start calculating spacial outliers.")
     df_time_sorted = df.sort_values(Df.TIME)
     df_time_sorted["dt"] = df_time_sorted[Df.TIME].diff().fillna(pd.to_timedelta("0")).dt.total_seconds()  # type: ignore
@@ -276,6 +274,7 @@ def get_bool_spacial_outlier_compared_to_median(
     bool_series_lat_eq_long = df_time_sorted[Df.LAT] == df_time_sorted[Df.LONG]
     log.debug(f"{bool_series_lat_eq_long.value_counts(dropna=False)=} (excluded from median calculations)")
 
+    tqdm.pandas(total=df.shape[0], desc="Rolling median")
     log.debug("Start rolling median calculations.")
     rolling_median = (
         df_time_sorted.loc[~bool_series_lat_eq_long, [Df.TIME, Df.LONG, Df.LAT]]
@@ -284,6 +283,7 @@ def get_bool_spacial_outlier_compared_to_median(
         .progress_apply(np.median)  # type: ignore
     )
 
+    tqdm.pandas(total=df.shape[0], desc="Rolling time")
     log.debug("Start rolling time calculations.")
     # calculates the time delta in each windows
     rolling_time = (

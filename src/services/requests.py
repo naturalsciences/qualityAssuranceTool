@@ -1,36 +1,22 @@
 import json
 import logging
 from collections import Counter
-from typing import List, Literal, Tuple
 from functools import partial
+from typing import List, Literal, Tuple
 
 import pandas as pd
-from requests import get, post
+from requests import HTTPError, get, post
 from stapy import Entity, Query
+from stapy.common.retry import retry
+from tqdm import tqdm
 
-from models.enums import (
-    Df,
-    Entities,
-    Filter,
-    Order,
-    OrderOption,
-    Properties,
-    Qactions,
-    Settings,
-)
+from models.enums import (Df, Entities, Filter, Order, OrderOption, Properties,
+                          Qactions, Settings)
 from services.config import filter_cfg_to_query
-from services.df import (
-    df_type_conversions,
-    features_request_to_df,
-    response_single_datastream_to_df,
-)
-from utils.utils import (
-    convert_to_datetime,
-    get_absolute_path_to_base,
-    log,
-    series_to_patch_dict,
-    update_response,
-)
+from services.df import (df_type_conversions, features_request_to_df,
+                         response_single_datastream_to_df)
+from utils.utils import (convert_to_datetime, get_absolute_path_to_base, log,
+                         series_to_patch_dict, update_response)
 
 log = logging.getLogger(__name__)
 
@@ -75,8 +61,15 @@ def build_query_datastreams(entity_id: int) -> str:
     return out_query.get_query() + "&" + additional_query
 
 
+@retry(HTTPError, tries=5, delay=1, backoff=2)
+def get_with_retry(path):
+    response = get(path, stream=True)
+    return get(path)
+
+
 def get_request(query: str) -> Tuple[int, dict]:
-    request = Query(Entity.Thing).entity_id(0).get_with_retry(query)
+    # request = Query(Entity.Thing).entity_id(0).get_with_retry(query)
+    request = get_with_retry(query)
     request_out = request.json()
     return request.status_code, request_out
 
@@ -315,7 +308,7 @@ def get_all_data(thing_id: int, filter_cfg: str):
         bool_nextlink = response_observations_count.get(
             "Datastreams@iot.nextLink", False
         )
-        log.info(f"temp count: {total_observations_count=}")
+        log.debug(f"temp count: {total_observations_count=}")
     log.info(
         f"Total number of observations to be retrieved: {total_observations_count}"
     )
@@ -346,6 +339,7 @@ def get_all_data(thing_id: int, filter_cfg: str):
         query = response_i.get("@iot.nextLink", None)
         response[Entities.DATASTREAMS + "@iot.nextLink"] = str(query)
 
+    pbar = tqdm(total=total_observations_count, desc="Observations count")
     count_observations = 0
     for ds_i in response.get(Entities.DATASTREAMS, {}):  # type: ignore
         query = ds_i.get(Entities.OBSERVATIONS + "@iot.nextLink", None)
@@ -363,12 +357,8 @@ def get_all_data(thing_id: int, filter_cfg: str):
             query = response_i.get("@iot.nextLink", None)
             ds_i[Entities.OBSERVATIONS + "@iot.nextLink"] = query
         count_observations += len(ds_i[Entities.OBSERVATIONS])
-        if len(ds_i[Entities.OBSERVATIONS]) > 0:
-            x_ = int(60 * count_observations / total_observations_count)
-            y_ = 60 - x_
-            log.info(
-                f"[{u'█'*x_}{('.'*(y_))}] {int(100.*count_observations/total_observations_count)}%"
-            )
+        pbar.update(len(ds_i[Entities.OBSERVATIONS]))
+    pbar.close()
 
     df_out = response_datastreams_to_df(response)
     log.debug(f"Columns of constructed df: {df_out.columns}.")

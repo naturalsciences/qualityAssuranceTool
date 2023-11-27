@@ -171,7 +171,8 @@ def get_distance_projection_series(df: DataFrame) -> Series:
 def get_distance_geopy_series(
     df: GeoDataFrame, column1: str = "geometry", column2: str = "None"
 ) -> Series:
-    tqdm.pandas(bar_format='[------------------------------------------][INFO] - {l_bar}{bar:56}{r_bar}{bar:-56b}')
+    # tqdm.pandas(bar_format='[------------------------------------------][INFO] - {l_bar}{bar:56}{r_bar}{bar:-56b}')
+    tqdm.pandas(total=df.shape[0], desc="Calcuate distances")
     df_copy = copy.deepcopy(df)
 
     def get_distance_geopy_i(row_i, column1=column1, column2=column2):
