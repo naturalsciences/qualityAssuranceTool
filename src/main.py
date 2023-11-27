@@ -23,6 +23,7 @@ from services.qc import (QCFlagConfig, calc_gradient_results,
                          qc_dependent_quantity_secondary,
                          update_flag_history_series)
 from services.requests import get_all_data, get_elev_netcdf, patch_qc_flags
+from utils.utils import get_velocity_and_acceleration_series
 
 log = logging.getLogger(__name__)
 
@@ -183,8 +184,6 @@ def main(cfg: QCconf):
 
     history_series = update_flag_history_series(history_series, qc_flag_config_outlier)
 
-    
-
     counter_flag_outliers = patch_qc_flags(
         df_all.reset_index(),
         url=url_batch,
@@ -194,11 +193,14 @@ def main(cfg: QCconf):
         json_body_template=FEATURES_BODY_TEMPLATE,
     )
 
+    ## velocity and acceleration calculations
+    series_velocity_and_acceleration = get_velocity_and_acceleration_series(df_all.loc[~qc_flag_config_outlier.bool_series]) #  type: ignore
+    
     ## velocity
     qc_flag_config_velocity = QCFlagConfig(
         "Velocity limit",
         bool_function=partial(
-            get_bool_exceed_max_velocity, max_velocity=cfg.location.max_dx_dt
+            get_bool_exceed_max_velocity, max_velocity=cfg.location.max_dx_dt, velocity_series=series_velocity_and_acceleration[0]
         ),
         bool_merge_function=max,
         flag_on_true=QualityFlags.BAD,
@@ -214,7 +216,7 @@ def main(cfg: QCconf):
     qc_flag_config_acceleration = QCFlagConfig(
         "Acceleration limit",
         partial(
-            get_bool_exceed_max_acceleration, max_acceleration=cfg.location.max_ddx_dtdt
+            get_bool_exceed_max_acceleration, max_acceleration=cfg.location.max_ddx_dtdt, acceleration_series=series_velocity_and_acceleration[1]
         ),
         max,
         QualityFlags.BAD,

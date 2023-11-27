@@ -5,7 +5,7 @@ import operator
 from datetime import datetime
 from functools import partial
 from pathlib import Path
-from typing import List
+from typing import List, Tuple
 
 import numpy as np
 from geopandas import GeoDataFrame, points_from_xy
@@ -198,6 +198,7 @@ def get_distance_geopy_series(
 
 
 def get_velocity_series(df: GeoDataFrame) -> Series:
+    log.info("Velocity calculations.")
     dt = get_dt_series(df)
     distance = get_distance_geopy_series(df)
     velocity = distance / dt
@@ -206,9 +207,21 @@ def get_velocity_series(df: GeoDataFrame) -> Series:
 
 
 def get_acceleration_series(df: GeoDataFrame) -> Series:
+    log.info("Acceleration calculations.")
     dt = get_dt_series(df)
     velocity = get_velocity_series(df)
 
     accdt = velocity.shift(-1) - velocity
     acc = accdt / dt
     return acc
+
+def get_velocity_and_acceleration_series(df: GeoDataFrame) -> Tuple[Series, Series]:
+    log.info("Velocity and acceleration calculations.")
+    dt = get_dt_series(df)
+    distance = get_distance_geopy_series(df)
+    velocity = distance / dt
+
+    accdt = velocity.shift(-1) - velocity
+    acc = accdt / dt
+    return (velocity, acc)
+ 

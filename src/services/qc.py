@@ -315,23 +315,25 @@ def get_bool_spacial_outlier_compared_to_median(
     return bool_out
 
 
-def get_bool_exceed_max_velocity(df: gpd.GeoDataFrame, max_velocity: float) -> pd.Series:
+def get_bool_exceed_max_velocity(df: gpd.GeoDataFrame, max_velocity: float, velocity_series: pd.Series | None = None) -> pd.Series:
     log.info("Calculating velocity outliers.")
-    velocity = get_velocity_series(df)
+    if velocity_series is None:
+        velocity_series = get_velocity_series(df)
 
-    bool_velocity = velocity > max_velocity
+    bool_velocity = velocity_series > max_velocity
     bool_out = pd.Series(bool_velocity, index=df.index)
-    bool_out = bool_out.drop(index=velocity.loc[velocity.isnull()].index, axis=1)
+    bool_out = bool_out.drop(index=velocity_series.loc[velocity_series.isnull()].index, axis=1)
     return bool_out
 
     
-def get_bool_exceed_max_acceleration(df: gpd.GeoDataFrame, max_acceleration: float) -> pd.Series:
+def get_bool_exceed_max_acceleration(df: gpd.GeoDataFrame, max_acceleration: float, acceleration_series: pd.Series | None = None) -> pd.Series:
     log.info("Calculating acceleration outliers.")
-    acceleration = get_acceleration_series(df).abs()
+    if acceleration_series is None:
+        acceleration_series = get_acceleration_series(df).abs()
 
-    bool_acceleration = acceleration > max_acceleration
+    bool_acceleration = acceleration_series > max_acceleration
     bool_out = pd.Series(bool_acceleration, index=df.index)
-    bool_out = bool_out.drop(index=acceleration.loc[acceleration.isnull()].index, axis=1)
+    bool_out = bool_out.drop(index=acceleration_series.loc[acceleration_series.isnull()].index, axis=1)
     return bool_out
 
 
