@@ -67,9 +67,7 @@ def main(cfg: QCconf):
 
     # get data in dataframe
     df_all = get_all_data(thing_id=thing_id, filter_cfg=filter_cfg)
-    if df_all.shape == (0, 0):
-        log.warning("No data, nothing to do")
-        return 0
+
     nb_observations = df_all.shape[0]
     df_all = gpd.GeoDataFrame(df_all, geometry=gpd.points_from_xy(df_all[Df.LONG], df_all[Df.LAT]), crs=cfg.location.crs)  # type: ignore
     # get qc check df (try to find clearer name)

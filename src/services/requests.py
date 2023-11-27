@@ -354,11 +354,15 @@ def get_all_data(thing_id: int, filter_cfg: str):
     pbar.close()
 
     df_out = response_datastreams_to_df(response)
-    log.debug(f"Columns of constructed df: {df_out.columns}.")
-    log.debug(f"Datastreams observation types: {df_out[Df.OBSERVATION_TYPE].unique()}")
+    
     if df_out.isna().any().any():
         log.warning(f"The dataframe has NAN values.")
+    if df_out.empty:
+        log.warning(f"No data retrieved.")
+        return df_out
     log.info(f"Quality flag counts as downloaded: {df_out[Df.QC_FLAG].value_counts(dropna=False).to_json()}")
+    log.debug(f"Columns of constructed df: {df_out.columns}.")
+    log.debug(f"Datastreams observation types: {df_out[Df.OBSERVATION_TYPE].unique()}")
     return df_out
 
 
