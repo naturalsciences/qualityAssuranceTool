@@ -28,9 +28,6 @@ log = logging.getLogger(__name__)
 
 load_dotenv()
 
-RESET_FLAGS = True
-QUIT_AFTER_RESET = True
-
 
 @hydra.main(config_path="../conf", config_name="config.yaml", version_base="1.2")
 def main(cfg: QCconf):
@@ -90,7 +87,11 @@ def main(cfg: QCconf):
     t_qc0 = time.time()
 
     ## reset flags
-    if RESET_FLAGS:
+    RESET_OBSERVATION_FLAGS = cfg.reset.observation_flags
+    RESET_FEAETURE_FLAGS = cfg.reset.feature_flags
+    QUIT_AFTER_RESET = cfg.reset.exit
+
+    if RESET_OBSERVATION_FLAGS:
         log.warning("Flags will be reset!")
         df_all[Df.QC_FLAG] = QualityFlags.NO_QUALITY_CONTROL
         counter_reset = patch_qc_flags(
@@ -98,6 +99,8 @@ def main(cfg: QCconf):
             url=url_batch,
             auth=auth_in,
         )
+    if RESET_FEAETURE_FLAGS:
+        df_all[Df.QC_FLAG] = QualityFlags.NO_QUALITY_CONTROL
         counter_reset_features = patch_qc_flags(
             df_all.reset_index(),
             url=url_batch,
