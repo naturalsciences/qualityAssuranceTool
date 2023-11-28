@@ -433,6 +433,9 @@ def patch_qc_flags(
     url_entity: Entities = Entities.OBSERVATIONS,
     json_body_template: str | None = None,
 ) -> Counter:
+    if df.empty:
+        log.warning("No ouliers are flagged (empty DataFrame).")
+        return Counter([])
     df["patch_dict"] = df[columns].apply(
         partial(
             series_to_patch_dict,
@@ -457,7 +460,7 @@ def patch_qc_flags(
     try:
         responses = response.json()["responses"]
     except:
-        log.error("Something went wrong while posing. Is there a valid authentication?")
+        log.error("Something went wrong while posting. Is there a valid authentication?")
         log.error(f"{response}")
         raise IOError("{response}")
 

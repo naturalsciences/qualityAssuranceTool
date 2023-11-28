@@ -230,7 +230,7 @@ def test_location_outlier(df_testing, idx, dx, columns):
     )
 
     res = get_bool_spacial_outlier_compared_to_median(
-        df_testing, max_dx_dt=111.0 + 78.0, time_window="5min"
+        df_testing, max_dx_dt=300., time_window="5min"
     )
     mask = np.ma.masked_array(res, mask=res)
     assert all(res[idx]) and ~mask.any() and (sum(res) == len(idx))
@@ -263,7 +263,7 @@ def test_location_outlier_long_eq_lat(df_testing, idx, dx, columns):
     )
 
     res = get_bool_spacial_outlier_compared_to_median(
-        df_testing, max_dx_dt=111.0 + 78.0, time_window="5min"
+        df_testing, max_dx_dt=300, time_window="5min"
     )
     mask = np.ma.masked_array(res, mask=res)
     assert all(res[idx]) and ~mask.any() and (sum(res) == len(idx))
