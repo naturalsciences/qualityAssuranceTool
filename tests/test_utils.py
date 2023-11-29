@@ -11,7 +11,7 @@ from hydra import compose, initialize
 from omegaconf import DictConfig
 
 import utils.utils as u
-from utils.utils import get_acceleration_series, get_distance_geopy_series, get_velocity_series
+from utils.utils import get_acceleration_series, get_distance_geopy_series, get_velocity_and_acceleration_series, get_velocity_series
 from models.enums import Df
 
 
@@ -136,6 +136,14 @@ class TestUtils:
             "list": list(range(11)),
         }
         assert d == ref
+
+
+def test_get_velocity_and_acceleration(df_velocity_acceleration):
+    df_file = pd.read_csv("./resources/data_velocity_acc.csv", header=0)
+    velocity, acc = get_velocity_and_acceleration_series(df_velocity_acceleration)
+
+    pdt.assert_series_equal(df_file.reset_index()["Velocity (m/s)"], velocity.fillna(0.).reset_index()[0], check_names=False, rtol=1e-3)
+    pdt.assert_series_equal(df_file.reset_index()["Acceleration (m/s²)"], acc.fillna(0.).reset_index()[0], check_names=False, rtol=1e-3)
 
 
 def test_get_velocity(df_velocity_acceleration):

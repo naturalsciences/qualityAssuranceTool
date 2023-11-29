@@ -332,7 +332,11 @@ def get_all_data(thing_id: int, filter_cfg: str):
         query = response_i.get("@iot.nextLink", None)
         response[Entities.DATASTREAMS + "@iot.nextLink"] = str(query)
 
-    pbar = tqdm(total=total_observations_count, desc=TQDM_DESC_FORMAT.format("Observations count"), bar_format=TQDM_BAR_FORMAT)
+    pbar = tqdm(
+        total=total_observations_count,
+        desc=TQDM_DESC_FORMAT.format("Observations count"),
+        bar_format=TQDM_BAR_FORMAT,
+    )
     count_observations = 0
     for ds_i in response.get(Entities.DATASTREAMS, {}):  # type: ignore
         query = ds_i.get(Entities.OBSERVATIONS + "@iot.nextLink", None)
@@ -354,13 +358,15 @@ def get_all_data(thing_id: int, filter_cfg: str):
     pbar.close()
 
     df_out = response_datastreams_to_df(response)
-    
+
     if df_out.isna().any().any():
         log.warning(f"The dataframe has NAN values.")
     if df_out.empty:
         log.warning(f"No data retrieved.")
         return df_out
-    log.info(f"Quality flag counts as downloaded: {df_out[Df.QC_FLAG].value_counts(dropna=False).to_json()}")
+    log.info(
+        f"Quality flag counts as downloaded: {df_out[Df.QC_FLAG].value_counts(dropna=False).to_json()}"
+    )
     log.debug(f"Columns of constructed df: {df_out.columns}.")
     log.debug(f"Datastreams observation types: {df_out[Df.OBSERVATION_TYPE].unique()}")
     return df_out
@@ -460,14 +466,20 @@ def patch_qc_flags(
     try:
         responses = response.json()["responses"]
     except:
-        log.error("Something went wrong while posting. Is there a valid authentication?")
+        log.error(
+            "Something went wrong while posting. Is there a valid authentication?"
+        )
         log.error(f"{response}")
         raise IOError("{response}")
 
     count_res = Counter([ri["status"] for ri in responses])
     log.info("End batch patch query")
     # log.info(f"{json.dumps(count_res)}")
-    if (set(count_res.keys()) != set([200,])):
+    if set(count_res.keys()) != set(
+        [
+            200,
+        ]
+    ):
         log.error("Didn't succeed patching.")
     return count_res
 

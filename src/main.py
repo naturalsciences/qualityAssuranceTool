@@ -1,8 +1,8 @@
 import logging
+import threading
 import time
 from functools import partial
 from pathlib import Path
-import threading
 
 import geopandas as gpd
 import hydra
@@ -10,8 +10,8 @@ import pandas as pd
 import stapy
 from dotenv import load_dotenv
 
-from models.enums import Df, Entities, QualityFlags
 from models.constants import FEATURES_BODY_TEMPLATE
+from models.enums import Df, Entities, QualityFlags
 from services.config import QCconf, filter_cfg_to_query
 from services.df import intersect_df_region
 from services.qc import (QCFlagConfig, calc_gradient_results,
@@ -178,70 +178,93 @@ def main(cfg: QCconf):
         flag_on_nan=QualityFlags.PROBABLY_GOOD,
     )
     df_all[Df.QC_FLAG] = qc_flag_config_outlier.execute(df_all)
-    
+
     log.info(
         f"Detected number of spacial outliers: {df_all.loc[qc_flag_config_outlier.bool_series].shape[0]}."
     )
 
     history_series = update_flag_history_series(history_series, qc_flag_config_outlier)
 
-    counter_flag_outliers = threading.Thread(target=patch_qc_flags, name="Patch_qc_spacial_outliers", kwargs={
-        "df":df_all.loc[qc_flag_config_outlier.bool_series].reset_index(),
-        "url":url_batch,
-        "auth":auth_in,
-        "columns":[Df.FEATURE_ID, Df.QC_FLAG],
-        "url_entity":Entities.FEATURESOFINTEREST,
-        "json_body_template":FEATURES_BODY_TEMPLATE,
-    })
+    counter_flag_outliers = threading.Thread(
+        target=patch_qc_flags,
+        name="Patch_qc_spacial_outliers",
+        kwargs={
+            # "df":df_all.loc[qc_flag_config_outlier.bool_series].reset_index(),
+            "df": df_all.reset_index(),
+            "url": url_batch,
+            "auth": auth_in,
+            "columns": [Df.FEATURE_ID, Df.QC_FLAG],
+            "url_entity": Entities.FEATURESOFINTEREST,
+            "json_body_template": FEATURES_BODY_TEMPLATE,
+        },
+    )
     counter_flag_outliers.start()
 
     # counter_flag_outliers = patch_qc_flags(
-        # df=df_all.reset_index(),
-        # url=url_batch,
-        # auth=auth_in,
-        # columns=[Df.FEATURE_ID, Df.QC_FLAG],
-        # url_entity=Entities.FEATURESOFINTEREST,
-        # json_body_template=FEATURES_BODY_TEMPLATE,
+    # df=df_all.reset_index(),
+    # url=url_batch,
+    # auth=auth_in,
+    # columns=[Df.FEATURE_ID, Df.QC_FLAG],
+    # url_entity=Entities.FEATURESOFINTEREST,
+    # json_body_template=FEATURES_BODY_TEMPLATE,
     # )
 
     ## velocity and acceleration calculations
-    series_velocity_and_acceleration = get_velocity_and_acceleration_series(df_all.loc[~qc_flag_config_outlier.bool_series]) #  type: ignore
+    series_velocity_and_acceleration = get_velocity_and_acceleration_series(
+        df_all.loc[~qc_flag_config_outlier.bool_series].sort_values(Df.TIME)  #  type: ignore
+    )
 
     ## velocity
     qc_flag_config_velocity = QCFlagConfig(
         "Velocity limit",
         bool_function=partial(
-            get_bool_exceed_max_velocity, max_velocity=cfg.location.max_dx_dt, velocity_series=series_velocity_and_acceleration[0]
+            get_bool_exceed_max_velocity,
+            max_velocity=cfg.location.max_dx_dt,
+            velocity_series=series_velocity_and_acceleration[0],
         ),
         bool_merge_function=max,
         flag_on_true=QualityFlags.BAD,
         flag_on_nan=QualityFlags.NO_QUALITY_CONTROL,
     )
-    df_all.loc[
-        ~qc_flag_config_outlier.bool_series, Df.QC_FLAG
-    ] = qc_flag_config_velocity.execute(df_all.loc[~qc_flag_config_outlier.bool_series])
+    output_qc_velocity = qc_flag_config_velocity.execute(
+        df_all.loc[~qc_flag_config_outlier.bool_series]
+    )
+    if qc_flag_config_velocity.bool_series.any():
+        log.warning(
+            f"Velocities {qc_flag_config_velocity.bool_series.sum()} exceeding the limiting value detected!"
+        )
+        log.warning(
+            f"Max velocity value: {series_velocity_and_acceleration[0].abs().max():.2f}"
+        )
 
-    history_series = update_flag_history_series(history_series, qc_flag_config_velocity)
+    # history_series = update_flag_history_series(history_series, qc_flag_config_velocity)
 
     ## acceleration
     qc_flag_config_acceleration = QCFlagConfig(
         "Acceleration limit",
         partial(
-            get_bool_exceed_max_acceleration, max_acceleration=cfg.location.max_ddx_dtdt, acceleration_series=series_velocity_and_acceleration[1]
+            get_bool_exceed_max_acceleration,
+            max_acceleration=cfg.location.max_ddx_dtdt,
+            acceleration_series=series_velocity_and_acceleration[1],
         ),
         max,
         QualityFlags.BAD,
         flag_on_nan=QualityFlags.NO_QUALITY_CONTROL,
     )
-    df_all.loc[
-        ~qc_flag_config_outlier.bool_series, Df.QC_FLAG
-    ] = qc_flag_config_acceleration.execute(
+    output_qc_acceleration = qc_flag_config_acceleration.execute(
         df_all.loc[~qc_flag_config_outlier.bool_series]
     )
+    if qc_flag_config_acceleration.bool_series.any():
+        log.warning(
+            f"Accelerations {qc_flag_config_acceleration.bool_series.sum()} exceeding the limiting value detected!"
+        )
+        log.warning(
+            f"Max acceleration value: {series_velocity_and_acceleration[1].abs().max():.2f}"
+        )
 
-    history_series = update_flag_history_series(
-        history_series, qc_flag_config_acceleration
-    )
+    # history_series = update_flag_history_series(
+    # history_series, qc_flag_config_acceleration
+    # )
 
     t_region1 = time.time()
 

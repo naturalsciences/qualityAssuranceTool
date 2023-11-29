@@ -14,8 +14,8 @@ from pandas import DataFrame, Series
 from stapy import Entity, Query
 from tqdm import tqdm
 
-from models.constants import ISO_STR_FORMAT, ISO_STR_FORMAT2
-from models.constants import TQDM_BAR_FORMAT, TQDM_DESC_FORMAT
+from models.constants import (ISO_STR_FORMAT, ISO_STR_FORMAT2, TQDM_BAR_FORMAT,
+                              TQDM_DESC_FORMAT)
 from models.enums import Df, Entities, Properties
 
 log = logging.getLogger(__name__)
@@ -190,7 +190,11 @@ def get_distance_geopy_series(
         shifted_geometry_values = copy.deepcopy(df["geometry"].shift(-1)).values  # type: ignore
         df_copy[column2] = shifted_geometry_values
     log.info("Start distance calculations.")
-    tqdm.pandas(total=df.shape[0], bar_format=TQDM_BAR_FORMAT, desc=TQDM_DESC_FORMAT.format("Calculate distance"))
+    tqdm.pandas(
+        total=df.shape[0],
+        bar_format=TQDM_BAR_FORMAT,
+        desc=TQDM_DESC_FORMAT.format("Calculate distance"),
+    )
     distances_series = df_copy.progress_apply(  # type: ignore
         partial(get_distance_geopy_i, column1=column1, column2=column2), axis=1
     )
@@ -199,29 +203,38 @@ def get_distance_geopy_series(
 
 def get_velocity_series(df: GeoDataFrame) -> Series:
     log.info("Velocity calculations.")
-    dt = get_dt_series(df)
-    distance = get_distance_geopy_series(df)
+    df_sorted = df.sort_values(Df.TIME)
+    dt = get_dt_series(df_sorted)
+    distance = get_distance_geopy_series(df_sorted)  # type: ignore
     velocity = distance / dt
 
+    velocity = velocity.bfill().replace(np.inf, np.NAN)
     return velocity
 
 
 def get_acceleration_series(df: GeoDataFrame) -> Series:
     log.info("Acceleration calculations.")
-    dt = get_dt_series(df)
-    velocity = get_velocity_series(df)
+    df_sorted = df.sort_values(Df.TIME)
+    dt = get_dt_series(df_sorted)
+    velocity = get_velocity_series(df_sorted).bfill()  # type: ignore
 
     accdt = velocity.shift(-1) - velocity
     acc = accdt / dt
+    acc = acc.bfill().replace(np.inf, np.NAN)
     return acc
+
 
 def get_velocity_and_acceleration_series(df: GeoDataFrame) -> Tuple[Series, Series]:
     log.info("Velocity and acceleration calculations.")
-    dt = get_dt_series(df)
-    distance = get_distance_geopy_series(df)
+    df_tmp = df.sort_values(Df.TIME).groupby(Df.FEATURE_ID).first()
+    dt = get_dt_series(df_tmp)
+    distance = get_distance_geopy_series(df_tmp)  # type: ignore
     velocity = distance / dt
+    # velocity = (distance / dt).bfill()
 
     accdt = velocity.shift(-1) - velocity
     acc = accdt / dt
+
+    velocity = velocity.bfill().replace(np.inf, np.NAN)
+    acc = acc.bfill().replace(np.inf, np.NAN)
     return (velocity, acc)
- 

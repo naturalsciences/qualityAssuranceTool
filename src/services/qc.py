@@ -268,6 +268,7 @@ def get_bool_spacial_outlier_compared_to_median(
 ) -> pd.Series:
     def delta(x):
         return np.max(x) - np.min(x)
+
     log.info("Start calculating spacial outliers.")
     df_time_sorted = df.sort_values(Df.TIME)
     # df_time_sorted["dt"] = df_time_sorted.loc[:, Df.TIME].dt.total_seconds()
@@ -275,9 +276,15 @@ def get_bool_spacial_outlier_compared_to_median(
     df_time_sorted["dt"] = (df_time_sorted[Df.TIME] - df_time_sorted[Df.TIME].min()).dt.total_seconds()  # type: ignore
 
     bool_series_lat_eq_long = df_time_sorted[Df.LAT] == df_time_sorted[Df.LONG]
-    log.debug(f"{bool_series_lat_eq_long.value_counts(dropna=False)=} (excluded from median calculations)")
+    log.debug(
+        f"{bool_series_lat_eq_long.value_counts(dropna=False)=} (excluded from median calculations)"
+    )
 
-    tqdm.pandas(total=df.shape[0], desc=TQDM_DESC_FORMAT.format("Rolling median"), bar_format=TQDM_BAR_FORMAT)
+    tqdm.pandas(
+        total=df.shape[0],
+        desc=TQDM_DESC_FORMAT.format("Rolling median"),
+        bar_format=TQDM_BAR_FORMAT,
+    )
     log.debug("Start rolling median calculations.")
     rolling_median = (
         df_time_sorted.loc[~bool_series_lat_eq_long, [Df.TIME, Df.LONG, Df.LAT]]
@@ -286,7 +293,11 @@ def get_bool_spacial_outlier_compared_to_median(
         .progress_apply(np.median)  # type: ignore
     )
 
-    tqdm.pandas(total=df.shape[0], desc=TQDM_DESC_FORMAT.format("Rolling time"), bar_format=TQDM_BAR_FORMAT)
+    tqdm.pandas(
+        total=df.shape[0],
+        desc=TQDM_DESC_FORMAT.format("Rolling time"),
+        bar_format=TQDM_BAR_FORMAT,
+    )
     log.debug("Start rolling time calculations.")
     # calculates the time delta in each windows
     rolling_time = (
@@ -297,46 +308,59 @@ def get_bool_spacial_outlier_compared_to_median(
     )
 
     rolling_median = rolling_median.reindex(index=rolling_time.index, fill_value=None)
-    rolling_median.loc[bool_series_lat_eq_long, Df.TIME] = rolling_time.loc[bool_series_lat_eq_long, Df.TIME]
+    rolling_median.loc[bool_series_lat_eq_long, Df.TIME] = rolling_time.loc[
+        bool_series_lat_eq_long, Df.TIME
+    ]
     rolling_median = rolling_median.ffill().bfill()
 
     ref_point = gpd.GeoDataFrame(  # type: ignore
         rolling_median,
         geometry=gpd.points_from_xy(
-            rolling_median.loc[:, Df.LONG], rolling_median.loc[:, Df.LAT], crs="EPSG:4326"
+            rolling_median.loc[:, Df.LONG],
+            rolling_median.loc[:, Df.LAT],
+            crs="EPSG:4326",
         ),
     )
     ref_point["dt"] = rolling_time["dt"]
     df_time_sorted["geo_ref"] = ref_point.geometry
     df_time_sorted = gpd.GeoDataFrame(df_time_sorted)
-    distance = get_distance_geopy_series(df_time_sorted, column1="geometry", column2="geo_ref")
-    bool_series = (
-        distance.values
-        > (ref_point["dt"] * max_dx_dt).values  # type: ignore
+    distance = get_distance_geopy_series(
+        df_time_sorted, column1="geometry", column2="geo_ref"
     )
+    bool_series = distance.values > (ref_point["dt"] * max_dx_dt).values  # type: ignore
     bool_out = pd.Series(bool_series, index=df_time_sorted.index)
     return bool_out
 
 
-def get_bool_exceed_max_velocity(df: gpd.GeoDataFrame, max_velocity: float, velocity_series: pd.Series | None = None) -> pd.Series:
+def get_bool_exceed_max_velocity(
+    df: gpd.GeoDataFrame, max_velocity: float, velocity_series: pd.Series | None = None
+) -> pd.Series:
     log.info("Calculating velocity outliers.")
     if velocity_series is None:
         velocity_series = get_velocity_series(df)
 
-    bool_velocity = velocity_series > max_velocity
-    bool_out = pd.Series(bool_velocity, index=df.index)
-    bool_out = bool_out.drop(index=velocity_series.loc[velocity_series.isnull()].index, axis=1)
+    bool_velocity = velocity_series.abs() > max_velocity
+    df["idx_"] = df.index
+    df_tmp = df.set_index(Df.FEATURE_ID)
+    df_tmp["bool_velocity"] = bool_velocity
+    bool_out = df_tmp.set_index("idx_")["bool_velocity"]
     return bool_out
 
-    
-def get_bool_exceed_max_acceleration(df: gpd.GeoDataFrame, max_acceleration: float, acceleration_series: pd.Series | None = None) -> pd.Series:
+
+def get_bool_exceed_max_acceleration(
+    df: gpd.GeoDataFrame,
+    max_acceleration: float,
+    acceleration_series: pd.Series | None = None,
+) -> pd.Series:
     log.info("Calculating acceleration outliers.")
     if acceleration_series is None:
         acceleration_series = get_acceleration_series(df).abs()
 
-    bool_acceleration = acceleration_series > max_acceleration
-    bool_out = pd.Series(bool_acceleration, index=df.index)
-    bool_out = bool_out.drop(index=acceleration_series.loc[acceleration_series.isnull()].index, axis=1)
+    bool_acceleration = acceleration_series.abs() > max_acceleration
+    df["idx_"] = df.index
+    df_tmp = df.set_index(Df.FEATURE_ID)
+    df_tmp["bool_acceleration"] = bool_acceleration
+    bool_out = df_tmp.set_index("idx_")["bool_acceleration"]
     return bool_out
 
 
