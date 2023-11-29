@@ -3,23 +3,23 @@ hydra:
   verbose: __main__
 data_api:
   # base_url: https://sensors.naturalsciences.be/sta/v1.1
-  base_url: http://localhost:8080/FROST-Server/v1.1
+  # base_url: http://localhost:8080/FROST-Server/v1.1
   # base_url: http://192.168.0.25:8080/FROST-Server/v1.1
   # base_url: http://frost-docker_frosty_net:8080/FROST-Server/v1.1
-  # base_url: https://dev-sensors.naturalsciences.be/sta/v1.1
-  # auth:
-    # username: ${oc.env:DEV_SENSORS_USER}
-    # passphrase: ${oc.env:DEV_SENSORS_PASS}
+  base_url: https://dev-sensors.naturalsciences.be/sta/v1.1
+  auth:
+    username: ${oc.env:DEV_SENSORS_USER}
+    passphrase: ${oc.env:DEV_SENSORS_PASS}
   things:
     id: 1
   filter:
     phenomenonTime:
       format: "%Y-%m-%d %H:%M"
       range:
-        - 2023-01-01 00:00
-        - 2024-01-01 00:00
+        - 2023-06-30 00:00
+        - 2023-07-01 00:00
 reset:
-  overwrite_flags: False
+  overwrite_flags: True
   observation_flags: False
   feature_flags: False
   exit: False
@@ -34,7 +34,7 @@ location:
   crs: EPSG:4326 # not fully used
   time_window: 24H
   max_dx_dt: 6.89 # check units
-  max_ddx_dtdt: .1
+  max_ddx_dtdt: 0.15 # VERY high value, needs to be re-evaluated when shorted time intervals are available
 QC_dependent:
   - independent: 69
     dependent: 124 # list/array
@@ -143,14 +143,16 @@ QC:
     range:
       - 0. # most values are negative
       - 6000.
+  pH:
+    range:
+      - 7.
+      - 9.
 
 ignored:
   Sound velocity in the water body: # strange values
-
   CDOM concentration: # no observations?
   Speed of wind {wind speed} in the atmosphere: # no observations?
   partial CO₂ pressure:
   Offset (THIS NEEDS MORE EXPLANATION!):
-  pH:
   Sensor Status LI-COR:
   Direction (from) of wind relative to moving platform and heading {wind direction} in the atmosphere by in-situ anemometer:
