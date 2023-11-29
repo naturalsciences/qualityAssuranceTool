@@ -406,7 +406,6 @@ class QCFlagConfig:
                 self.bool_merge_function,
                 fill_value=self.flag_on_nan,  # type: ignore
             )
-            .astype(CAT_TYPE)
         ).astype(CAT_TYPE)
         log.info(f"Execution {self.label} qc result: {self.bool_series.sum()} True")
         return series_out

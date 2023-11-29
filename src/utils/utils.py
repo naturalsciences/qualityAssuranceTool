@@ -203,7 +203,7 @@ def get_distance_geopy_series(
 
 def get_velocity_series(df: GeoDataFrame) -> Series:
     log.info("Velocity calculations.")
-    df_sorted = df.sort_values(Df.TIME)
+    df_sorted = df.set_index(Df.FEATURE_ID).sort_values(Df.TIME)
     dt = get_dt_series(df_sorted)
     distance = get_distance_geopy_series(df_sorted)  # type: ignore
     velocity = distance / dt
@@ -214,9 +214,9 @@ def get_velocity_series(df: GeoDataFrame) -> Series:
 
 def get_acceleration_series(df: GeoDataFrame) -> Series:
     log.info("Acceleration calculations.")
-    df_sorted = df.sort_values(Df.TIME)
+    df_sorted = df.set_index(Df.FEATURE_ID).sort_values(Df.TIME)
     dt = get_dt_series(df_sorted)
-    velocity = get_velocity_series(df_sorted).bfill()  # type: ignore
+    velocity = get_velocity_series(df)  # type: ignore
 
     accdt = velocity.shift(-1) - velocity
     acc = accdt / dt

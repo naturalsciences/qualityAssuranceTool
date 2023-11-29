@@ -150,14 +150,14 @@ def test_get_velocity(df_velocity_acceleration):
     df_file = pd.read_csv("./resources/data_velocity_acc.csv", header=0)
     velocity = get_velocity_series(df_velocity_acceleration).fillna(0.0)
 
-    pdt.assert_series_equal(df_file["Velocity (m/s)"], velocity, check_names=False)
+    pdt.assert_series_equal(df_file["Velocity (m/s)"], velocity, check_names=False, check_index=False)
 
 
 def test_get_acceleration(df_velocity_acceleration):
     df_file = pd.read_csv("./resources/data_velocity_acc.csv", header=0)
     acceleration = get_acceleration_series(df_velocity_acceleration).fillna(0.0)
 
-    pdt.assert_series_equal(df_file["Acceleration (m/s²)"], acceleration, check_names=False)
+    pdt.assert_series_equal(df_file["Acceleration (m/s²)"], acceleration, check_names=False, check_index=False)
 
 
 def test_get_distance_geopy_Ghent_Brussels():
