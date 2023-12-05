@@ -16,8 +16,8 @@ data_api:
     phenomenonTime:
       format: "%Y-%m-%d %H:%M"
       range:
-        - 2023-06-30 00:00
-        - 2023-07-01 00:00
+        - 2023-06-26 00:00
+        - 2023-07-11 00:00
 reset:
   overwrite_flags: True
   observation_flags: False
@@ -145,8 +145,8 @@ QC:
       - 6000.
   pH:
     range:
-      - 7.
-      - 9.
+      - 6.
+      - 10.
 
 ignored:
   Sound velocity in the water body: # strange values

@@ -224,11 +224,18 @@ def get_acceleration_series(df: GeoDataFrame) -> Series:
     return acc
 
 
-def get_velocity_and_acceleration_series(df: GeoDataFrame) -> Tuple[Series, Series]:
-    log.info("Velocity and acceleration calculations.")
+def get_dt_and_distance_series(df: GeoDataFrame) -> Tuple[Series, Series]:
+    log.info("Distance calculations.")
     df_tmp = df.sort_values(Df.TIME).groupby(Df.FEATURE_ID).first()
     dt = get_dt_series(df_tmp)
     distance = get_distance_geopy_series(df_tmp)  # type: ignore
+    return (dt, distance)
+ 
+
+def get_velocity_and_acceleration_series(df: GeoDataFrame) -> Tuple[Series, Series]:
+    log.info("Velocity and acceleration calculations.")
+    dt, distance = get_dt_and_distance_series(df)
+
     velocity = distance / dt
     # velocity = (distance / dt).bfill()
 
