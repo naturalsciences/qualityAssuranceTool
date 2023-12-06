@@ -275,6 +275,7 @@ def response_datastreams_to_df(response: dict) -> pd.DataFrame:
 
 def get_all_data(thing_id: int, filter_cfg: str):
     log.info(f"Retrieving data of Thing {thing_id}.")
+    log.info(f"---- filter: {filter_cfg}")
     log.debug("Get all data of thing {thing_id} with filter {filter_cfg}")
 
     # get total count of observations to be retrieved
