@@ -264,4 +264,4 @@ def get_dt_velocity_and_acceleration_series(df: GeoDataFrame) -> Tuple[Series, S
     dt_out.loc[dt.index] = dt
     dt_out = dt_out.rename("dt")
     
-    return (dt, velocity_out, acc_out)
+    return (dt_out, velocity_out, acc_out)
