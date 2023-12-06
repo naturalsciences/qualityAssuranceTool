@@ -61,7 +61,6 @@ def main(cfg: QCconf):
 
     thing_id = cfg.data_api.things.id
 
-    get_elev_netcdf()
     filter_cfg = filter_cfg_to_query(cfg.data_api.filter)
 
     # get data in dataframe
@@ -154,6 +153,7 @@ def main(cfg: QCconf):
             history_series, qc_flag_config_land_region
         )
 
+        get_elev_netcdf()
         qc_flag_config_depth_above_threshold = QCFlagConfig(
             "Depth",
             partial(get_bool_depth_above_treshold, threshold=0.0),
