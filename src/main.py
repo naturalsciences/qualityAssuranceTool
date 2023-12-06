@@ -3,6 +3,7 @@ import threading
 import time
 from functools import partial
 from pathlib import Path
+import sys
 
 import geopandas as gpd
 import hydra
@@ -30,7 +31,6 @@ log = logging.getLogger(__name__)
 
 load_dotenv()
 
-
 @hydra.main(config_path="../conf", config_name="config.yaml", version_base="1.2")
 def main(cfg: QCconf):
     log_extra = logging.getLogger(name="extra")
@@ -42,6 +42,16 @@ def main(cfg: QCconf):
     file_handler_extra = logging.FileHandler(extra_log_file)
     file_handler_extra.setFormatter(rootlog.handlers[0].formatter)
     log_extra.addHandler(file_handler_extra)
+    def custom_exception_handler(exc_type, exc_value, exc_traceback):
+        # Log the exception
+        log.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
+
+        # Call the default exception hook (prints the traceback and exits)
+        sys.__excepthook__(exc_type, exc_value, exc_traceback)
+
+    sys.excepthook = custom_exception_handler
+
+
     t0 = time.time()
     log.info("Start")
 
@@ -201,6 +211,7 @@ def main(cfg: QCconf):
     )
     counter_flag_outliers.start()
 
+    df_all = df_all.sort_values(Df.TIME)
     ## velocity and acceleration calculations
     series_dt_velocity_and_acceleration = get_dt_velocity_and_acceleration_series(
         df_all.loc[~qc_flag_config_outlier.bool_series].sort_values(
