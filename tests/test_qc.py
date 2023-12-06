@@ -276,7 +276,7 @@ def test_exceed_max_velocity(df_velocity_acceleration):
 
 def test_exceed_max_velocity_2(df_velocity_acceleration):
     res = get_bool_exceed_max_velocity(df_velocity_acceleration, max_velocity=0)
-    assert all(res[:-1])
+    assert all(res)
 
 
 def test_exceed_max_velocity_3(df_velocity_acceleration):
@@ -288,13 +288,23 @@ def test_exceed_max_velocity_3(df_velocity_acceleration):
     pdt.assert_series_equal(res, bool_ref, check_names=False)
 
 
-def test_exceed_max_acceleration(df_velocity_acceleration):
+@pytest.mark.parametrize(
+    "idx0",
+    [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+    ],
+)
+def test_exceed_max_acceleration(df_velocity_acceleration, idx0):
     bool_ref = get_bool_exceed_max_acceleration(
         df_velocity_acceleration, max_acceleration=1e12
     )
-    bool_ref.loc[2] = True  # type: ignore
-    bool_ref.loc[3] = True  # type: ignore
-    df_velocity_acceleration.loc[4, Df.TIME] = df_velocity_acceleration.loc[3, Df.TIME] + pd.Timedelta(nanoseconds=1)  # type: ignore
+    bool_ref.loc[[idx0-1, idx0]] = True
+    df_velocity_acceleration.loc[idx0+1, Df.TIME] = df_velocity_acceleration.loc[idx0, Df.TIME] + pd.Timedelta(nanoseconds=1)  # type: ignore
     res = get_bool_exceed_max_acceleration(
         df_velocity_acceleration, max_acceleration=25
     )

@@ -11,7 +11,7 @@ from hydra import compose, initialize
 from omegaconf import DictConfig
 
 import utils.utils as u
-from utils.utils import get_acceleration_series, get_distance_geopy_series, get_velocity_and_acceleration_series, get_velocity_series
+from utils.utils import get_acceleration_series, get_distance_geopy_series, get_dt_velocity_and_acceleration_series, get_velocity_series
 from models.enums import Df
 
 
@@ -138,27 +138,32 @@ class TestUtils:
         assert d == ref
 
 
-def test_get_velocity_and_acceleration(df_velocity_acceleration):
+def test_get_dt_velocity_and_acceleration(df_velocity_acceleration):
     df_file = pd.read_csv("./resources/data_velocity_acc.csv", header=0)
-    velocity, acc = get_velocity_and_acceleration_series(df_velocity_acceleration)
+    dt, velocity, acc = get_dt_velocity_and_acceleration_series(df_velocity_acceleration)
 
-    pdt.assert_series_equal(df_file.reset_index()["Velocity (m/s)"], velocity.fillna(0.).reset_index()[0], check_names=False, rtol=1e-3)
-    pdt.assert_series_equal(df_file.reset_index()["Acceleration (m/s²)"], acc.fillna(0.).reset_index()[0], check_names=False, rtol=1e-3)
+    pdt.assert_series_equal(df_file.loc[~velocity.isnull(), "Velocity (m/s)"], velocity.loc[~velocity.isnull()], check_names=False, rtol=1e-3)
+    pdt.assert_series_equal(df_file.loc[~acc.isnull(), "Acceleration (m/s²)"], acc.loc[~acc.isnull()], check_names=False, rtol=1e-3)
 
 
 def test_get_velocity(df_velocity_acceleration):
     df_file = pd.read_csv("./resources/data_velocity_acc.csv", header=0)
-    velocity = get_velocity_series(df_velocity_acceleration).fillna(0.0)
+    dt_, velocity = get_velocity_series(df_velocity_acceleration, return_dt=True)
+    velocity = velocity.fillna(0.0)
 
     pdt.assert_series_equal(df_file["Velocity (m/s)"], velocity, check_names=False, check_index=False)
 
 
 def test_get_acceleration(df_velocity_acceleration):
     df_file = pd.read_csv("./resources/data_velocity_acc.csv", header=0)
-    acceleration = get_acceleration_series(df_velocity_acceleration).fillna(0.0)
-
-    pdt.assert_series_equal(df_file["Acceleration (m/s²)"], acceleration, check_names=False, check_index=False)
-
+    dt_, acceleration = get_acceleration_series(df_velocity_acceleration, return_dt=True)
+    acc_ = get_acceleration_series(df_velocity_acceleration, return_dt=False)
+    acc__ = get_acceleration_series(df_velocity_acceleration)
+    pdt.assert_series_equal(acc_, acceleration)  # type: ignore
+    pdt.assert_series_equal(acc__, acceleration)  # type: ignore
+    acceleration = acceleration.fillna(0.0)
+    pdt.assert_series_equal(df_file.loc[acceleration.index, "Acceleration (m/s²)"], acceleration, check_names=False, check_index=True)
+    
 
 def test_get_distance_geopy_Ghent_Brussels():
     lat_g, lon_g = 51.053562, 3.720867

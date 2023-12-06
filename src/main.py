@@ -24,7 +24,7 @@ from services.qc import (QCFlagConfig, calc_gradient_results,
                          qc_dependent_quantity_secondary,
                          update_flag_history_series)
 from services.requests import get_all_data, get_elev_netcdf, patch_qc_flags
-from utils.utils import get_velocity_and_acceleration_series
+from utils.utils import get_dt_velocity_and_acceleration_series
 
 log = logging.getLogger(__name__)
 
@@ -66,6 +66,7 @@ def main(cfg: QCconf):
 
     # get data in dataframe
     df_all = get_all_data(thing_id=thing_id, filter_cfg=filter_cfg)
+
     if df_all.empty:
         log.warning("Terminating script.")
         return 0
@@ -185,33 +186,26 @@ def main(cfg: QCconf):
 
     history_series = update_flag_history_series(history_series, qc_flag_config_outlier)
 
-    # counter_flag_outliers = threading.Thread(
-    #     target=patch_qc_flags,
-    #     name="Patch_qc_spacial_outliers",
-    #     kwargs={
-    #         "df":[df_all.loc[qc_flag_config_outlier.bool_series].reset_index(), df_all.reset_index()][RESET_FEAETURE_FLAGS],
-    #         # "df": df_all.reset_index(),
-    #         "url": url_batch,
-    #         "auth": auth_in,
-    #         "columns": [Df.FEATURE_ID, Df.QC_FLAG],
-    #         "url_entity": Entities.FEATURESOFINTEREST,
-    #         "json_body_template": FEATURES_BODY_TEMPLATE,
-    #     },
-    # )
-    # counter_flag_outliers.start()
-
-    # counter_flag_outliers = patch_qc_flags(
-    # df=df_all.reset_index(),
-    # url=url_batch,
-    # auth=auth_in,
-    # columns=[Df.FEATURE_ID, Df.QC_FLAG],
-    # url_entity=Entities.FEATURESOFINTEREST,
-    # json_body_template=FEATURES_BODY_TEMPLATE,
-    # )
+    counter_flag_outliers = threading.Thread(
+        target=patch_qc_flags,
+        name="Patch_qc_spacial_outliers",
+        kwargs={
+            "df":[df_all.loc[qc_flag_config_outlier.bool_series].reset_index(), df_all.reset_index()][RESET_FEAETURE_FLAGS],
+            # "df": df_all.reset_index(),
+            "url": url_batch,
+            "auth": auth_in,
+            "columns": [Df.FEATURE_ID, Df.QC_FLAG],
+            "url_entity": Entities.FEATURESOFINTEREST,
+            "json_body_template": FEATURES_BODY_TEMPLATE,
+        },
+    )
+    counter_flag_outliers.start()
 
     ## velocity and acceleration calculations
-    series_velocity_and_acceleration = get_velocity_and_acceleration_series(
-        df_all.loc[~qc_flag_config_outlier.bool_series].sort_values(Df.TIME)  #  type: ignore
+    series_dt_velocity_and_acceleration = get_dt_velocity_and_acceleration_series(
+        df_all.loc[~qc_flag_config_outlier.bool_series].sort_values(
+            Df.TIME
+        )  #  type: ignore
     )
 
     ## velocity
@@ -220,7 +214,8 @@ def main(cfg: QCconf):
         bool_function=partial(
             get_bool_exceed_max_velocity,
             max_velocity=cfg.location.max_dx_dt,
-            velocity_series=series_velocity_and_acceleration[0],
+            velocity_series=series_dt_velocity_and_acceleration[1],
+            dt_series=series_dt_velocity_and_acceleration[0],
         ),
         bool_merge_function=max,
         flag_on_true=QualityFlags.BAD,
@@ -234,7 +229,7 @@ def main(cfg: QCconf):
             f"Velocities {qc_flag_config_velocity.bool_series.sum()} exceeding the limiting value detected!"
         )
         log.warning(
-            f"Max velocity value: {series_velocity_and_acceleration[0].abs().max():.2f}"
+            f"Max velocity value: {series_dt_velocity_and_acceleration[1].abs().max():.2f}"
         )
 
     # history_series = update_flag_history_series(history_series, qc_flag_config_velocity)
@@ -245,7 +240,8 @@ def main(cfg: QCconf):
         partial(
             get_bool_exceed_max_acceleration,
             max_acceleration=cfg.location.max_ddx_dtdt,
-            acceleration_series=series_velocity_and_acceleration[1],
+            acceleration_series=series_dt_velocity_and_acceleration[2],
+            dt_series=series_dt_velocity_and_acceleration[0],
         ),
         max,
         QualityFlags.BAD,
@@ -259,7 +255,7 @@ def main(cfg: QCconf):
             f"Accelerations {qc_flag_config_acceleration.bool_series.sum()} exceeding the limiting value detected!"
         )
         log.warning(
-            f"Max acceleration value: {series_velocity_and_acceleration[1].abs().max():.2f}"
+            f"Max acceleration value: {series_dt_velocity_and_acceleration[2].abs().max():.2f}"
         )
 
     # history_series = update_flag_history_series(
@@ -343,14 +339,13 @@ def main(cfg: QCconf):
     t_qc1 = time.time()
     t_patch0 = time.time()
     t3 = time.time()
-    # url = "http://192.168.0.25:8080/FROST-Server/v1.1/$batch"
     auth_tuple = (
         getattr(cfg.data_api, "auth", {}).get("username", None),
         getattr(cfg.data_api, "auth", {}).get("passphrase", None),
     )
     auth_in = [None, auth_tuple][all(auth_tuple)]
-    # while counter_flag_outliers.is_alive():
-        # time.sleep(5)
+    while counter_flag_outliers.is_alive():
+        time.sleep(5)
     counter = patch_qc_flags(
         df_all.reset_index(),
         url=url_batch,

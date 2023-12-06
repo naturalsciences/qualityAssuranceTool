@@ -333,35 +333,45 @@ def get_bool_spacial_outlier_compared_to_median(
 
 
 def get_bool_exceed_max_velocity(
-    df: gpd.GeoDataFrame, max_velocity: float, velocity_series: pd.Series | None = None
+    df: gpd.GeoDataFrame, max_velocity: float, velocity_series: pd.Series | None = None, dt_series: pd.Series | None = None
 ) -> pd.Series:
     log.info("Calculating velocity outliers.")
     if velocity_series is None:
-        velocity_series = get_velocity_series(df)
-
-    bool_velocity = velocity_series.abs() > max_velocity
-    df["idx_"] = df.index
-    df_tmp = df.set_index(Df.FEATURE_ID)
-    df_tmp["bool_velocity"] = bool_velocity
-    bool_out = df_tmp.set_index("idx_")["bool_velocity"]
-    return bool_out
+        dt_series, velocity_series = get_velocity_series(df, return_dt=True)
+    if dt_series is None:
+        bool_velocity = velocity_series.abs() > max_velocity#*dt_series/(dt_series+pd.Timedelta())
+    else:
+        dt_plus_accuracy = dt_series + ((dt_series.dropna()-dt_series.dropna().astype(int)) == 0).astype(int)*1.
+        bool_velocity = velocity_series.abs() > (max_velocity/dt_series*dt_plus_accuracy).rename("velocity").loc[velocity_series.index]
+    # df["idx_"] = df.index
+    # df_tmp = df.set_index(Df.FEATURE_ID)
+    # df_tmp["bool_velocity"] = bool_velocity
+    # bool_out = df_tmp.set_index("idx_")["bool_velocity"]
+    # return bool_out
+    return bool_velocity.loc[~velocity_series.isnull()]
 
 
 def get_bool_exceed_max_acceleration(
     df: gpd.GeoDataFrame,
     max_acceleration: float,
     acceleration_series: pd.Series | None = None,
+    dt_series: pd.Series | None = None,
 ) -> pd.Series:
     log.info("Calculating acceleration outliers.")
     if acceleration_series is None:
-        acceleration_series = get_acceleration_series(df).abs()
+        dt_series, acceleration_series = get_acceleration_series(df, return_dt=True)
+    if dt_series is None:
+        bool_acceleration = acceleration_series.abs() > max_acceleration
+    else:
+        dt_plus_accuracy = dt_series + ((dt_series.dropna()-dt_series.dropna().astype(int)) == 0).astype(int)*1.
+        bool_acceleration = acceleration_series.abs() > (max_acceleration/dt_series**2*dt_plus_accuracy**2).rename("acceleration").loc[acceleration_series.index]
 
-    bool_acceleration = acceleration_series.abs() > max_acceleration
-    df["idx_"] = df.index
-    df_tmp = df.set_index(Df.FEATURE_ID)
-    df_tmp["bool_acceleration"] = bool_acceleration
-    bool_out = df_tmp.set_index("idx_")["bool_acceleration"]
-    return bool_out
+    # df["idx_"] = df.index
+    # df_tmp = df.set_index(Df.FEATURE_ID)
+    # df_tmp["bool_acceleration"] = bool_acceleration
+    # bool_out = df_tmp.set_index("idx_")["bool_acceleration"]
+    # return bool_out
+    return bool_acceleration.loc[~acceleration_series.isnull()]
 
 
 def get_bool_depth_below_threshold(df: pd.DataFrame, threshold: float) -> pd.Series:
