@@ -1,4 +1,4 @@
-image::badgje.svg[Pytest QC,link=https://github.com/naturalsciences/qualityAssuranceTool/actions/workflows/python-app.yml/badge.svg?branch=main]
+image::https://github.com/naturalsciences/qualityAssuranceTool/actions/workflows/python-app.yml/badge.svg?branch=main[Pytest_badge]
 
 
 = qc through sensorthings API
