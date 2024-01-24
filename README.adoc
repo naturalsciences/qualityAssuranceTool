@@ -3,6 +3,8 @@
 :showtitle:
 :icons: font
 
+[![Pytest QC](https://github.com/naturalsciences/qualityAssuranceTool/actions/workflows/python-app.yml/badge.svg?branch=main)](https://github.com/naturalsciences/qualityAssuranceTool/actions/workflows/python-app.yml)
+
 
 == Description
 
