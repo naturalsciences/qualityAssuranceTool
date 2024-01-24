@@ -1,12 +1,17 @@
+time: 
+  start: 2023-06-26
+  end: 2023-07-11
 hydra:
   # verbose: True
   verbose: __main__
+  run:
+    dir: outputs/${time.start}_${time.end}
 data_api:
   # base_url: https://sensors.naturalsciences.be/sta/v1.1
-  # base_url: http://localhost:8080/FROST-Server/v1.1
+  base_url: http://localhost:8080/FROST-Server/v1.1
   # base_url: http://192.168.0.25:8080/FROST-Server/v1.1
   # base_url: http://frost-docker_frosty_net:8080/FROST-Server/v1.1
-  base_url: https://dev-sensors.naturalsciences.be/sta/v1.1
+  # base_url: https://dev-sensors.naturalsciences.be/sta/v1.1
   auth:
     username: ${oc.env:DEV_SENSORS_USER}
     passphrase: ${oc.env:DEV_SENSORS_PASS}
@@ -16,8 +21,8 @@ data_api:
     phenomenonTime:
       format: "%Y-%m-%d %H:%M"
       range:
-        - 2023-06-26 00:00
-        - 2023-07-11 00:00
+        - ${time.start} 00:00
+        - ${time.end} 00:00
 reset:
   overwrite_flags: True
   observation_flags: False
