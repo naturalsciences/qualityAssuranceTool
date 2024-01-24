@@ -6,31 +6,26 @@
 
 == Description
 
-The goal of this project is to perform basic quality checks on data. The
-project adds quality flags to the database (if configured).
-The project should/will be structured that adding a new algorithm is as simple as
-changing a config file (yaml).
+The goal of this project is to perform basic quality checks on data.
+The project adds quality flags to the database (if configured).
+The project should/will be structured that adding a new algorithm is as simple as changing a config file (yaml).
 
 
 == Requirements
 
-=== SeaVox db
+=== (Optional) SeaVox db
 
 To query the sea region, seavox db is used.
 
 == Installation
 
-As it is a python project, no _real_ installation is needed, but a
-runtime python environment needs to be created where the needed packages
-are available. The needed packages are listed in the file
-`requirements.txt`.
+As it is a python project, no _real_ installation is needed, but a runtime python environment needs to be created where the needed packages are available.
+The needed packages are listed in the file `requirements.txt`.
 
 == Quality flags
 
 The available flags are listed http://vocab.nerc.ac.uk/collection/L20/current/[here].
 The _order_/_priority_ of the flags are determined by the order in which they are sorted in the link:src/models/enums.py[enum definition].
-
-== _Possible_ Quality checks
 
 == Docker
 
@@ -53,6 +48,8 @@ run multiple docker containers with different time periods
 source .env
 for f in $(seq -f "%02g" 1 11); do docker run --rm -v ./conf:/app/conf -v ./outputs:/app/outputs -e DEV_SENSORS_USER=$DEV_SENSORS_USER -e DEV_SENSORS_PASS=$DEV_SENSORS_PASS qc_sensorthings "data_api.filter.phenomenonTime.range=[2023-$((f))-01 00:00, 2023-$((f+1))-15 00:00]"; done
 ```
+
+== __Possible__ quality checks
 
 === Regions
 
