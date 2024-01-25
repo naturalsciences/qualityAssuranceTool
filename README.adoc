@@ -1,5 +1,7 @@
 = qc through sensorthings API
 :toc: left
+:toc-interactive: // the active section will be highlighted
+:toc-mode: offcanvas
 :showtitle:
 :icons: font
 
