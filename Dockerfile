@@ -2,8 +2,8 @@ FROM python:3.11-slim AS builder
 ARG ID_U
 ENV TZ="Europe/Brussels"
 
-WORKDIR /app
 
+WORKDIR /app
 COPY requirements.txt .
 RUN apt-get update \ 
     && apt-get -y install libpq-dev gcc \
@@ -23,9 +23,6 @@ WORKDIR /app
 COPY --from=builder /app .
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 COPY --from=builder /usr /usr
-RUN groupadd -g $ID_U usergroup && useradd -m -u $ID_U -g $ID_U myuser && chown -R myuser /app
-WORKDIR /app
-USER myuser
 
 # ENV PYTHONPATH "${PYTHONPATH}:/app:/app/src/:/app/tests/"
 # RUN pytest /app/tests/

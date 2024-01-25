@@ -60,6 +60,7 @@ def main(cfg: QCconf):
     # setup
     log.info("Setup")
     t_df0 = time.time()
+    stapy.config.filename = Path("outputs/.stapy.ini")
     stapy.set_sta_url(cfg.data_api.base_url)
     url_batch = cfg.data_api.base_url + "/$batch"
 
