@@ -1,9 +1,11 @@
 = qc through sensorthings API
-// :toc-interactive: // the active section will be highlighted
-// :toc-placement!:
 :showtitle:
 :icons: font
+ifndef::env-github[]
+:toc-interactive: // the active section will be highlighted
 :toc: left
+endif::[]
+
 
 image::https://github.com/naturalsciences/qualityAssuranceTool/actions/workflows/python-app.yml/badge.svg?branch=main[Pytest_badge]
 
