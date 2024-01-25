@@ -1,10 +1,9 @@
-image::https://github.com/naturalsciences/qualityAssuranceTool/actions/workflows/python-app.yml/badge.svg?branch=main[Pytest_badge]
-
-
 = qc through sensorthings API
 :toc: 
 :showtitle:
 :icons: font
+
+image::https://github.com/naturalsciences/qualityAssuranceTool/actions/workflows/python-app.yml/badge.svg?branch=main[Pytest_badge]
 
 
 
