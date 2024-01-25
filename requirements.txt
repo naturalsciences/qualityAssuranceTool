@@ -1,5 +1,6 @@
 hydra-core
-pandas
+pandas==2.1.2
+Pyarrow
 numpy
 scipy
 matplotlib

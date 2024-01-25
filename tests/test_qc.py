@@ -57,7 +57,7 @@ def df_testing() -> gpd.GeoDataFrame:
     base_list_phenomenonTime: list[pd.Timestamp] = list(
         pd.Timestamp("now")
         + pd.timedelta_range(
-            start=0, periods=len(base_list_region), freq="S", unit="s"  # type: ignore
+            start=0, periods=len(base_list_region), freq="s", unit="s"  # type: ignore
         )
     )
     base_results: list[float] = [
