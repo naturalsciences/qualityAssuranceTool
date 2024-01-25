@@ -1,5 +1,5 @@
 = qc through sensorthings API
-:toc: 
+:toc: left
 :showtitle:
 :icons: font
 
