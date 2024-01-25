@@ -6,6 +6,11 @@ name: Pytest QC
 on:
   push:
     branches: [ "main" ]
+    paths:
+      - "src/**"
+      - "tests/**"
+      - "Dockerfile"
+      - "requirements.txt"
   pull_request:
     branches: [ "main" ]
 
