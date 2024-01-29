@@ -22,7 +22,8 @@ ENV TZ="Europe/Brussels"
 WORKDIR /app
 COPY --from=builder /app .
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
-COPY --from=builder /usr /usr
+COPY --from=builder /usr/bin /usr/bin
+COPY --from=builder /usr/lib /usr/lib
 
 # ENV PYTHONPATH "${PYTHONPATH}:/app:/app/src/:/app/tests/"
 # RUN pytest /app/tests/
