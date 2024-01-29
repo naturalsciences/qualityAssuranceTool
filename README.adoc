@@ -24,42 +24,61 @@ The project should/will be structured that adding a new algorithm is as simple a
 
 To query the sea region, seavox db is used.
 
+=== Config file
+
+To configure the setup parameters, performed tests and values, a configuration file in `yaml` format is required.
+An example can be found on github https://github.com/naturalsciences/qualityAssuranceTool/blob/main/conf/config.yaml[config.yaml]
+
+
 == Installation
+
+=== Docker
+
+Getting the image:: a docker **image** is available from the docker hub registry.
+`docker pull vdsnils/quality_assurance_tool:latest` will pull the latest available image.
+Running container:: a couple of options and flags need to be provided through the command line.
+
+.Generic docker run command
+```bash
+docker run --rm --network=host --user "$(id -u):$(id -g)" --workdir /app -v CONFIG_FOLDER:/app/conf -v OUTPUT_FOLDER:/app/outputs -e DEV_SENSORS_USER=$DEV_SENSORS_USER -e DEV_SENSORS_PASS=$DEV_SENSORS_PASS vdsnils/quality_assurance_tool:latest CONFIG_OVERRIDES
+```
+
+
+    --network=host:: let container use the host network.
+    In the future, this will be changed for better security.
+    --user "$(id -u):$(id -g)":: sets the user and group id of the user in the docker container.
+    Without this option, the logs will not be readable by a __normal__ user.
+    --workdir /app:: sets the working directory within the container (this should not be changed)
+    --v CONFIG_FOLDER:/app/conf:: mounts a folder from the host in the container.
+    `CONFIG_FOLDER` needs to be adapted to the path with the `yaml` config file(s).
+    --v OUTPUT_FOLDER:/app/outputs:: mounts a folder for the output.
+    -e DEV_SENSORS_USER=$DEV_SENSORS_USER -e DEV_SENSORS_PASS=$DEV_SENSORS_PASS:: passes the sensorthings user and password from the env to the container.
+    vdsnils/quality_assurance_tool:latest:: the image
+    CONFIG_OVERRIDES:: override parameters through the cli.
+
+.Example docker run command
+```bash
+docker run --rm --network=host --user "$(id -u):$(id -g)" --workdir /app -v ./config:/app/conf -v ./outputs:/app/outputs -e DEV_SENSORS_USER=$DEV_SENSORS_USER -e DEV_SENSORS_PASS=$DEV_SENSORS_PASS vdsnils/quality_assurance_tool:latest "time.start=2023-06-01" "time.end=2023-07-01"
+```
+
+=== From source
+
+==== Python
 
 As it is a python project, no _real_ installation is needed, but a runtime python environment needs to be created where the needed packages are available.
 The needed packages are listed in the file `requirements.txt`.
+
+==== Build image
+
+```bash
+docker buildx build --build-arg ID_U=$(id -u) -t TAG . 
+```
+
 
 == Quality flags
 
 The available flags are listed http://vocab.nerc.ac.uk/collection/L20/current/[here].
 The _order_/_priority_ of the flags are determined by the order in which they are sorted in the link:src/models/enums.py[enum definition].
-
-== Docker
-
-=== Build image
-
-```bash
-docker buildx build --build-arg ID_U=$(id -u) -t qc_sensorthings . 
-```
-
-=== Run container
-
-Run (single) docker container
-```bash
-source .env
-docker run --rm --network=host -v ./conf:/app/conf -v ./outputs:/app/outputs -e DEV_SENSORS_USER=$DEV_SENSORS_USER -e DEV_SENSORS_PASS=$DEV_SENSORS_PASS qc_sensorthings "time.start=2023-06-01" "time.end=2023-07-01"
-```
-
-run multiple docker containers with different time periods
-```bash
-source .env
-for f in $(seq -f "%02g" 1 11); do docker run --rm --network=host -v ./conf:/app/conf -v ./outputs:/app/outputs -e DEV_SENSORS_USER=$DEV_SENSORS_USER -e DEV_SENSORS_PASS=$DEV_SENSORS_PASS qc_sensorthings "time.start=2023-$((f))-01" "time.end=2023-$((f+1))-15"; done
-```
-
-```bash
-source .env
-for f in $(seq -f "%02g" 1 11); do fp1=$((f+1)); ff=$(printf "%02d" $f); fp1f=$(printf "%02d" $fp1); docker run --rm --name=QC_$ff --network=host -v ./conf:/app/conf -v ./outputs:/app/outputs -e DEV_SENSORS_USER=$DEV_SENSORS_USER -e DEV_SENSORS_PASS=$DEV_SENSORS_PASS qc_sensorthings "time.start=2023-$ff-01" "time.end=2023-$fp1f-15"; done
-```
 
 == __Possible__ quality checks
 
@@ -163,3 +182,15 @@ QC:: _normal_ quality checks. only two are defined: range and gradient
 
 link:LICENSE[License file]
 
+////
+run multiple docker containers with different time periods
+```bash
+source .env
+for f in $(seq -f "%02g" 1 11); do docker run --rm --network=host -v ./conf:/app/conf -v ./outputs:/app/outputs -e DEV_SENSORS_USER=$DEV_SENSORS_USER -e DEV_SENSORS_PASS=$DEV_SENSORS_PASS qc_sensorthings "time.start=2023-$((f))-01" "time.end=2023-$((f+1))-15"; done
+```
+
+```bash
+source .env
+for f in $(seq -f "%02g" 1 11); do fp1=$((f+1)); ff=$(printf "%02d" $f); fp1f=$(printf "%02d" $fp1); docker run --rm --name=QC_$ff --network=host -v ./conf:/app/conf -v ./outputs:/app/outputs -e DEV_SENSORS_USER=$DEV_SENSORS_USER -e DEV_SENSORS_PASS=$DEV_SENSORS_PASS qc_sensorthings "time.start=2023-$ff-01" "time.end=2023-$fp1f-15"; done
+```
+////
