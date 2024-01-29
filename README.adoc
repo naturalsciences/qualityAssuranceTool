@@ -58,7 +58,7 @@ docker run --rm --network=host --user "$(id -u):$(id -g)" --workdir /app -v CONF
 
 .Example docker run command
 ```bash
-docker run --rm --network=host --user "$(id -u):$(id -g)" --workdir /app -v ./config:/app/conf -v ./outputs:/app/outputs -e DEV_SENSORS_USER=$DEV_SENSORS_USER -e DEV_SENSORS_PASS=$DEV_SENSORS_PASS vdsnils/quality_assurance_tool:latest "time.start=2023-06-01" "time.end=2023-07-01"
+docker run --rm --network=host --user "$(id -u):$(id -g)" --workdir /app -v ./conf:/app/conf -v ./outputs:/app/outputs -e DEV_SENSORS_USER=$DEV_SENSORS_USER -e DEV_SENSORS_PASS=$DEV_SENSORS_PASS vdsnils/quality_assurance_tool:latest "time.start=2023-06-01 00:00" "time.end=2023-07-01 00:00"
 ```
 
 === From source
@@ -71,7 +71,7 @@ The needed packages are listed in the file `requirements.txt`.
 ==== Build image
 
 ```bash
-docker buildx build --build-arg ID_U=$(id -u) -t TAG . 
+docker buildx build -t TAG . 
 ```
 
 
@@ -147,9 +147,17 @@ The flow of a scientific water circuit can be measured correctly to be zero (fla
 This project uses hydra for (most) configurations and is done through a yaml file.
 All config files can be found in the `conf` folder.
 
+time::
+    format::: input format of date/time 
+    start::: datetime (formatted according to time.format) used as left boundary
+    end::: datetime (formatted according to time.format) used as right boundary
+    date:::
+        format::: format for the date used in the output folder
 hydra::
     verbose:::
         Log level (True or \\__main__)
+    run:::
+        dir::: output dir
 data_api::
     base_url::: url to the sensorthings instance
     things::: 

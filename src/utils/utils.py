@@ -201,7 +201,9 @@ def get_distance_geopy_series(
     return distances_series  # type: ignore
 
 
-def get_velocity_series(df: GeoDataFrame, return_dt=False) -> Series | Tuple[Series, Series]:
+def get_velocity_series(
+    df: GeoDataFrame, return_dt=False
+) -> Series | Tuple[Series, Series]:
     log.info("Velocity calculations.")
     # df_sorted = df.set_index(Df.FEATURE_ID).sort_values(Df.TIME)
     df_sorted = df.sort_values(Df.TIME).drop_duplicates(subset=[Df.TIME, Df.FEATURE_ID])
@@ -215,7 +217,9 @@ def get_velocity_series(df: GeoDataFrame, return_dt=False) -> Series | Tuple[Ser
     return velocity
 
 
-def get_acceleration_series(df: GeoDataFrame, return_dt=False) -> Series | Tuple[Series, Series]:
+def get_acceleration_series(
+    df: GeoDataFrame, return_dt=False
+) -> Series | Tuple[Series, Series]:
     log.info("Acceleration calculations.")
     df_sorted = df.sort_values(Df.TIME).drop_duplicates(subset=[Df.TIME, Df.FEATURE_ID])
     dt = get_dt_series(df_sorted)
@@ -236,9 +240,11 @@ def get_dt_and_distance_series(df: GeoDataFrame) -> Tuple[Series, Series]:
     dt = get_dt_series(df_tmp)
     distance = get_distance_geopy_series(df_tmp)  # type: ignore
     return (dt, distance)
- 
 
-def get_dt_velocity_and_acceleration_series(df: GeoDataFrame) -> Tuple[Series, Series, Series]:
+
+def get_dt_velocity_and_acceleration_series(
+    df: GeoDataFrame,
+) -> Tuple[Series, Series, Series]:
     log.info("Velocity and acceleration calculations.")
     dt, distance = get_dt_and_distance_series(df)
 
@@ -263,5 +269,20 @@ def get_dt_velocity_and_acceleration_series(df: GeoDataFrame) -> Tuple[Series, S
     dt_out = Series(index=df.index)
     dt_out.loc[dt.index] = dt
     dt_out = dt_out.rename("dt")
-    
+
     return (dt_out, velocity_out, acc_out)
+
+
+# def get_date_from_string(
+#     str_in: str, str_format_in: str = "%Y-%m-%d %H:%M", str_format_out: str = "%Y%m%d"
+# ) -> str:
+#     date_out = datetime.strptime(str(str_in), str_format_in)
+#     return date_out.strftime(str_format_out)
+
+def get_date_from_string(
+    str_in: str,
+    str_format_in: str = "%Y-%m-%d %H:%M",
+    str_format_out: str = "%Y%m%d"
+) -> str:
+    date_out = datetime.strptime(str(str_in), str_format_in)
+    return date_out.strftime(str_format_out)

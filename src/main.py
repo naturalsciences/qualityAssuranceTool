@@ -7,6 +7,7 @@ import sys
 
 import geopandas as gpd
 import hydra
+from omegaconf import OmegaConf
 import pandas as pd
 import stapy
 from dotenv import load_dotenv
@@ -25,12 +26,13 @@ from services.qc import (QCFlagConfig, calc_gradient_results,
                          qc_dependent_quantity_secondary,
                          update_flag_history_series)
 from services.requests import get_all_data, get_elev_netcdf, patch_qc_flags
-from utils.utils import get_dt_velocity_and_acceleration_series
+from utils.utils import get_date_from_string, get_dt_velocity_and_acceleration_series
 
 log = logging.getLogger(__name__)
 
 load_dotenv()
 
+OmegaConf.register_new_resolver("datetime_to_date", get_date_from_string, replace=True)
 @hydra.main(config_path="../conf", config_name="config.yaml", version_base="1.2")
 def main(cfg: QCconf):
     log_extra = logging.getLogger(name="extra")
