@@ -8,7 +8,6 @@ hydra:
   # verbose: True
   verbose: __main__
   run:
-    # dir_date_format: "%Y-%m-%d"
     dir: outputs/${datetime_to_date:${time.start}, ${time.format},${time.date.format}}_${datetime_to_date:${time.end}, ${time.format},${time.date.format}}
 data_api:
   # base_url: https://sensors.naturalsciences.be/sta/v1.1
