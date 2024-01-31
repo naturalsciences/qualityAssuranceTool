@@ -1,0 +1,12 @@
+= Systemd user
+:showtitle:
+:icons: font
+
+1. verify paths in .service and .timer file
+2. copy/move/link .service and .timer to `~/.config/systemd/user`
+3. activate
+    ```bash
+    systemctl --user daemon-reload
+    systemctl --user start qat.timer
+    ```
+    If it doesn't work, try starting qat.service.e

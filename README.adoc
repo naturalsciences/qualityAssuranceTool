@@ -89,7 +89,7 @@ docker build  --no-cache -t TAG .
 
 There are multiple options here:
 
-1. (host) systemd --user
+1. (host) systemd --user: see systemd_user/README.adoc for more information
 2. (host) cron
 3. (container) cron
     - requires adapting the image

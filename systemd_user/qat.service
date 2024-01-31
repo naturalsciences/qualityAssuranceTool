@@ -1,0 +1,7 @@
+[Unit]
+Description=Run quality assurance tool
+
+[Service]
+EnvironmentFile=%h/Documents/RBINS/ODANext/qc_through_sensorthings/.env
+WorkingDirectory=%h/Documents/RBINS/ODANext/qc_through_sensorthings
+ExecStart=%h/Documents/RBINS/ODANext/qc_through_sensorthings/systemd_user/qat.sh
