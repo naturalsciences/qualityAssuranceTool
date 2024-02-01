@@ -243,7 +243,7 @@ def qc_dependent_quantity_secondary(
     df = df.set_index(Df.IOT_ID)
     df.loc[df_unpivot.index, Df.QC_FLAG] = df_unpivot[Df.QC_FLAG]
     s_out = df.loc[df_unpivot.index, Df.QC_FLAG]
-    return s_out
+    return s_out # type: ignore
 
 
 def get_qc_flag_from_bool(
