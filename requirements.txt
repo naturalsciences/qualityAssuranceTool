@@ -1,5 +1,5 @@
 hydra-core
-pandas==2.1.2
+pandas
 Pyarrow
 numpy
 scipy

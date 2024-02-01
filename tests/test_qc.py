@@ -322,7 +322,7 @@ def test_exceed_max_acceleration(df_velocity_acceleration, idx0):
 )
 def test_qc_gradient_calc_basic(df_testing, result, ref):
     df_testing[Df.TIME] = pd.Timestamp("now") + pd.timedelta_range(
-        start=0, periods=df_testing.shape[0], freq="S", unit="s"  # type: ignore
+        start=0, periods=df_testing.shape[0], freq="s", unit="s"  # type: ignore
     )
     df_testing[Df.RESULT] = pd.Series(result, dtype="float")
     df = calc_gradient_results(df_testing, Df.DATASTREAM_ID)
@@ -334,7 +334,7 @@ def test_qc_gradient_cacl_vardt(df_testing, result):
     for ds_i in df_testing.datastream_id.unique():
         df_slice = df_testing.loc[df_testing.datastream_id == ds_i]
         df_slice.loc[:, Df.TIME] = pd.Timestamp("now") + pd.timedelta_range(
-            start=0, periods=df_slice.shape[0], freq="S", unit="s"  # type: ignore
+            start=0, periods=df_slice.shape[0], freq="s", unit="s"  # type: ignore
         ) * list(range(df_slice.shape[0]))
         df_slice.loc[:, Df.RESULT] = pd.Series(result, dtype="float")
         df = calc_gradient_results(df_slice, Df.DATASTREAM_ID)
@@ -360,7 +360,7 @@ def test_qc_gradient_cacl_vardx(df_testing, result):
     for ds_i in df_testing.datastream_id.unique():
         df_slice = df_testing.loc[df_testing.datastream_id == ds_i]
         df_slice.loc[:, Df.TIME] = pd.Timestamp("now") + pd.timedelta_range(
-            start=0, periods=df_slice.shape[0], freq="S", unit="s"  # type: ignore
+            start=0, periods=df_slice.shape[0], freq="s", unit="s"  # type: ignore
         )
 
         df_slice.loc[:, Df.RESULT] = pd.Series(
@@ -398,7 +398,7 @@ def test_example_pivot_and_reverse():
     )
     df_p = df.pivot(index=["time"], columns=["type"], values=[Df.RESULT, "flag"])
     df_p_undone = (
-        df_p.stack()
+        df_p.stack(future_stack=True) # type: ignore
         .reset_index()
         .sort_values("type")
         .reset_index(drop=True)
@@ -427,7 +427,7 @@ def test_qc_dependent_quantities(df_testing, n):
         df_testing, independent=0, dependent=1, dt_tolerance="0.5s"
     )
     df_testing = df_testing.set_index(Df.IOT_ID)
-    df_testing[Df.QC_FLAG].update(qc_flag_update)
+    df_testing.update({Df.QC_FLAG: qc_flag_update})
     assert df_testing[Df.QC_FLAG].value_counts().to_dict() == qc_flag_count_ref
 
 
@@ -463,7 +463,7 @@ def test_qc_dependent_quantities_mismatch(df_testing, n):
         df_testing, independent=0, dependent=1, dt_tolerance="0.5s"
     )
     df_testing = df_testing.set_index(Df.IOT_ID)
-    df_testing[Df.QC_FLAG].update(qc_update)
+    df_testing.update({Df.QC_FLAG: qc_update})
     assert df_testing[Df.QC_FLAG].value_counts().to_dict() == qc_flag_count_ref
 
 
@@ -490,7 +490,7 @@ def test_qc_dependent_quantities_base_3streams(df_testing, n):
         df_testing, independent=0, dependent=1, dt_tolerance="0.5s"
     )
     df_testing = df_testing.set_index(Df.IOT_ID)
-    df_testing[Df.QC_FLAG].update(qc_update)
+    df_testing.update({Df.QC_FLAG: qc_update})
     assert df_testing[Df.QC_FLAG].value_counts().to_dict() == qc_flag_count_ref
 
 
@@ -540,7 +540,7 @@ def test_qc_dependent_quantities_base_3streams_missing(
         flag_when_missing=QualityFlags.BAD,
     )
     df_testing = df_testing.set_index(Df.IOT_ID)
-    df_testing[Df.QC_FLAG].update(qc_update)
+    df_testing.update({Df.QC_FLAG:qc_update})
     assert df_testing[Df.QC_FLAG].value_counts().to_dict() == qc_flag_count_ref
 
 
@@ -590,7 +590,7 @@ def test_qc_dependent_quantities_base_3streams_missing_dependent(
         flag_when_missing=QualityFlags.BAD,
     )
     df_testing = df_testing.set_index(Df.IOT_ID)
-    df_testing[Df.QC_FLAG].update(qc_update)
+    df_testing.update({Df.QC_FLAG: qc_update})
     assert df_testing[Df.QC_FLAG].value_counts().to_dict() == qc_flag_count_ref
 
 

@@ -328,7 +328,7 @@ def main(cfg: QCconf):
             dependent=dependent,
             dt_tolerance=dt_tolerance,
         )
-        df_all[Df.QC_FLAG].update(base_flags)
+        df_all.update({Df.QC_FLAG: base_flags})  # type: ignore
         secondary_flags = qc_dependent_quantity_secondary(
             df_all,
             independent=independent,
@@ -336,7 +336,7 @@ def main(cfg: QCconf):
             range_=tuple(dependent_i.QC.range),  # type: ignore
             dt_tolerance=cfg.QC_dependent[0].dt_tolerance,
         )
-        df_all[Df.QC_FLAG].update(secondary_flags)
+        df_all.update({Df.QC_FLAG: secondary_flags}) # type: ignore
     t_dependent1 = time.time()
 
     log.info(f"{df_all[Df.QC_FLAG].value_counts(dropna=False).to_json()=}")

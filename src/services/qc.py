@@ -93,7 +93,8 @@ def calc_gradient_results(df: pd.DataFrame, groupby: Df) -> pd.DataFrame:
         return group
 
     df_out = df.sort_values(Df.TIME)
-    df_out = df.groupby([groupby], group_keys=False).apply(grad_function)
+    df_grouped = df.groupby(by=[groupby], group_keys=False)
+    df_out = df_grouped[[str(Df.RESULT), str(Df.TIME)]].apply(grad_function) # casted to string to avoid type error
     return df_out  # type: ignore
 
 
@@ -197,8 +198,8 @@ def qc_dependent_quantity_base(
         (Df.QC_FLAG, str(independent))
     ]
 
-    # df_unpivot = df_pivot.loc[mask].stack(future_stack=True).dropna(subset=Df.IOT_ID).reset_index().set_index(Df.IOT_ID)
-    df_unpivot = df_pivot.loc[mask].stack().reset_index().set_index(Df.IOT_ID)
+    df_unpivot = df_pivot.loc[mask].stack(future_stack=True).dropna(subset=Df.IOT_ID).reset_index().set_index(Df.IOT_ID) # type: ignore
+    # df_unpivot = df_pivot.loc[mask].stack().reset_index().set_index(Df.IOT_ID)
     df = df.set_index(Df.IOT_ID)
     # TODO: refactor
     mask_unpivot_notnan = ~df_unpivot[Df.QC_FLAG].isna()
@@ -213,7 +214,7 @@ def qc_dependent_quantity_base(
     if flag_when_missing:
         df.loc[idx_unpivot_nan, Df.QC_FLAG] = flag_when_missing  # type: ignore
         s_out = df.loc[idx_unpivot_notnan.union(idx_unpivot_nan), Df.QC_FLAG]
-    return s_out
+    return s_out # type: ignore
 
 
 def qc_dependent_quantity_secondary(
@@ -238,8 +239,7 @@ def qc_dependent_quantity_secondary(
     df_pivot.loc[bool_qc, (Df.QC_FLAG, str(dependent))] = QualityFlags.BAD  # type: ignore Don"t know how to fix this
 
     df_pivot = df_pivot.drop(["qc_drange_min", "qc_drange_max"], axis=1, level=0)
-    # df_unpivot = df_pivot.stack(future_stack=True).reset_index().set_index(Df.IOT_ID)
-    df_unpivot = df_pivot.stack().reset_index().set_index(Df.IOT_ID)
+    df_unpivot = df_pivot.stack(future_stack=True).reset_index().set_index(Df.IOT_ID) # type: ignore
     df = df.set_index(Df.IOT_ID)
     df.loc[df_unpivot.index, Df.QC_FLAG] = df_unpivot[Df.QC_FLAG]
     s_out = df.loc[df_unpivot.index, Df.QC_FLAG]
