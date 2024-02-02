@@ -1,38 +1,19 @@
 import logging
 from copy import deepcopy
 from typing import Sequence
-import geopandas as gpd
 
+import geopandas as gpd
 import numpy as np
 import pandas as pd
 from shapely.wkt import loads
 
 from models.enums import Df, Entities, Properties, QualityFlags
-from services.qc import QCFlagConfig
-from services.qc import CAT_TYPE, get_qc_flag_from_bool
+from services.qc import CAT_TYPE, QCFlagConfig, get_qc_flag_from_bool
 from services.regions_query import (build_points_query, build_query_points,
                                     connect)
-from utils.utils import convert_to_datetime
+from utils.utils import convert_to_datetime, log
 
 log = logging.getLogger(__name__)
-
-
-def df_type_conversions(df):
-    df_out = deepcopy(df)
-    list_columns = [Df.OBSERVATION_TYPE, Df.UNITS, Df.REGION, Df.SUB_REGION]
-    for ci in set(list_columns).intersection(df.columns):
-        mu0 = df_out[[ci]].memory_usage().get(ci)
-        df_out[ci] = df_out[ci].astype("category")
-        mu1 = df_out[[ci]].memory_usage().get(ci)
-        if mu1 > mu0:
-            log.warning("df type conversion might not reduce the memory usage!")
-
-    if Df.QC_FLAG in df.columns:
-        df_out[Df.QC_FLAG] = df_out[Df.QC_FLAG].astype(CAT_TYPE)
-    for ci in set(list_columns).intersection(["bool"]):
-        df_out[ci] = df_out[ci].astype("bool")
-
-    return df_out
 
 
 def features_request_to_df(request_features):
@@ -85,7 +66,9 @@ def response_single_datastream_to_df(response_datastream: dict) -> pd.DataFrame:
         df_i[Df.OBSERVATION_TYPE] = response_datastream.get(
             Entities.OBSERVEDPROPERTY, {}
         ).get(Properties.NAME)
-        df_i[Df.OBSERVED_PROPERTY_ID] = response_datastream.get(Entities.OBSERVEDPROPERTY, {}).get(Properties.IOT_ID)
+        df_i[Df.OBSERVED_PROPERTY_ID] = response_datastream.get(
+            Entities.OBSERVEDPROPERTY, {}
+        ).get(Properties.IOT_ID)
         df_i[Df.OBSERVATION_TYPE] = df_i[Df.OBSERVATION_TYPE].astype("category")
         k1, k2 = Properties.UNITOFMEASUREMENT.split("/", 1)
         df_i[Df.UNITS] = response_datastream.get(k1, {}).get(k2)
@@ -136,7 +119,7 @@ def response_single_datastream_to_df(response_datastream: dict) -> pd.DataFrame:
 #             k1, k2 = Properties.UNITOFMEASUREMENT.split("/", 1)
 #             df_i[Df.UNITS] = di.get(k1).get(k2)
 #             df_i[Df.UNITS] = df_i[Df.UNITS].astype("category")
-# 
+#
 #             df_i[[Df.LONG, Df.LAT]] = pd.DataFrame.from_records(
 #                 df_i[str(Entities.FEATUREOFINTEREST)].apply(
 #                     lambda x: x.get("feature").get("coordinates")
@@ -145,7 +128,7 @@ def response_single_datastream_to_df(response_datastream: dict) -> pd.DataFrame:
 #             del df_i[str(Entities.FEATUREOFINTEREST)]
 #             # df_i.drop(columns=str(Entities.FEATUREOFINTEREST))
 #             df = pd.concat([df, df_i], ignore_index=True)
-# 
+#
 #     return df
 
 
@@ -191,6 +174,24 @@ def query_all_nan_regions(db_credentials, df):
     return df
 
 
+def df_type_conversions(df):
+    df_out = deepcopy(df)
+    list_columns = [Df.OBSERVATION_TYPE, Df.UNITS, Df.REGION, Df.SUB_REGION]
+    for ci in set(list_columns).intersection(df.columns):
+        mu0 = df_out[[ci]].memory_usage().get(ci)
+        df_out[ci] = df_out[ci].astype("category")
+        mu1 = df_out[[ci]].memory_usage().get(ci)
+        if mu1 > mu0:
+            log.warning("df type conversion might not reduce the memory usage!")
+
+    if Df.QC_FLAG in df.columns:
+        df_out[Df.QC_FLAG] = df_out[Df.QC_FLAG].astype(CAT_TYPE)
+    for ci in set(list_columns).intersection(["bool"]):
+        df_out[ci] = df_out[ci].astype("bool")
+
+    return df_out
+
+
 # not in a test
 def intersect_df_region(db_credentials, df, max_queries, max_query_points):
     df_out = deepcopy(df)
@@ -204,7 +205,8 @@ def intersect_df_region(db_credentials, df, max_queries, max_query_points):
     while True:
         df.info(f"Find seavox region of next point.")
         point_i = (
-            df_out.loc[df_out.Region.isnull(), [Df.LONG, Df.LAT]].sample(1)
+            df_out.loc[df_out.Region.isnull(), [Df.LONG, Df.LAT]]
+            .sample(1)
             .to_numpy()
             .tolist()
         )

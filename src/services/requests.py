@@ -484,18 +484,19 @@ def patch_qc_flags(
         log.error("Didn't succeed patching.")
     return count_res
 
+
 import io
 
 
 def download_as_bytes_with_progress(url: str) -> bytes:
     resp = get(url, stream=True)
-    total = int(resp.headers.get('content-length', 0))
+    total = int(resp.headers.get("content-length", 0))
     bio = io.BytesIO()
     with tqdm(
         desc=TQDM_DESC_FORMAT.format("File download"),
         bar_format=TQDM_BAR_FORMAT,
         total=total,
-        unit='b',
+        unit="b",
         unit_scale=True,
         unit_divisor=1024,
     ) as bar:
@@ -503,6 +504,7 @@ def download_as_bytes_with_progress(url: str) -> bytes:
             bar.update(len(chunk))
             bio.write(chunk)
     return bio.getvalue()
+
 
 def get_elev_netcdf() -> None:
     url_ETOPO = "https://www.ngdc.noaa.gov/thredds/fileServer/global/ETOPO2022/60s/60s_bed_elev_netcdf/ETOPO_2022_v1_60s_N90W180_bed.nc"

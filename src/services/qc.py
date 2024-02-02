@@ -18,7 +18,6 @@ from utils.utils import (get_acceleration_series, get_distance_geopy_series,
 
 log = logging.getLogger(__name__)
 
-
 CAT_TYPE = CategoricalDtype(list(QualityFlags), ordered=True)
 
 
@@ -92,10 +91,13 @@ def calc_gradient_results(df: pd.DataFrame, groupby: Df) -> pd.DataFrame:
         group[Df.GRADIENT] = g
         return group
 
-    df_out = df.sort_values(Df.TIME)
+    df_tmp = df.sort_values(Df.TIME)
     df_grouped = df.groupby(by=[groupby], group_keys=False)
-    df_out = df_grouped[[str(Df.RESULT), str(Df.TIME)]].apply(grad_function) # casted to string to avoid type error
-    return df_out  # type: ignore
+    df_tmp = df_grouped[[str(Df.RESULT), str(Df.TIME)]].apply(
+        grad_function
+    )  # casted to string to avoid type error
+    df_out = df.join(df_tmp[Df.GRADIENT])
+    return df_out
 
 
 def dependent_quantity_merge_asof(
@@ -198,7 +200,7 @@ def qc_dependent_quantity_base(
         (Df.QC_FLAG, str(independent))
     ]
 
-    df_unpivot = df_pivot.loc[mask].stack(future_stack=True).dropna(subset=Df.IOT_ID).reset_index().set_index(Df.IOT_ID) # type: ignore
+    df_unpivot = df_pivot.loc[mask].stack(future_stack=True).dropna(subset=Df.IOT_ID).reset_index().set_index(Df.IOT_ID)  # type: ignore
     # df_unpivot = df_pivot.loc[mask].stack().reset_index().set_index(Df.IOT_ID)
     df = df.set_index(Df.IOT_ID)
     # TODO: refactor
@@ -214,7 +216,7 @@ def qc_dependent_quantity_base(
     if flag_when_missing:
         df.loc[idx_unpivot_nan, Df.QC_FLAG] = flag_when_missing  # type: ignore
         s_out = df.loc[idx_unpivot_notnan.union(idx_unpivot_nan), Df.QC_FLAG]
-    return s_out # type: ignore
+    return s_out  # type: ignore
 
 
 def qc_dependent_quantity_secondary(
@@ -239,11 +241,12 @@ def qc_dependent_quantity_secondary(
     df_pivot.loc[bool_qc, (Df.QC_FLAG, str(dependent))] = QualityFlags.BAD  # type: ignore Don"t know how to fix this
 
     df_pivot = df_pivot.drop(["qc_drange_min", "qc_drange_max"], axis=1, level=0)
-    df_unpivot = df_pivot.stack(future_stack=True).reset_index().set_index(Df.IOT_ID) # type: ignore
+    df_unpivot = df_pivot.stack(future_stack=True).dropna(subset=Df.IOT_ID).reset_index().set_index(Df.IOT_ID)  # type: ignore
+    # df_unpivot = df_pivot.stack(future_stack=True).reset_index().set_index(Df.IOT_ID)  # type: ignore
     df = df.set_index(Df.IOT_ID)
     df.loc[df_unpivot.index, Df.QC_FLAG] = df_unpivot[Df.QC_FLAG]
     s_out = df.loc[df_unpivot.index, Df.QC_FLAG]
-    return s_out # type: ignore
+    return s_out  # type: ignore
 
 
 def get_qc_flag_from_bool(
@@ -335,16 +338,30 @@ def get_bool_spacial_outlier_compared_to_median(
 
 
 def get_bool_exceed_max_velocity(
-    df: gpd.GeoDataFrame, max_velocity: float, velocity_series: pd.Series | None = None, dt_series: pd.Series | None = None
+    df: gpd.GeoDataFrame,
+    max_velocity: float,
+    velocity_series: pd.Series | None = None,
+    dt_series: pd.Series | None = None,
 ) -> pd.Series:
     log.info("Calculating velocity outliers.")
     if velocity_series is None:
         dt_series, velocity_series = get_velocity_series(df, return_dt=True)
     if dt_series is None:
-        bool_velocity = velocity_series.abs() > max_velocity#*dt_series/(dt_series+pd.Timedelta())
+        bool_velocity = (
+            velocity_series.abs() > max_velocity
+        )  # *dt_series/(dt_series+pd.Timedelta())
     else:
-        dt_plus_accuracy = dt_series + ((dt_series.dropna()-dt_series.dropna().astype(int)) == 0).astype(int)*1.
-        bool_velocity = velocity_series.abs() > (max_velocity/dt_series*dt_plus_accuracy).rename("velocity").loc[velocity_series.index]
+        dt_plus_accuracy = (
+            dt_series
+            + ((dt_series.dropna() - dt_series.dropna().astype(int)) == 0).astype(int)
+            * 1.0
+        )
+        bool_velocity = (
+            velocity_series.abs()
+            > (max_velocity / dt_series * dt_plus_accuracy)
+            .rename("velocity")
+            .loc[velocity_series.index]
+        )
     # df["idx_"] = df.index
     # df_tmp = df.set_index(Df.FEATURE_ID)
     # df_tmp["bool_velocity"] = bool_velocity
@@ -365,8 +382,17 @@ def get_bool_exceed_max_acceleration(
     if dt_series is None:
         bool_acceleration = acceleration_series.abs() > max_acceleration
     else:
-        dt_plus_accuracy = dt_series + ((dt_series.dropna()-dt_series.dropna().astype(int)) == 0).astype(int)*1.
-        bool_acceleration = acceleration_series.abs() > (max_acceleration/dt_series**2*dt_plus_accuracy**2).rename("acceleration").loc[acceleration_series.index]
+        dt_plus_accuracy = (
+            dt_series
+            + ((dt_series.dropna() - dt_series.dropna().astype(int)) == 0).astype(int)
+            * 1.0
+        )
+        bool_acceleration = (
+            acceleration_series.abs()
+            > (max_acceleration / dt_series**2 * dt_plus_accuracy**2)
+            .rename("acceleration")
+            .loc[acceleration_series.index]
+        )
 
     # df["idx_"] = df.index
     # df_tmp = df.set_index(Df.FEATURE_ID)
@@ -408,8 +434,7 @@ class QCFlagConfig:
     def execute(self, df: pd.DataFrame | gpd.GeoDataFrame):
         self.bool_series = self.bool_function(df)
         series_out = (
-            df[Df.QC_FLAG]
-            .combine(  # type: ignore
+            df[Df.QC_FLAG].combine(  # type: ignore
                 get_qc_flag_from_bool(
                     bool_=self.bool_series,
                     flag_on_true=self.flag_on_true,

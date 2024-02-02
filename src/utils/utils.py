@@ -279,10 +279,9 @@ def get_dt_velocity_and_acceleration_series(
 #     date_out = datetime.strptime(str(str_in), str_format_in)
 #     return date_out.strftime(str_format_out)
 
+
 def get_date_from_string(
-    str_in: str,
-    str_format_in: str = "%Y-%m-%d %H:%M",
-    str_format_out: str = "%Y%m%d"
+    str_in: str, str_format_in: str = "%Y-%m-%d %H:%M", str_format_out: str = "%Y%m%d"
 ) -> str:
     date_out = datetime.strptime(str(str_in), str_format_in)
     return date_out.strftime(str_format_out)
