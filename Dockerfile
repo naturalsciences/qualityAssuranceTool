@@ -6,26 +6,26 @@ ENV TZ="Europe/Brussels"
 WORKDIR /app
 COPY requirements.txt .
 RUN apt-get update \ 
-    && apt-get -y install libpq-dev gcc \
+    && apt-get -y install libpq-dev gcc rsync\
     && pip install -v -r requirements.txt \
     && rm -rf /root/.cache
+RUN mkdir -p /folder_to_copy/usr/local/lib/python3.11/site-packages \ 
+    && rsync -a  /usr/local/lib/python3.11/site-packages /folder_to_copy/usr/local/lib/python3.11 \
+    && rsync -a /usr/local/bin /folder_to_copy/usr/local \
+    && rsync -a /usr/bin /folder_to_copy/usr \
+    && rsync -a /usr/lib /folder_to_copy/usr
 ADD src /app/src
-# ADD tests /app/tests
-# ADD tests/conf /app/tests/conf
-# ADD resources /app/resources
+ADD tests /app/tests
 ADD __init__.py /app/
 
 FROM python:3.11-slim
 ARG ID_U
-ENV TZ="Europe/Brussels"
+ENV TZ="Europe/Brussels" PYTHONPATH="${PYTHONPATH}:/app:/app/src/:/app/tests/"
 
 WORKDIR /app
 COPY --from=builder /app .
-COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
-COPY --from=builder /usr/bin /usr/bin
-COPY --from=builder /usr/lib /usr/lib
+COPY --from=builder /folder_to_copy /
 
-# ENV PYTHONPATH "${PYTHONPATH}:/app:/app/src/:/app/tests/"
 # RUN pytest /app/tests/
 
 ENTRYPOINT [ "python", "/app/src/main.py" ]
