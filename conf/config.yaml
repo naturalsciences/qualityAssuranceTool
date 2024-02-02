@@ -40,7 +40,7 @@ location:
   #   port: 8901
   #   passphrase: ChangeMe
   crs: EPSG:4326 # not fully used
-  time_window: 24H
+  time_window: 24h
   max_dx_dt: 6.89 # check units
   max_ddx_dtdt: 0.15 # VERY high value, needs to be re-evaluated when shorted time intervals are available
 QC_dependent:
