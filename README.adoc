@@ -6,9 +6,14 @@ ifndef::env-github[]
 :toc: left
 endif::[]
 
+[cols="a,a"]
+|===
+| image::https://github.com/naturalsciences/qualityAssuranceTool/actions/workflows/python-app.yml/badge.svg?branch=main[Pytest_badge]
+| image::https://github.com/naturalsciences/qualityAssuranceTool/actions/workflows/docker-build-publish.yml/badge.svg[Docker build status]
+|===
 
-image::https://github.com/naturalsciences/qualityAssuranceTool/actions/workflows/python-app.yml/badge.svg?branch=main[Pytest_badge]
-
+// this only works when using docker automated build?
+// image::https://img.shields.io/docker/automated/nbmdc/quality_assurance_tool[docker_badge]
 
 
 == Description

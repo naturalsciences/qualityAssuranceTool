@@ -13,7 +13,8 @@ name: Publish Docker image
 
 on:
   push:
-    branches: [ "main" ]
+    branches: 
+      - "main"
     tags:
       - 'v*'
   workflow_dispatch:
@@ -21,7 +22,7 @@ on:
 jobs:
   push_to_registry:
     name: Push Docker image to Docker Hub
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Check out the repo
         uses: actions/checkout@v4
