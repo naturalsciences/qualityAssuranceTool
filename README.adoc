@@ -35,39 +35,21 @@ To query the sea region, seavox db is used.
 To configure the setup parameters, performed tests and values, a configuration file in `yaml` format is required.
 An example can be found on github https://github.com/naturalsciences/qualityAssuranceTool/blob/main/conf/config.yaml[config.yaml]
 
+The `config` folder from this repository can be cloned, without the source code, with
+[source, bash]
+----
+mkdir quality_assurance_tool
+cd quality_assurance_tool
+git init
+git remote add -f origin https://github.com/naturalsciences/qualityAssuranceTool.git
+git config core.sparseCheckout true
+echo "conf/" >> .git/info/sparse-checkout
+git pull origin main
+----
 
 == Installation/executing
 
-=== Docker
-
-Getting the image:: a docker **image** is available from the docker hub registry.
-`docker pull nbmdc/quality_assurance_tool:latest` will pull the latest available image.
-Running container:: a couple of options and flags need to be provided through the command line.
-
-.Generic docker run command
-```bash
-docker run --rm --network=host --user "$(id -u):$(id -g)" --workdir /app -v CONFIG_FOLDER:/app/conf -v OUTPUT_FOLDER:/app/outputs -e DEV_SENSORS_USER=$DEV_SENSORS_USER -e DEV_SENSORS_PASS=$DEV_SENSORS_PASS nbmdc/quality_assurance_tool:latest CONFIG_OVERRIDES
-```
-
-
-    --network=host:: let container use the host network.
-    In the future, this will be changed for better security.
-    --user "$(id -u):$(id -g)":: sets the user and group id of the user in the docker container.
-    Without this option, the logs will not be readable by a __normal__ user.
-    --workdir /app:: sets the working directory within the container (this should not be changed)
-    --v CONFIG_FOLDER:/app/conf:: mounts a folder from the host in the container.
-    `CONFIG_FOLDER` needs to be adapted to the path with the `yaml` config file(s).
-    --v OUTPUT_FOLDER:/app/outputs:: mounts a folder for the output.
-    -e DEV_SENSORS_USER=$DEV_SENSORS_USER -e DEV_SENSORS_PASS=$DEV_SENSORS_PASS:: passes the sensorthings user and password from the env to the container.
-    nbmdc/quality_assurance_tool:latest:: the image
-    CONFIG_OVERRIDES:: override parameters through the cli.
-
-.Example docker run command
-```bash
-docker run --rm --network=host --user "$(id -u):$(id -g)" --workdir /app -v ./conf:/app/conf -v ./outputs:/app/outputs -e DEV_SENSORS_USER=$DEV_SENSORS_USER -e DEV_SENSORS_PASS=$DEV_SENSORS_PASS nbmdc/quality_assurance_tool:latest "time.start=2023-06-01 00:00" "time.end=2023-07-01 00:00"
-```
-
-=== Proposed workflow
+=== Proposed workflow (docker, keyctl)
 
 . create `.env` file with `CONFIG_FOLDER`, `OUTPUT_FOLDER` and
 `QAT_TAG`\
@@ -106,6 +88,37 @@ docker exec -u "$(id -u):$(id -g)" c8c4a820caeb /bin/bash -c  "python src/main.p
 ----
 . removing entries from `keyctl` #keyctl
 
+=== Docker
+
+Getting the image:: a docker **image** is available from the docker hub registry.
+`docker pull nbmdc/quality_assurance_tool:latest` will pull the latest available image.
+Running container:: a couple of options and flags need to be provided through the command line.
+
+.Generic docker run command
+[source,bash]
+----
+docker run --rm --network=host --user "$(id -u):$(id -g)" --workdir /app -v CONFIG_FOLDER:/app/conf -v OUTPUT_FOLDER:/app/outputs -e DEV_SENSORS_USER=$DEV_SENSORS_USER -e DEV_SENSORS_PASS=$DEV_SENSORS_PASS nbmdc/quality_assurance_tool:latest CONFIG_OVERRIDES
+----
+
+    --network=host:: let container use the host network.
+    In the future, this will be changed for better security.
+    --user "$(id -u):$(id -g)":: sets the user and group id of the user in the docker container.
+    Without this option, the logs will not be readable by a __normal__ user.
+    --workdir /app:: sets the working directory within the container (this should not be changed)
+    --v CONFIG_FOLDER:/app/conf:: mounts a folder from the host in the container.
+    `CONFIG_FOLDER` needs to be adapted to the path with the `yaml` config file(s).
+    --v OUTPUT_FOLDER:/app/outputs:: mounts a folder for the output.
+    -e DEV_SENSORS_USER=$DEV_SENSORS_USER -e DEV_SENSORS_PASS=$DEV_SENSORS_PASS:: passes the sensorthings user and password from the env to the container.
+    nbmdc/quality_assurance_tool:latest:: the image
+    CONFIG_OVERRIDES:: override parameters through the cli.
+
+.Example docker run command
+[source,bash]
+----
+docker run --rm --network=host --user "$(id -u):$(id -g)" --workdir /app -v ./conf:/app/conf -v ./outputs:/app/outputs -e DEV_SENSORS_USER=$DEV_SENSORS_USER -e DEV_SENSORS_PASS=$DEV_SENSORS_PASS nbmdc/quality_assurance_tool:latest "time.start=2023-06-01 00:00" "time.end=2023-07-01 00:00"
+----
+
+
 === From source
 
 ==== Python
@@ -113,21 +126,24 @@ docker exec -u "$(id -u):$(id -g)" c8c4a820caeb /bin/bash -c  "python src/main.p
 As it is a python project, no _real_ installation is needed, but a runtime python environment needs to be created where the needed packages are available.
 The needed packages are listed in the file `requirements.txt`.
 
-```bash
+[source,bash]
+----
 python /app/src/main.py OPTIONS
-```
+----
 
 ==== Build image
 
-```bash
+[source,bash]
+----
 docker buildx build -t TAG . 
-```
+----
 
 or 
 
-```bash
+[source,bash]
+----
 docker build  --no-cache -t TAG . 
-```
+----
 
 === Run periodically
 
@@ -257,13 +273,15 @@ link:LICENSE[License file]
 
 ////
 run multiple docker containers with different time periods
-```bash
+[source,bash]
+----
 source .env
 for f in $(seq -f "%02g" 1 11); do docker run --rm --network=host -v ./conf:/app/conf -v ./outputs:/app/outputs -e DEV_SENSORS_USER=$DEV_SENSORS_USER -e DEV_SENSORS_PASS=$DEV_SENSORS_PASS qc_sensorthings "time.start=2023-$((f))-01" "time.end=2023-$((f+1))-15"; done
-```
+----
 
-```bash
+[source,bash]
+----
 source .env
 for f in $(seq -f "%02g" 1 11); do fp1=$((f+1)); ff=$(printf "%02d" $f); fp1f=$(printf "%02d" $fp1); docker run --rm --name=QC_$ff --network=host -v ./conf:/app/conf -v ./outputs:/app/outputs -e DEV_SENSORS_USER=$DEV_SENSORS_USER -e DEV_SENSORS_PASS=$DEV_SENSORS_PASS qc_sensorthings "time.start=2023-$ff-01" "time.end=2023-$fp1f-15"; done
-```
+----
 ////
