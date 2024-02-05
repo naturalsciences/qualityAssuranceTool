@@ -60,12 +60,15 @@ CONFIG_FOLDER=$(pwd)/conf/
 OUTPUT_FOLDER=$(pwd)/outputs/
 QAT_TAG=v0.1
 ----
-. use `keyctl` to store `SENSORS_USER` and `SENSORS_PASS'
+. use `keyctl` to store `SENSORS_USER` and `SENSORS_PASS`
++
+A space in front of the command, generally, excludes it from the `history`.
+*Verify this on your system!*
 +
 [source,bash]
 ----
-keyctl user add SENSORS_USER XXXXX @u
-keyctl user add SENSORS_PASS XXXXX @u
+ keyctl user add SENSORS_USER XXXXX @u
+ keyctl user add SENSORS_PASS XXXXX @u
 ----
 . create and run docker container
 +
