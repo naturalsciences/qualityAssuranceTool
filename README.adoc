@@ -70,30 +70,40 @@ docker run --rm --network=host --user "$(id -u):$(id -g)" --workdir /app -v ./co
 === Proposed workflow
 
 . create `.env` file with `CONFIG_FOLDER`, `OUTPUT_FOLDER` and
-`QAT_TAG`
-    ```bash
-    CONFIG_FOLDER=$(pwd)/conf/
-    OUTPUT_FOLDER=$(pwd)/outputs/
-    QAT_TAG=v0.1
-    ```
+`QAT_TAG`\
++
+[source,bash]
+----
+CONFIG_FOLDER=$(pwd)/conf/
+OUTPUT_FOLDER=$(pwd)/outputs/
+QAT_TAG=v0.1
+----
 . use `keyctl` to store `SENSORS_USER` and `SENSORS_PASS'
-    ```bash
-    keyctl user add SENSORS_USER XXXXX @u
-    keyctl user add SENSORS_PASS XXXXX @u
-    ```
++
+[source,bash]
+----
+keyctl user add SENSORS_USER XXXXX @u
+keyctl user add SENSORS_PASS XXXXX @u
+----
 . create and run docker container
-    ```bash
-    docker run --rm --network=host --user "$(id -u):$(id -g)" --name qat --workdir /app -v $CONFIG_FOLDER:/app/conf -v $OUTPUT_FOLDER:/app/outputs -e DEV_SENSORS_USER=$(keyctl print $(keyctl search @u user SENSORS_USER)) -e DEV_SENSORS_PASS=$(keyctl print $(keyctl search @u user SENSORS_PASS)) nbmdc/quality_assurance_tool:$QAT_TAG "time.start=$(date --date=$now-'16minutes' +'%Y-%m-%d %H:%M')" "time.end=$(date --date=$now-'1minute' +'%Y-%m-%d %H:%M')"
-    ```
++
+[source,bash]
+----
+docker run --rm --network=host --user "$(id -u):$(id -g)" --name qat --workdir /app -v $CONFIG_FOLDER:/app/conf -v $OUTPUT_FOLDER:/app/outputs -e DEV_SENSORS_USER=$(keyctl print $(keyctl search @u user SENSORS_USER)) -e DEV_SENSORS_PASS=$(keyctl print $(keyctl search @u user SENSORS_PASS)) nbmdc/quality_assurance_tool:$QAT_TAG "time.start=$(date --date=$now-'16minutes' +'%Y-%m-%d %H:%M')" "time.end=$(date --date=$now-'1minute' +'%Y-%m-%d %H:%M')"
+----
 . IF the run command can only be executed once
 *** change ENTRYPOINT in the `docker run` command
-    ```bash
-    source .env && docker run -d --rm --entrypoint tail --network=host --user "$(id -u):$(id -g)" --name qat --workdir /app -v $CONFIG_FOLDER:/app/conf -v $OUTPUT_FOLDER:/app/outputs -e DEV_SENSORS_USER=$(keyctl print $(keyctl search @u user SENSORS_USER)) -e DEV_SENSORS_PASS=$(keyctl print $(keyctl search @u user SENSORS_PASS)) nbmdc/quality_assurance_tool -f /dev/null
-    ```
++
+[source,bash]
+----
+source .env && docker run -d --rm --entrypoint tail --network=host --user "$(id -u):$(id -g)" --name qat --workdir /app -v $CONFIG_FOLDER:/app/conf -v $OUTPUT_FOLDER:/app/outputs -e DEV_SENSORS_USER=$(keyctl print $(keyctl search @u user SENSORS_USER)) -e DEV_SENSORS_PASS=$(keyctl print $(keyctl search @u user SENSORS_PASS)) nbmdc/quality_assurance_tool -f /dev/null
+----
 *** user `docker exec `
-    ```bash
-    docker exec -u "$(id -u):$(id -g)" c8c4a820caeb /bin/bash -c  "python src/main.py \"time.start=$(date --date=$now-'160minutes' +'%Y-%m-%d %H:%M')\" \"time.end=$(date --date=$now-'1minute' +'%Y-%m-%d %H:%M')\""
-    ```
++
+[source,bash]
+----
+docker exec -u "$(id -u):$(id -g)" c8c4a820caeb /bin/bash -c  "python src/main.py \"time.start=$(date --date=$now-'160minutes' +'%Y-%m-%d %H:%M')\" \"time.end=$(date --date=$now-'1minute' +'%Y-%m-%d %H:%M')\""
+----
 . removing entries from `keyctl` #keyctl
 
 === From source
