@@ -1,3 +1,4 @@
+import os
 import logging
 import threading
 import time
@@ -55,6 +56,9 @@ def main(cfg: QCconf):
 
 
     t0 = time.time()
+    docker_image_tag = os.environ.get("IMAGE_TAG", None)
+    if docker_image_tag:
+        log.info(f"Docker image tag: {docker_image_tag}.")
     log.info("Start")
 
     history_series = pd.Series()

@@ -1,5 +1,4 @@
 FROM python:3.11-slim AS builder
-ARG ID_U
 ENV TZ="Europe/Brussels"
 
 
@@ -19,8 +18,8 @@ ADD tests /app/tests
 ADD __init__.py /app/
 
 FROM python:3.11-slim
-ARG ID_U
-ENV TZ="Europe/Brussels" PYTHONPATH="${PYTHONPATH}:/app:/app/src/:/app/tests/"
+ARG IMAGE_TAG
+ENV TZ="Europe/Brussels" PYTHONPATH="${PYTHONPATH}:/app:/app/src/:/app/tests/" IMAGE_TAG="${IMAGE_TAG}"
 
 WORKDIR /app
 COPY --from=builder /app .
