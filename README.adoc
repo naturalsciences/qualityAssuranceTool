@@ -6,6 +6,7 @@ ifndef::env-github[]
 :toc: left
 endif::[]
 
+[grid=none,frame=none]
 [cols="a,a"]
 |===
 | image::https://github.com/naturalsciences/qualityAssuranceTool/actions/workflows/python-app.yml/badge.svg?branch=main[Pytest_badge]
