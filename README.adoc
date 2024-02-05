@@ -41,12 +41,12 @@ An example can be found on github https://github.com/naturalsciences/qualityAssu
 === Docker
 
 Getting the image:: a docker **image** is available from the docker hub registry.
-`docker pull vdsnils/quality_assurance_tool:latest` will pull the latest available image.
+`docker pull nbmdc/quality_assurance_tool:latest` will pull the latest available image.
 Running container:: a couple of options and flags need to be provided through the command line.
 
 .Generic docker run command
 ```bash
-docker run --rm --network=host --user "$(id -u):$(id -g)" --workdir /app -v CONFIG_FOLDER:/app/conf -v OUTPUT_FOLDER:/app/outputs -e DEV_SENSORS_USER=$DEV_SENSORS_USER -e DEV_SENSORS_PASS=$DEV_SENSORS_PASS vdsnils/quality_assurance_tool:latest CONFIG_OVERRIDES
+docker run --rm --network=host --user "$(id -u):$(id -g)" --workdir /app -v CONFIG_FOLDER:/app/conf -v OUTPUT_FOLDER:/app/outputs -e DEV_SENSORS_USER=$DEV_SENSORS_USER -e DEV_SENSORS_PASS=$DEV_SENSORS_PASS nbmdc/quality_assurance_tool:latest CONFIG_OVERRIDES
 ```
 
 
@@ -59,12 +59,12 @@ docker run --rm --network=host --user "$(id -u):$(id -g)" --workdir /app -v CONF
     `CONFIG_FOLDER` needs to be adapted to the path with the `yaml` config file(s).
     --v OUTPUT_FOLDER:/app/outputs:: mounts a folder for the output.
     -e DEV_SENSORS_USER=$DEV_SENSORS_USER -e DEV_SENSORS_PASS=$DEV_SENSORS_PASS:: passes the sensorthings user and password from the env to the container.
-    vdsnils/quality_assurance_tool:latest:: the image
+    nbmdc/quality_assurance_tool:latest:: the image
     CONFIG_OVERRIDES:: override parameters through the cli.
 
 .Example docker run command
 ```bash
-docker run --rm --network=host --user "$(id -u):$(id -g)" --workdir /app -v ./conf:/app/conf -v ./outputs:/app/outputs -e DEV_SENSORS_USER=$DEV_SENSORS_USER -e DEV_SENSORS_PASS=$DEV_SENSORS_PASS vdsnils/quality_assurance_tool:latest "time.start=2023-06-01 00:00" "time.end=2023-07-01 00:00"
+docker run --rm --network=host --user "$(id -u):$(id -g)" --workdir /app -v ./conf:/app/conf -v ./outputs:/app/outputs -e DEV_SENSORS_USER=$DEV_SENSORS_USER -e DEV_SENSORS_PASS=$DEV_SENSORS_PASS nbmdc/quality_assurance_tool:latest "time.start=2023-06-01 00:00" "time.end=2023-07-01 00:00"
 ```
 
 
