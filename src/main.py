@@ -1,17 +1,18 @@
-import os
 import logging
+import os
+import sys
 import threading
 import time
 from functools import partial
 from pathlib import Path
-import sys
 
 import geopandas as gpd
 import hydra
-from omegaconf import OmegaConf
 import pandas as pd
 import stapy
 from dotenv import load_dotenv
+from git import Repo
+from omegaconf import OmegaConf
 
 from models.constants import FEATURES_BODY_TEMPLATE
 from models.enums import Df, Entities, QualityFlags
@@ -27,13 +28,16 @@ from services.qc import (QCFlagConfig, calc_gradient_results,
                          qc_dependent_quantity_secondary,
                          update_flag_history_series)
 from services.requests import get_all_data, get_elev_netcdf, patch_qc_flags
-from utils.utils import get_date_from_string, get_dt_velocity_and_acceleration_series
+from utils.utils import (get_date_from_string,
+                         get_dt_velocity_and_acceleration_series)
 
 log = logging.getLogger(__name__)
 
 load_dotenv()
 
 OmegaConf.register_new_resolver("datetime_to_date", get_date_from_string, replace=True)
+
+
 @hydra.main(config_path="../conf", config_name="config.yaml", version_base="1.2")
 def main(cfg: QCconf):
     log_extra = logging.getLogger(name="extra")
@@ -45,6 +49,7 @@ def main(cfg: QCconf):
     file_handler_extra = logging.FileHandler(extra_log_file)
     file_handler_extra.setFormatter(rootlog.handlers[0].formatter)
     log_extra.addHandler(file_handler_extra)
+
     def custom_exception_handler(exc_type, exc_value, exc_traceback):
         # Log the exception
         log.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
@@ -54,11 +59,15 @@ def main(cfg: QCconf):
 
     sys.excepthook = custom_exception_handler
 
-
     t0 = time.time()
     docker_image_tag = os.environ.get("IMAGE_TAG", None)
     if docker_image_tag:
         log.info(f"Docker image tag: {docker_image_tag}.")
+    git_repo = Repo(search_parent_directories=True)
+    git_commit_hash = git_repo.head.object.hexsha
+    if git_commit_hash:
+        log.info(f"The git hash: {git_commit_hash} on {git_repo.head.reference}.")
+
     log.info("Start")
 
     history_series = pd.Series()
@@ -207,7 +216,10 @@ def main(cfg: QCconf):
         target=patch_qc_flags,
         name="Patch_qc_spacial_outliers",
         kwargs={
-            "df":[df_all.loc[qc_flag_config_outlier.bool_series].reset_index(), df_all.reset_index()][RESET_FEAETURE_FLAGS],
+            "df": [
+                df_all.loc[qc_flag_config_outlier.bool_series].reset_index(),
+                df_all.reset_index(),
+            ][RESET_FEAETURE_FLAGS],
             # "df": df_all.reset_index(),
             "url": url_batch,
             "auth": auth_in,
@@ -340,7 +352,7 @@ def main(cfg: QCconf):
             range_=tuple(dependent_i.QC.range),  # type: ignore
             dt_tolerance=cfg.QC_dependent[0].dt_tolerance,
         )
-        df_all.update({Df.QC_FLAG: secondary_flags}) # type: ignore
+        df_all.update({Df.QC_FLAG: secondary_flags})  # type: ignore
     t_dependent1 = time.time()
 
     log.info(f"{df_all[Df.QC_FLAG].value_counts(dropna=False).to_json()=}")

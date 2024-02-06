@@ -25,3 +25,5 @@ xarray
 
 python-dotenv
 tqdm
+
+gitpython
