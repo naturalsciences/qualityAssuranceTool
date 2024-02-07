@@ -117,10 +117,10 @@ def main(cfg: QCconf):
     ## reset flags
     RESET_OVERWRITE_FLAGS = cfg.reset.overwrite_flags
     RESET_OBSERVATION_FLAGS = cfg.reset.observation_flags
-    RESET_FEAETURE_FLAGS = cfg.reset.feature_flags
+    RESET_FEATURE_FLAGS = cfg.reset.feature_flags
     QUIT_AFTER_RESET = cfg.reset.exit
 
-    if RESET_OVERWRITE_FLAGS or RESET_FEAETURE_FLAGS or RESET_OBSERVATION_FLAGS:
+    if RESET_OVERWRITE_FLAGS or RESET_FEATURE_FLAGS or RESET_OBSERVATION_FLAGS:
         df_all[Df.QC_FLAG] = QualityFlags.NO_QUALITY_CONTROL
         log.warning("QC flags will we overwritten!")
     if RESET_OBSERVATION_FLAGS:
@@ -131,7 +131,7 @@ def main(cfg: QCconf):
             url=url_batch,
             auth=auth_in,
         )
-    if RESET_FEAETURE_FLAGS:
+    if RESET_FEATURE_FLAGS:
         counter_reset_features = patch_qc_flags(
             df_all.reset_index(),
             url=url_batch,
@@ -219,7 +219,7 @@ def main(cfg: QCconf):
             "df": [
                 df_all.loc[qc_flag_config_outlier.bool_series].reset_index(),
                 df_all.reset_index(),
-            ][RESET_FEAETURE_FLAGS],
+            ][RESET_FEATURE_FLAGS],
             # "df": df_all.reset_index(),
             "url": url_batch,
             "auth": auth_in,
