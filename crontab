@@ -1,0 +1,2 @@
+*/10 * * * * bash  /home/nvadmin/Documents/ODANext/qc_through_sensorthings/run_docker.sh >> /tmp/test 2>&1
+
