@@ -5,7 +5,7 @@ ENV TZ="Europe/Brussels"
 WORKDIR /app
 COPY requirements.txt .
 RUN apt-get update \ 
-    && apt-get -y install libpq-dev gcc rsync\
+    && apt-get -y install libpq-dev gcc rsync git\
     && pip install -v -r requirements.txt \
     && rm -rf /root/.cache
 RUN mkdir -p /folder_to_copy/usr/local/lib/python3.11/site-packages \ 
