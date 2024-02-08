@@ -111,8 +111,12 @@ def main(cfg: QCconf):
         filter_i[Properties.PHENOMENONTIME]["range"] = [datetime_to_str(ti), datetime_to_str(ti + dt)] # type: ignore
         nbi: int = get_total_observations_count(thing_id=thing_id, filter_cfg=filter_cfg_to_query(filter_i))
         ti += dt
-        log_counter.info(f"({datetime_to_str(t0), datetime_to_str(t1)}): {nbi}")
+        log_counter.info(f"({datetime_to_str(ti), datetime_to_str(ti+dt)}): {nbi}")
     total_observations_count = get_total_observations_count(thing_id=thing_id, filter_cfg=filter_cfg)
+    log_str = f"TOTAL COUNT: {total_observations_count}"
+    log_counter.info(f"{'*'*75}")
+    log_counter.info(f"{log_str:*^75}")
+    log_counter.info(f"{'*'*75}")
     
 
 if __name__ == "__main__":
