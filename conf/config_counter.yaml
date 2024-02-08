@@ -11,8 +11,9 @@ hydra:
   run:
     dir: outputs/counter/${datetime_to_date:${time.start}, ${time.format},${time.date.format}}_${datetime_to_date:${time.end}, ${time.format},${time.date.format}}_${time.window}
 data_api:
+  base_url: https://belgica11busta.rbins.be/FROST-Server/v1.1
   # base_url: https://sensors.naturalsciences.be/sta/v1.1
-  base_url: http://localhost:8080/FROST-Server/v1.1
+  # base_url: http://localhost:8080/FROST-Server/v1.1
   # base_url: http://192.168.0.25:8080/FROST-Server/v1.1
   # base_url: http://frost-docker_frosty_net:8080/FROST-Server/v1.1
   # base_url: https://dev-sensors.naturalsciences.be/sta/v1.1
