@@ -67,10 +67,10 @@ def main(cfg: QCconf):
     docker_image_tag = os.environ.get("IMAGE_TAG", None)
     if docker_image_tag:
         log.info(f"Docker image tag: {docker_image_tag}.")
-    git_repo = Repo(search_parent_directories=True)
-    git_commit_hash = git_repo.head.object.hexsha
-    if git_commit_hash:
-        log.info(f"The git hash: {git_commit_hash} on {git_repo.head.reference}.")
+    # git_repo = Repo(search_parent_directories=True)
+    # if git_repo:
+        # git_commit_hash = git_repo.head.object.hexsha
+        # log.info(f"The git hash: {git_commit_hash} on {git_repo.head.reference}.")
 
     log.info("Start COUNTING")
 
