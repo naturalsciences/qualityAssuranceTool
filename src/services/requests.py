@@ -125,6 +125,7 @@ def get_observations_count_thing_query(
                             Entities.OBSERVATIONS(
                                 [
                                     Filter.FILTER(filter_condition),
+                                    Settings.COUNT(True)
                                 ],
                             )
                         ]
