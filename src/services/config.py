@@ -1,7 +1,8 @@
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Tuple
+from typing import Optional, Tuple
+from omegaconf import MISSING
 
 from models.constants import ISO_STR_FORMAT
 from models.enums import Properties
@@ -85,7 +86,22 @@ class ResetConfig:
 
 
 @dataclass
+class DateConfig:
+    format: str
+
+    
+@dataclass
+class TimeConfig:
+    start: str
+    end: str
+    date: DateConfig
+    format: str = field(default="%Y-%m-%d %H:%M")
+    window: Optional[str] = field(default=None)
+
+
+@dataclass
 class QCconf:
+    time: TimeConfig
     data_api: DataApi
     reset: ResetConfig
     location: LocationConfig
