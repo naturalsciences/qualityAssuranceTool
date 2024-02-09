@@ -2,10 +2,12 @@ import logging
 import os
 import sys
 import threading
+import re
 import time
 from functools import partial
 from pathlib import Path
 from datetime import datetime, timedelta
+from dateutil.relativedelta import relativedelta
 from copy import deepcopy
 
 import geopandas as gpd
@@ -34,23 +36,45 @@ from utils.utils import (get_date_from_string,
                          get_dt_velocity_and_acceleration_series)
 
 log = logging.getLogger(__name__)
+# log.setLevel(logging.CRITICAL)
+loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
+for li in loggers:
+    li.setLevel(logging.CRITICAL)
+
 
 load_dotenv()
 
+def parse_window(window_str: str) -> relativedelta:
+    split_digits_ascii = re.split(r'([\d\.]+)', window_str.strip(), maxsplit=1)
+    split_digits_ascii.remove('')
+    nb, unit = split_digits_ascii
+    nb = nb.strip()
+    unit = unit.strip()
+    if not unit.endswith('s'):
+        unit += 's'
+    relativedelta_args = {unit:float(nb)}
+    out = relativedelta(**relativedelta_args) # type: ignore
+    return out.normalized()
+
+
 OmegaConf.register_new_resolver("datetime_to_date", get_date_from_string, replace=True)
-
-
 @hydra.main(config_path="../conf", config_name="config_counter.yaml", version_base="1.2")
 def main(cfg: QCconf):
+    # log = logging.getLogger(__name__)
+    log.setLevel(logging.CRITICAL)
+    loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
+    for li in loggers:
+        li.setLevel(logging.CRITICAL)
+
+
     log_counter = logging.getLogger(name="counter")
     log_counter.setLevel(logging.INFO)
     rootlog = logging.getLogger()
-    extra_log_file = Path(
-        getattr(rootlog.handlers[1], "baseFilename", "./")
-    ).parent.parent.joinpath("summary.log")
+    extra_log_file = Path(cfg.hydra.run.dir).joinpath("summary.log")
     file_handler_extra = logging.FileHandler(extra_log_file)
-    file_handler_extra.setFormatter(rootlog.handlers[0].formatter)
+    # file_handler_extra.setFormatter(rootlog.handlers[0].formatter)
     log_counter.addHandler(file_handler_extra)
+    log_counter.setLevel(logging.INFO)
 
     def custom_exception_handler(exc_type, exc_value, exc_traceback):
         # Log the exception
@@ -99,8 +123,10 @@ def main(cfg: QCconf):
     df_count = pd.DataFrame(columns=["t0", "t1", "dt", "nb"])
     t0 = datetime.strptime(str(cfg.time.start), cfg.time.format)
     t1 = datetime.strptime(str(cfg.time.end), cfg.time.format)
-    if getattr(cfg.time, "window", None):
-        dt = pd.Timedelta(str(cfg.time.window)).to_pytimedelta()
+    count_window = getattr(cfg.time, "window", None)
+
+    if count_window:
+        dt = parse_window(count_window)
     else:
         raise IOError(f"No dt is defined in the config.")
 
