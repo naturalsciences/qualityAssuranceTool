@@ -5,3 +5,4 @@ features.pkl
 **__pycache__
 *.pkl
 resources/*.nc
+counter.txt
