@@ -100,8 +100,20 @@ class TimeConfig:
 
 
 @dataclass
+class HydraRunConfig:
+    dir: str
+    
+    
+@dataclass
+class HydraConfig:
+    run: HydraRunConfig
+    verbose: Optional[str] = field(default=None)
+
+
+@dataclass
 class QCconf:
     time: TimeConfig
+    hydra: HydraConfig
     data_api: DataApi
     reset: ResetConfig
     location: LocationConfig
