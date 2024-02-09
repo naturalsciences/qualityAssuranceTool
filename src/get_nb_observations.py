@@ -12,6 +12,7 @@ from copy import deepcopy
 
 import geopandas as gpd
 import hydra
+from hydra.core.hydra_config import HydraConfig
 import pandas as pd
 import stapy
 from dotenv import load_dotenv
@@ -70,7 +71,7 @@ def main(cfg: QCconf):
     log_counter = logging.getLogger(name="counter")
     log_counter.setLevel(logging.INFO)
     rootlog = logging.getLogger()
-    extra_log_file = Path(cfg.hydra.run.dir).joinpath("summary.log")
+    extra_log_file = Path(HydraConfig.get().run.dir).joinpath("summary.log")
     file_handler_extra = logging.FileHandler(extra_log_file)
     # file_handler_extra.setFormatter(rootlog.handlers[0].formatter)
     log_counter.addHandler(file_handler_extra)
@@ -136,8 +137,8 @@ def main(cfg: QCconf):
     while ti < t1:
         filter_i[Properties.PHENOMENONTIME]["range"] = [datetime_to_str(ti), datetime_to_str(ti + dt)] # type: ignore
         nbi: int = get_total_observations_count(thing_id=thing_id, filter_cfg=filter_cfg_to_query(filter_i))
-        ti += dt
         log_counter.info(f"({datetime_to_str(ti), datetime_to_str(ti+dt)}): {nbi}")
+        ti += dt
     total_observations_count = get_total_observations_count(thing_id=thing_id, filter_cfg=filter_cfg)
     log_str = f"TOTAL COUNT: {total_observations_count}"
     log_counter.info(f"{'*'*75}")
