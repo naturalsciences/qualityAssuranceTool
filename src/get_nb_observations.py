@@ -57,6 +57,7 @@ def parse_window(window_str: str) -> relativedelta:
     out = relativedelta(**relativedelta_args) # type: ignore
     return out.normalized()
 
+default_logger_format = '[%(asctime)s][%(name)s][%(levelname)s] - %(message)s'
 
 OmegaConf.register_new_resolver("datetime_to_date", get_date_from_string, replace=True)
 @hydra.main(config_path="../conf", config_name="config_counter.yaml", version_base="1.2")
@@ -73,7 +74,7 @@ def main(cfg: QCconf):
     rootlog = logging.getLogger()
     extra_log_file = Path(HydraConfig.get().run.dir).joinpath("summary.log")
     file_handler_extra = logging.FileHandler(extra_log_file)
-    # file_handler_extra.setFormatter(rootlog.handlers[0].formatter)
+    file_handler_extra.setFormatter(logging.Formatter(default_logger_format))
     log_counter.addHandler(file_handler_extra)
     log_counter.setLevel(logging.INFO)
 
