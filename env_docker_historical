@@ -1,2 +1,3 @@
 START_TIME=$(date +"%Y-%m-%d %H:%M")
 FILE_COUNTER=$(pwd)/counter.txt
+DT="20 minutes"
