@@ -1,40 +1,25 @@
 import logging
 import os
-import sys
-import threading
 import re
+import sys
 import time
+from copy import deepcopy
+from datetime import datetime
 from functools import partial
 from pathlib import Path
-from datetime import datetime, timedelta
-from dateutil.relativedelta import relativedelta
-from copy import deepcopy
 
-import geopandas as gpd
 import hydra
-from hydra.core.hydra_config import HydraConfig
 import pandas as pd
 import stapy
+from dateutil.relativedelta import relativedelta
 from dotenv import load_dotenv
-from git import Repo
+from hydra.core.hydra_config import HydraConfig
 from omegaconf import OmegaConf
 
-from models.constants import FEATURES_BODY_TEMPLATE
-from models.enums import Df, Entities, QualityFlags, Properties
+from models.enums import Properties
 from services.config import QCconf, filter_cfg_to_query
-from services.df import intersect_df_region
-from services.qc import (QCFlagConfig, calc_gradient_results,
-                         get_bool_depth_above_treshold,
-                         get_bool_exceed_max_acceleration,
-                         get_bool_exceed_max_velocity, get_bool_land_region,
-                         get_bool_null_region, get_bool_out_of_range,
-                         get_bool_spacial_outlier_compared_to_median,
-                         qc_dependent_quantity_base,
-                         qc_dependent_quantity_secondary,
-                         update_flag_history_series)
-from services.requests import get_all_data, get_elev_netcdf, get_total_observations_count, patch_qc_flags
-from utils.utils import (get_date_from_string,
-                         get_dt_velocity_and_acceleration_series)
+from services.requests import get_total_observations_count
+from utils.utils import get_date_from_string
 
 log = logging.getLogger(__name__)
 # log.setLevel(logging.CRITICAL)
@@ -45,29 +30,43 @@ for li in loggers:
 
 load_dotenv()
 
+
 def parse_window(window_str: str) -> relativedelta:
-    split_digits_ascii = re.split(r'([\d\.]+)', window_str.strip(), maxsplit=1)
-    split_digits_ascii.remove('')
+    split_digits_ascii = re.split(r"([\d\.]+)", window_str.strip(), maxsplit=1)
+    split_digits_ascii.remove("")
     nb, unit = split_digits_ascii
     nb = nb.strip()
     unit = unit.strip()
-    if not unit.endswith('s'):
-        unit += 's'
-    relativedelta_args = {unit:float(nb)}
-    out = relativedelta(**relativedelta_args) # type: ignore
+    if not unit.endswith("s"):
+        unit += "s"
+    relativedelta_args = {unit: float(nb)}
+    out = relativedelta(**relativedelta_args)  # type: ignore
     return out.normalized()
 
-default_logger_format = '[%(asctime)s][%(name)s][%(levelname)s] - %(message)s'
+    
+def parse_count_summary(file: str | Path) -> pd.DataFrame:
+    df = pd.read_csv(file, sep=" - |, |: ", header=0, skiprows=3, names=["timestamp", "start", "end", "count"], engine="python")
+    df["start"] = pd.to_datetime(df["start"].str.strip("()"))
+    df["end"] = pd.to_datetime(df["end"].str.strip("()"))
+    df = df.drop(columns=["timestamp"])
+
+    return df
+
+
+default_logger_format = "[%(asctime)s][%(name)s][%(levelname)s] - %(message)s"
 
 OmegaConf.register_new_resolver("datetime_to_date", get_date_from_string, replace=True)
-@hydra.main(config_path="../conf", config_name="config_counter.yaml", version_base="1.2")
+
+
+@hydra.main(
+    config_path="../conf", config_name="config_counter.yaml", version_base="1.2"
+)
 def main(cfg: QCconf):
     # log = logging.getLogger(__name__)
     log.setLevel(logging.CRITICAL)
     loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
     for li in loggers:
         li.setLevel(logging.CRITICAL)
-
 
     log_counter = logging.getLogger(name="counter")
     log_counter.setLevel(logging.INFO)
@@ -87,7 +86,9 @@ def main(cfg: QCconf):
 
     sys.excepthook = custom_exception_handler
 
-    datetime_to_str = partial(lambda fmt, datetime_in: datetime.strftime(datetime_in, fmt), cfg.time.format)
+    datetime_to_str = partial(
+        lambda fmt, datetime_in: datetime.strftime(datetime_in, fmt), cfg.time.format
+    )
 
     t0 = time.time()
     docker_image_tag = os.environ.get("IMAGE_TAG", None)
@@ -95,14 +96,14 @@ def main(cfg: QCconf):
         log.info(f"Docker image tag: {docker_image_tag}.")
     # git_repo = Repo(search_parent_directories=True)
     # if git_repo:
-        # git_commit_hash = git_repo.head.object.hexsha
-        # log.info(f"The git hash: {git_commit_hash} on {git_repo.head.reference}.")
+    # git_commit_hash = git_repo.head.object.hexsha
+    # log.info(f"The git hash: {git_commit_hash} on {git_repo.head.reference}.")
 
     log.info("Start COUNTING")
 
-    log_counter.info("-"*75)
-    log_counter.info(" "*19 + f"{cfg.time.start} --> {cfg.time.end}" + " "*19)
-    log_counter.info("-"*75)
+    log_counter.info("-" * 75)
+    log_counter.info(" " * 19 + f"{cfg.time.start} --> {cfg.time.end}" + " " * 19)
+    log_counter.info("-" * 75)
 
     history_series = pd.Series()
 
@@ -134,18 +135,22 @@ def main(cfg: QCconf):
 
     ti = deepcopy(t0)
     filter_i = deepcopy(cfg.data_api.filter)
-    
+
     while ti < t1:
-        filter_i[Properties.PHENOMENONTIME]["range"] = [datetime_to_str(ti), datetime_to_str(ti + dt)] # type: ignore
-        nbi: int = get_total_observations_count(thing_id=thing_id, filter_cfg=filter_cfg_to_query(filter_i))
+        filter_i[Properties.PHENOMENONTIME]["range"] = [datetime_to_str(ti), datetime_to_str(ti + dt)]  # type: ignore
+        nbi: int = get_total_observations_count(
+            thing_id=thing_id, filter_cfg=filter_cfg_to_query(filter_i)
+        )
         log_counter.info(f"({datetime_to_str(ti), datetime_to_str(ti+dt)}): {nbi}")
         ti += dt
-    total_observations_count = get_total_observations_count(thing_id=thing_id, filter_cfg=filter_cfg)
-    log_str = f"TOTAL COUNT: {total_observations_count}"
+    df_logs = parse_count_summary(extra_log_file)
     log_counter.info(f"{'*'*75}")
-    log_counter.info(f"{log_str:*^75}")
+    log_str_count = f"TOTAL COUNT: {df_logs['count'].sum()}"
+    log_counter.info(f"{log_str_count:*^75}")
+    log_str_rows = f"{df_logs['count'].astype(bool).sum(axis=0)} of the {df_logs.shape[0]} counts above zero"
+    log_counter.info(f"{log_str_rows:*^75}")
     log_counter.info(f"{'*'*75}")
-    
+
 
 if __name__ == "__main__":
     log.debug("testing...")
