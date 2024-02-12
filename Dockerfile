@@ -5,7 +5,7 @@ ENV TZ="Europe/Brussels"
 WORKDIR /app
 COPY requirements.txt .
 RUN apt-get update \ 
-    && apt-get -y install libpq-dev gcc rsync git\
+    && apt-get -y install libpq-dev gcc rsync\
     && pip install -v -r requirements.txt \
     && rm -rf /root/.cache
 RUN mkdir -p /folder_to_copy/usr/local/lib/python3.11/site-packages \ 
@@ -18,8 +18,8 @@ ADD tests /app/tests
 ADD __init__.py /app/
 
 FROM python:3.11-slim
-ARG IMAGE_TAG
-ENV TZ="Europe/Brussels" PYTHONPATH="${PYTHONPATH}:/app:/app/src/:/app/tests/" IMAGE_TAG="${IMAGE_TAG}"
+ARG IMAGE_TAG GIT_HASH
+ENV TZ="Europe/Brussels" PYTHONPATH="${PYTHONPATH}:/app:/app/src/:/app/tests/" IMAGE_TAG="${IMAGE_TAG}" GIT_HASH="${GIT_HASH}"
 
 WORKDIR /app
 COPY --from=builder /app .
