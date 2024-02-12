@@ -2,7 +2,7 @@
 Description=Run quality assurance tool
 
 [Timer]
-OnBootSec=1min
+OnBootSec=2min
 Persistent=True
 
 [Install]
