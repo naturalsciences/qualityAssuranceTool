@@ -67,8 +67,8 @@ A space in front of the command, generally, excludes it from the `history`.
 +
 [source,bash]
 ----
- keyctl user add SENSORS_USER XXXXX @u
- keyctl user add SENSORS_PASS XXXXX @u
+ keyctl add user SENSORS_USER XXXXX @u
+ keyctl add user SENSORS_PASS XXXXX @u
 ----
 . create and run docker container
 +
