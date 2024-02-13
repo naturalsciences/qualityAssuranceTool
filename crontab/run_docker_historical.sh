@@ -35,7 +35,7 @@ docker run \
     -v $OUTPUT_FOLDER:/app/outputs \
     -e DEV_SENSORS_USER=$DEV_SENSORS_USER \
     -e DEV_SENSORS_PASS=$DEV_SENSORS_PASS \
-    nbmdc/quality_assurance_tool:tmp \
+    nbmdc/quality_assurance_tool:v0.2 \
     "time.start=$START_I" "time.end=$END_I"
  
 DH_COUNTER=$((DH_COUNTER+1))
