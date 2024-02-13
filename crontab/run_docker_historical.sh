@@ -19,7 +19,7 @@ DT_UNIT=$(printf '%s\n' "${DT//[[:digit:]]/}")
 FMT="+%Y-%m-%d %H:%M"
 
 START_I=$(date -u --date="$START_TIME UTC +$((DT_INT*DH_COUNTER-1))$DT_UNIT" "$FMT")
-END_I=$(date -u --date="$START_I UTC +$((DT_INT))$DT_UNIT" "$FMT")
+END_I=$(date -u --date="$START_I UTC +$((DT_INT+1))$DT_UNIT" "$FMT")
 
 keyctl link @u @s
 DEV_SENSORS_USER=$(keyctl print $(keyctl search $(keyctl get_persistent @u) user SENSORS_USER))
