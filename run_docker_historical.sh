@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 
 PATH=$PATH:/usr/bin
-source env_docker_historical
+
+ROOT_DIR=$1
+source $ROOT_DIR/env_docker_historical
+cd $ROOT_DIR
 
 if [[ ! -r "counter.txt" ]]; then
     DH_COUNTER=0;
@@ -18,15 +21,26 @@ FMT="+%Y-%m-%d %H:%M"
 START_I=$(date -u --date="$START_TIME UTC +$((DT_INT*DH_COUNTER))$DT_UNIT" "$FMT")
 END_I=$(date -u --date="$START_I UTC +$((DT_INT))$DT_UNIT" "$FMT")
 
+keyctl link @u @s
+DEV_SENSORS_USER=$(keyctl print $(keyctl search $(keyctl get_persistent @u) user SENSORS_USER))
+DEV_SENSORS_PASS=$(keyctl print $(keyctl search $(keyctl get_persistent @u) user SENSORS_PASS))
+
+CONFIG_FOLDER=$ROOT_DIR/$CONFIG_FOLDER
+OUTPUT_FOLDER=$ROOT_DIR/$OUTPUT_FOLDER
+
 docker run \
     --rm -d --network=host --user "$(id -u):$(id -g)"\
     --workdir /app \
     -v $CONFIG_FOLDER:/app/conf \
     -v $OUTPUT_FOLDER:/app/outputs \
-    -e DEV_SENSORS_USER=$(keyctl print $(keyctl search @u user SENSORS_USER)) \
-    -e DEV_SENSORS_PASS=$(keyctl print $(keyctl search @u user SENSORS_PASS)) \
+    -e DEV_SENSORS_USER=$DEV_SENSORS_USER \
+    -e DEV_SENSORS_PASS=$DEV_SENSORS_PASS \
     nbmdc/quality_assurance_tool:tmp \
     "time.start=$START_I" "time.end=$END_I"
-
+# -e DEV_SENSORS_USER=$(keyctl print $(keyctl search $(keyctl get_persistent @u) user SENSORS_USER)) \
+# -e DEV_SENSORS_PASS=$(keyctl print $(keyctl search $(keyctl get_persistent @u) user SENSORS_PASS)) \
+ 
 DH_COUNTER=$((DH_COUNTER+1))
-echo $DH_COUNTER > counter.txt
+echo $DH_COUNTER > $ROOT_DIR/counter.txt
+echo $OUTPUT_FOLDER >> /tmp/testing_env
+echo $CONFIG_FOLDER >> /tmp/testing_env

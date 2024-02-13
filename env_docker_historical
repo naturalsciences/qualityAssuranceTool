@@ -1,5 +1,4 @@
-START_TIME="2023-05-24 09:30 +0200"
-FILE_COUNTER=$(pwd)/counter.txt
+START_TIME="2023-02-14 00:00"
 DT="11 minutes"
-CONFIG_FOLDER=$(pwd)/conf
-OUTPUT_FOLDER=$(pwd)/outputs
+CONFIG_FOLDER=conf
+OUTPUT_FOLDER=outputs

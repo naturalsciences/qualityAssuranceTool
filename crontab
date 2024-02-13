@@ -1,2 +1,14 @@
-*/10 * * * * bash  /home/nvadmin/Documents/ODANext/qc_through_sensorthings/run_docker.sh >> /tmp/test 2>&1
+# ROOT_DIR=/docker/quality_assurance_tool
+ROOT_DIR=/home/nvadmin/Documents/ODANext/qc_through_sensorthings
+ENV_FILE=env_docker_historical 
 
+*/1 * * * * BASH_ENV=$ROOT_DIR/$ENV_FILE $ROOT_DIR/run_docker_historical.sh $ROOT_DIR >> $ROOT_DIR/outputs/cron_out 2>&1
+# */3 * * * * echo $(date) "something happend" >> /tmp/cron_test
+# */1 * * * * echo $(whoami) >> /tmp/cron_test
+# */1 * * * * echo $(pwd) >> /tmp/cron_test
+# */1 * * * * echo "ID: "$(id -u) >> /tmp/cron_test
+# */1 * * * * echo $(keyctl show) >> /tmp/cron_test
+# */1 * * * * echo "keystuff "$($DEV_SENSORS_USER) >> /tmp/cron_test
+# */1 * * * * echo "keystuff 2 "$(keyctl show 956361141) >> /tmp/cron_test
+# */1 * * * * echo "keystuff 3 "$(keyctl print $(keyctl search 956361141 user SENSORS_USER)) >> /tmp/cron_test
+# */1 * * * * $ROOT_DIR/testing_user.sh >> /tmp/TESTING_USER
