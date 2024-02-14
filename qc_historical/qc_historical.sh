@@ -31,7 +31,7 @@ do
 
     START_II=$(date -u --date="$START_I UTC +""$((-DT_OVERLAP))""$DT_UNIT" "+%Y-%m-%d %H:%M")
 
-    END_I=$(date -u --date="$START_I UTC +10minutes" "+%Y-%m-%d %H:%M")
+    END_I=$(date -u --date="$START_I UTC +$((DT_INT))"$DT_UNI" "+%Y-%m-%d %H:%M")
 
     docker run \
         -it --network=host --user "$(id -u):$(id -g)"\
