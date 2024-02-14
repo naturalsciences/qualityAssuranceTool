@@ -47,6 +47,6 @@ jobs:
           push: true
           build-args: |
             IMAGE_TAG=${{ steps.meta.outputs.tags }}
-            GIT_HASH=${{ env.GITHUB_SHA }}
+            GIT_HASH=${{ github.sha }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
