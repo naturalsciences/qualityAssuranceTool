@@ -45,5 +45,8 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
+          build-args: |
+            IMAGE_TAG=${{ steps.meta.outputs.tags }}
+            GIT_HASH=${{ GITHUB_SHA }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
