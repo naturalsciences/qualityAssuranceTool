@@ -15,6 +15,7 @@ RUN mkdir -p /folder_to_copy/usr/local/lib/python3.11/site-packages \
     && rsync -a /usr/lib /folder_to_copy/usr
 ADD src /app/src
 ADD tests /app/tests
+ADD qc_historical /app/qc_historical
 ADD __init__.py /app/
 
 FROM python:3.11-slim
