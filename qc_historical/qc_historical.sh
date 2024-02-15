@@ -31,17 +31,21 @@ do
 
     START_II=$(date -u --date="$START_I UTC +""$((-DT_OVERLAP))""$DT_UNIT" "+%Y-%m-%d %H:%M")
 
-    END_I=$(date -u --date="$START_I UTC +$((DT_INT))"$DT_UNI" "+%Y-%m-%d %H:%M")
+    END_I=$(date -u --date="$START_I UTC +$((DT_INT))""$DT_UNIT" "+%Y-%m-%d %H:%M")
 
-    docker run \
-        -it --network=host --user "$(id -u):$(id -g)"\
-        --workdir /app \
-        -v "$CONFIG_FOLDER":/app/conf \
-        -v "$OUTPUT_FOLDER":/app/outputs \
-        -e DEV_SENSORS_USER="$SENSORS_USER" \
-        -e DEV_SENSORS_PASS="$SENSORS_PASS" \
-        nbmdc/quality_assurance_tool:v0.3 \
-        "time.start=$START_II" "time.end=$END_I"
+    # docker run \
+    #     -it --network=host --user "$(id -u):$(id -g)"\
+    #     --workdir /app \
+    #     -v "$CONFIG_FOLDER":/app/conf \
+    #     -v "$OUTPUT_FOLDER":/app/outputs \
+    #     -e DEV_SENSORS_USER="$SENSORS_USER" \
+    #     -e DEV_SENSORS_PASS="$SENSORS_PASS" \
+    #     nbmdc/quality_assurance_tool:v0.3 \
+    #     "time.start=$START_II" "time.end=$END_I"
+    echo $START_I
+    echo $END
+    echo $START_II
+
     START_I=$END_I
  
 done
