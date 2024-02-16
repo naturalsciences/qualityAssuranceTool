@@ -1,7 +1,0 @@
-[Unit]
-Description=Run quality assurance tool
-
-[Service]
-EnvironmentFile=%h/Documents/RBINS/ODANext/qc_through_sensorthings/env_docker_historical
-WorkingDirectory=%h/Documents/RBINS/ODANext/qc_through_sensorthings
-ExecStart=%h/Documents/RBINS/ODANext/qc_through_sensorthings/run_docker_historical.sh

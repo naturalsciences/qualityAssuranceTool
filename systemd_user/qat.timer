@@ -1,9 +1,0 @@
-[Unit]
-Description=Run quality assurance tool
-
-[Timer]
-OnBootSec=2min
-Persistent=True
-
-[Install]
-WantedBy=timers.target
