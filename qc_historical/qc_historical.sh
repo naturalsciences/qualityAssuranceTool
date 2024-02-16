@@ -40,7 +40,7 @@ do
         -v "$OUTPUT_FOLDER":/app/outputs \
         -e DEV_SENSORS_USER="$SENSORS_USER" \
         -e DEV_SENSORS_PASS="$SENSORS_PASS" \
-        nbmdc/quality_assurance_tool:v0.3 \
+        rbinsbmdc/quality_assurance_tool:v0.3 \
         "time.start=$START_II" "time.end=$END_I"
 
     START_I=$END_I

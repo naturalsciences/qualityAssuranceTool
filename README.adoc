@@ -6,15 +6,16 @@ ifndef::env-github[]
 :toc: left
 endif::[]
 
-[grid=none,frame=none]
-[cols="a,a"]
-|===
-| image::https://github.com/naturalsciences/qualityAssuranceTool/actions/workflows/python-app.yml/badge.svg?branch=main[Pytest_badge]
-| image::https://github.com/naturalsciences/qualityAssuranceTool/actions/workflows/docker-build-publish.yml/badge.svg[Docker build status]
-|===
+[.clearfix]
+--
+[.left]
+image::https://github.com/naturalsciences/qualityAssuranceTool/actions/workflows/python-app.yml/badge.svg?branch=main[Pytest_badge]
+[.left]
+image::https://github.com/naturalsciences/qualityAssuranceTool/actions/workflows/docker-build-publish.yml/badge.svg[Docker build status]
+--
 
 // this only works when using docker automated build?
-// image::https://img.shields.io/docker/automated/nbmdc/quality_assurance_tool[docker_badge]
+// image::https://img.shields.io/docker/automated/rbinsbmdc/quality_assurance_tool[docker_badge]
 
 
 == Description
@@ -52,18 +53,22 @@ git pull origin main
 === Proposed workflow (docker, keyctl)
 
 . create `.env` file with `CONFIG_FOLDER`, `OUTPUT_FOLDER` and
-`QAT_TAG`\
+`QAT_TAG`
++
+An overview of the tags can be found https://hub.docker.com/r/rbinsbmdc/quality_assurance_tool/tags[here]. It is recommended to use a specific tag (_v0.3_ instead of _latest_).
 +
 [source,bash]
 ----
 CONFIG_FOLDER=$(pwd)/conf/
 OUTPUT_FOLDER=$(pwd)/outputs/
-QAT_TAG=v0.1
+QAT_TAG=v0.3
 ----
 . use `keyctl` to store `SENSORS_USER` and `SENSORS_PASS`
 +
 A space in front of the command, generally, excludes it from the `history`.
 *Verify this on your system!*
++
+Instead of the default user keyring, a persistent keyring can be used: `` keyctl get_persistent @u``.
 +
 [source,bash]
 ----
@@ -72,18 +77,18 @@ A space in front of the command, generally, excludes it from the `history`.
 ----
 . create and run docker container
 +
-It is recommended to specify the exact version and not `latest`. A list can be found https://hub.docker.com/repository/docker/nbmdc/quality_assurance_tool/general[here].
+It is recommended to specify the exact version and not `latest`. A list can be found https://hub.docker.com/repository/docker/rbinsbmdc/quality_assurance_tool/general[here].
 +
 [source,bash]
 ----
-docker run --rm --network=host --user "$(id -u):$(id -g)" --name qat --workdir /app -v $CONFIG_FOLDER:/app/conf -v $OUTPUT_FOLDER:/app/outputs -e DEV_SENSORS_USER=$(keyctl print $(keyctl search @u user SENSORS_USER)) -e DEV_SENSORS_PASS=$(keyctl print $(keyctl search @u user SENSORS_PASS)) nbmdc/quality_assurance_tool:$QAT_TAG "time.start=$(date --date=$now-'16minutes' +'%Y-%m-%d %H:%M')" "time.end=$(date --date=$now-'1minute' +'%Y-%m-%d %H:%M')"
+docker run --rm --network=host --user "$(id -u):$(id -g)" --name qat --workdir /app -v $CONFIG_FOLDER:/app/conf -v $OUTPUT_FOLDER:/app/outputs -e DEV_SENSORS_USER=$(keyctl print $(keyctl search @u user SENSORS_USER)) -e DEV_SENSORS_PASS=$(keyctl print $(keyctl search @u user SENSORS_PASS)) rbinsbmdc/quality_assurance_tool:$QAT_TAG "time.start=$(date --date=$now-'16minutes' +'%Y-%m-%d %H:%M')" "time.end=$(date --date=$now-'1minute' +'%Y-%m-%d %H:%M')"
 ----
 . IF the run command can only be executed once
 *** change ENTRYPOINT in the `docker run` command
 +
 [source,bash]
 ----
-source .env && docker run -d --rm --entrypoint tail --network=host --user "$(id -u):$(id -g)" --name qat --workdir /app -v $CONFIG_FOLDER:/app/conf -v $OUTPUT_FOLDER:/app/outputs -e DEV_SENSORS_USER=$(keyctl print $(keyctl search @u user SENSORS_USER)) -e DEV_SENSORS_PASS=$(keyctl print $(keyctl search @u user SENSORS_PASS)) nbmdc/quality_assurance_tool -f /dev/null
+source .env && docker run -d --rm --entrypoint tail --network=host --user "$(id -u):$(id -g)" --name qat --workdir /app -v $CONFIG_FOLDER:/app/conf -v $OUTPUT_FOLDER:/app/outputs -e DEV_SENSORS_USER=$(keyctl print $(keyctl search @u user SENSORS_USER)) -e DEV_SENSORS_PASS=$(keyctl print $(keyctl search @u user SENSORS_PASS)) rbinsbmdc/quality_assurance_tool -f /dev/null
 ----
 *** user `docker exec `
 +
@@ -96,13 +101,13 @@ docker exec -u "$(id -u):$(id -g)" c8c4a820caeb /bin/bash -c  "python src/main.p
 === Docker
 
 Getting the image:: a docker **image** is available from the docker hub registry.
-`docker pull nbmdc/quality_assurance_tool:latest` will pull the latest available image.
+`docker pull rbinsbmdc/quality_assurance_tool:latest` will pull the latest available image.
 Running container:: a couple of options and flags need to be provided through the command line.
 
 .Generic docker run command
 [source,bash]
 ----
-docker run --rm --network=host --user "$(id -u):$(id -g)" --workdir /app -v CONFIG_FOLDER:/app/conf -v OUTPUT_FOLDER:/app/outputs -e DEV_SENSORS_USER=$DEV_SENSORS_USER -e DEV_SENSORS_PASS=$DEV_SENSORS_PASS nbmdc/quality_assurance_tool:latest CONFIG_OVERRIDES
+docker run --rm --network=host --user "$(id -u):$(id -g)" --workdir /app -v CONFIG_FOLDER:/app/conf -v OUTPUT_FOLDER:/app/outputs -e DEV_SENSORS_USER=$DEV_SENSORS_USER -e DEV_SENSORS_PASS=$DEV_SENSORS_PASS rbinsbmdc/quality_assurance_tool:latest CONFIG_OVERRIDES
 ----
 
     --network=host:: let container use the host network.
@@ -114,13 +119,13 @@ docker run --rm --network=host --user "$(id -u):$(id -g)" --workdir /app -v CONF
     `CONFIG_FOLDER` needs to be adapted to the path with the `yaml` config file(s).
     --v OUTPUT_FOLDER:/app/outputs:: mounts a folder for the output.
     -e DEV_SENSORS_USER=$DEV_SENSORS_USER -e DEV_SENSORS_PASS=$DEV_SENSORS_PASS:: passes the sensorthings user and password from the env to the container.
-    nbmdc/quality_assurance_tool:latest:: the image
+    rbinsbmdc/quality_assurance_tool:latest:: the image
     CONFIG_OVERRIDES:: override parameters through the cli.
 
 .Example docker run command
 [source,bash]
 ----
-docker run --rm --network=host --user "$(id -u):$(id -g)" --workdir /app -v ./conf:/app/conf -v ./outputs:/app/outputs -e DEV_SENSORS_USER=$DEV_SENSORS_USER -e DEV_SENSORS_PASS=$DEV_SENSORS_PASS nbmdc/quality_assurance_tool:latest "time.start=2023-06-01 00:00" "time.end=2023-07-01 00:00"
+docker run --rm --network=host --user "$(id -u):$(id -g)" --workdir /app -v ./conf:/app/conf -v ./outputs:/app/outputs -e DEV_SENSORS_USER=$DEV_SENSORS_USER -e DEV_SENSORS_PASS=$DEV_SENSORS_PASS rbinsbmdc/quality_assurance_tool:latest "time.start=2023-06-01 00:00" "time.end=2023-07-01 00:00"
 ----
 
 
