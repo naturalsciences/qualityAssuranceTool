@@ -171,6 +171,30 @@ There are multiple options here:
 The available flags are listed http://vocab.nerc.ac.uk/collection/L20/current/[here].
 The _order_/_priority_ of the flags are determined by the order in which they are sorted in the link:src/models/enums.py[enum definition].
 
+
+== Additional tools/scripts/files
+
+=== QC historical (folder)
+
+Script and env file in order to QC data within a range in fixed, overlapping time windows.
+
+.Usage qc_historical.sh
+[source,bash]
+----
+./qc_historical.sh START END WINDOW OVERLAP >> LOGFILE 2>&1
+----
+
+.Example qc_historical.sh usage
+[source,bash]
+----
+./qc_historical.sh "2023-05-05 00:00" "2023-05-05 02:00" "10minutes" "1" >> qc_historical.log 2>&1
+----
+
+
+=== Crontab (folder)
+
+
+
 == __Possible__ quality checks
 
 === Regions
