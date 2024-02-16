@@ -231,6 +231,74 @@ def test_location_outlier(df_testing, idx, dx, columns):
 
 
 @pytest.mark.parametrize(
+    "idx,column",
+    [
+        ([1], Df.LONG),
+        ([1, 4], Df.LONG),
+        ([1, 4], Df.LAT),
+        ([4], Df.LAT),
+        ([3, 4], Df.LAT),
+        ([3, 4], Df.LONG),
+        ([3], Df.LONG),
+        ([3, 6], Df.LONG),
+        ([6], Df.LONG),
+    ],
+)
+def test_location_outlier_eq(df_testing, idx, column):
+    df_testing[Df.LONG] = df_testing.index * 0.001 + 50.0
+    df_testing[Df.LAT] = df_testing.index * 0.001 + 20.0
+
+    col1 = column
+    set_column_tmp = set([Df.LONG, Df.LAT])
+    set_column_tmp.remove(column)
+    col2 = set_column_tmp.pop()
+    for idx_i in idx:
+        df_testing.iloc[idx_i, df_testing.columns.get_loc(col1)] = df_testing.iloc[idx_i,  df_testing.columns.get_loc(col2)]
+
+    # df_testing.set_geometry("geometry")
+    df_testing = df_testing.set_geometry(
+        gpd.points_from_xy(df_testing[Df.LONG], df_testing[Df.LAT], crs="EPSG:4326")
+    )
+
+    res = get_bool_spacial_outlier_compared_to_median(
+        df_testing, max_dx_dt=300.0, time_window="5min"
+    )
+    mask = np.ma.masked_array(res, mask=res)
+    assert all(res[idx]) and ~mask.any() and (sum(res) == len(idx))
+
+
+@pytest.mark.parametrize(
+    "idx,columns",
+    [
+        ([1, 4], [Df.LONG]),
+        ([1, 4], [Df.LAT]),
+        ([1, 4], [Df.LAT, Df.LONG]),
+        ([3, 4], [Df.LAT]),
+        ([3, 4], [Df.LONG]),
+        ([3, 6], [Df.LONG]),
+        ([3, 6], [Df.LONG, Df.LAT]),
+    ],
+)
+def test_location_outlier_zero(df_testing, idx, columns):
+    df_testing[Df.LONG] = df_testing.index * 0.001 + 50.0
+    df_testing[Df.LAT] = df_testing.index * 0.001 + 20.0
+
+    for idx_i, col_i in product(idx, columns):
+        df_testing.iloc[idx_i, df_testing.columns.get_loc(col_i)] = 0
+
+    # df_testing.set_geometry("geometry")
+    df_testing = df_testing.set_geometry(
+        gpd.points_from_xy(df_testing[Df.LONG], df_testing[Df.LAT], crs="EPSG:4326")
+    )
+
+    res = get_bool_spacial_outlier_compared_to_median(
+        df_testing, max_dx_dt=300.0, time_window="5min"
+    )
+    mask = np.ma.masked_array(res, mask=res)
+    assert all(res[idx]) and ~mask.any() and (sum(res) == len(idx))
+
+
+@pytest.mark.parametrize(
     "idx,dx,columns",
     [
         ([1, 4], 1, [Df.LONG]),
@@ -358,7 +426,7 @@ def test_qc_gradient_cacl_vardx(df_testing, result):
         )
 
         df_slice.loc[:, Df.RESULT] = pd.Series(
-            np.array(result) * range(df_slice.shape[0]),
+            np.array(result, "int") * range(df_slice.shape[0]),
             dtype="float",
         )
         df = calc_gradient_results(df_slice, Df.DATASTREAM_ID)

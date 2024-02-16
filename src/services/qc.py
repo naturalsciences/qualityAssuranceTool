@@ -281,8 +281,13 @@ def get_bool_spacial_outlier_compared_to_median(
     df_time_sorted["dt"] = (df_time_sorted[Df.TIME] - df_time_sorted[Df.TIME].min()).dt.total_seconds()  # type: ignore
 
     bool_series_lat_eq_long = df_time_sorted[Df.LAT] == df_time_sorted[Df.LONG]
+    bool_series_lat_or_long_zero = (df_time_sorted[Df.LAT] == 0) | (df_time_sorted[Df.LONG] == 0)
+    entries_excluded_from_calculations = bool_series_lat_eq_long | bool_series_lat_or_long_zero
+
     log.debug(
         f"{bool_series_lat_eq_long.value_counts(dropna=False)=} (excluded from median calculations)"
+        f"{bool_series_lat_or_long_zero.value_counts(dropna=False)=} (excluded from median calculations)"
+        f"{entries_excluded_from_calculations.value_counts(dropna=False)=} (excluded from median calculations)"
     )
 
     tqdm.pandas(
@@ -292,7 +297,7 @@ def get_bool_spacial_outlier_compared_to_median(
     )
     log.debug("Start rolling median calculations.")
     rolling_median = (
-        df_time_sorted.loc[~bool_series_lat_eq_long, [Df.TIME, Df.LONG, Df.LAT]]
+        df_time_sorted.loc[~entries_excluded_from_calculations, [Df.TIME, Df.LONG, Df.LAT]]
         .sort_values(Df.TIME)
         .rolling(time_window, on=Df.TIME, center=True)
         .progress_apply(np.median)  # type: ignore
@@ -313,8 +318,8 @@ def get_bool_spacial_outlier_compared_to_median(
     )
 
     rolling_median = rolling_median.reindex(index=rolling_time.index, fill_value=None)
-    rolling_median.loc[bool_series_lat_eq_long, Df.TIME] = rolling_time.loc[
-        bool_series_lat_eq_long, Df.TIME
+    rolling_median.loc[entries_excluded_from_calculations, Df.TIME] = rolling_time.loc[
+        entries_excluded_from_calculations, Df.TIME
     ]
     rolling_median = rolling_median.ffill().bfill()
 
