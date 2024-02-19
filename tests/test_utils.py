@@ -1,26 +1,24 @@
 import json
+
 import geopandas as gpd
 import geopy.distance as gp_distance
-from geopy import Point as gp_point
+import numpy as np
 import pandas as pd
 import pandas.testing as pdt
-
 import pytest
 import stapy
+from geopy import Point as gp_point
 from hydra import compose, initialize
 from omegaconf import DictConfig
 
 import utils.utils as u
-from utils.utils import (
-    convert_to_datetime,
-    get_acceleration_series,
-    get_date_from_string,
-    get_distance_geopy_series,
-    get_dt_velocity_and_acceleration_series,
-    get_velocity_series,
-)
-from models.constants import (ISO_STR_FORMAT, ISO_STR_FORMAT2)
-from models.enums import Df
+from models.constants import ISO_STR_FORMAT, ISO_STR_FORMAT2
+from models.enums import Df, Entities, QualityFlags
+from utils.utils import (combine_dicts, convert_to_datetime, find_nearest_idx, get_absolute_path_to_base,
+                         get_acceleration_series, get_date_from_string,
+                         get_distance_geopy_series,
+                         get_dt_velocity_and_acceleration_series,
+                         get_velocity_series, series_to_patch_dict)
 
 
 @pytest.fixture(scope="session")
@@ -117,7 +115,11 @@ def df_velocity_acceleration() -> gpd.GeoDataFrame:
 
 
 class TestUtils:
-    
+
+    def test_hydra_is_loaded(self):
+        print(cfg)
+        assert cfg
+
     @pytest.mark.parametrize(
         "date_str,date_ref",
         [
@@ -125,13 +127,11 @@ class TestUtils:
             ("2023-01-02T13:14:15.030Z", "20230102131415"),
             ("2023-01-02T13:14:15Z", "20230102131415"),
             ("2023-01-02T10:14:15Z", "20230102101415"),
-            
-        ]
+        ],
     )
     def test_convert_to_datetime(self, date_str, date_ref):
         datetime_out = convert_to_datetime(date_str)
         assert datetime_out.strftime("%Y%m%d%H%M%S") == date_ref
-        
 
     @pytest.mark.parametrize(
         "date_str",
@@ -140,17 +140,58 @@ class TestUtils:
             "2023-01-02T10PM:14:15.030Z",
             "2023-01-02T10:14:.030",
             "2023-01-02 10:14:50.030",
-        ]
+            "",
+        ],
     )
     def test_convert_to_datetime_exception(self, date_str):
-        with pytest.raises(Exception) as e_info:
+        with pytest.raises(Exception) as e:
             datetime_out = convert_to_datetime(date_str)
+        assert (
+            str(e.value)
+            == f"time data '{date_str}' does not match format '%Y-%m-%dT%H:%M:%SZ'"
+        )
+
+    def test_series_to_patch(self):
+        entry = pd.Series({Df.IOT_ID: 123, Df.QC_FLAG: QualityFlags.BAD}, name=4)
+        patch_out = series_to_patch_dict(
+            entry,
+            group_per_x=3,
+            url_entity=Entities.OBSERVATIONS,
+        )
+        ref = {
+            "id": str(5),
+            "atomicityGroup": "Group2",
+            "method": "patch",
+            "url": "Observations(123)",
+            "body": {"resultQuality": 4},
+        }
+        assert patch_out == ref
+
+    @pytest.mark.parametrize(
+        "array_in, value_in, idx_ref",
+        [
+            (np.array([1, 2, 3, 4, 5]), 2.3, 1),
+            ([1, 2, 3, 4, 5], 2.3, 1),
+            ([1, 2, 3, 4, 5], 2.6, 2),
+            ([1, 2, 3, 4, 5], 5, 4),
+            ([1, 5, 3, 4, 5], 5, 1),
+        ],
+    )
+    def test_find_nearest(self, array_in, value_in, idx_ref):
+        out = find_nearest_idx(array_in, value_in)
+        assert out == idx_ref
+
+    def test_absolute_path_to_base_exists(self):
+        out = get_absolute_path_to_base()
+        assert out.exists()
+
+    def test_combine_dicts(self):
+        out = combine_dicts(
+            {"first": 1, "str": "test", "float": 2.3},
+            {"second": 2, "str": "ing", "float": 4.5},
+        )
+        assert out == {"first": 1, "str": "testing", "second":2, "float": 6.8}
         
-
-    def test_hydra_is_loaded(self):
-        print(cfg)
-        assert cfg
-
     def test_stapy_integration(self, cfg):
         q = u.Query(u.Entity.Thing).entity_id(0)
         assert q.get_query() == "http://testing.com/v1.1/Things(0)"
@@ -200,6 +241,17 @@ def test_get_velocity(df_velocity_acceleration):
     df_file = pd.read_csv("./resources/data_velocity_acc.csv", header=0)
     dt_, velocity = get_velocity_series(df_velocity_acceleration, return_dt=True)
     velocity = velocity.fillna(0.0)
+
+    pdt.assert_series_equal(
+        df_file["Velocity (m/s)"], velocity, check_names=False, check_index=False
+    )
+    pdt.assert_series_equal(df_file["dt"], dt_, check_names=False, check_index=False)
+
+
+def test_get_velocity_return_dt_false(df_velocity_acceleration):
+    df_file = pd.read_csv("./resources/data_velocity_acc.csv", header=0)
+    velocity = get_velocity_series(df_velocity_acceleration)
+    velocity = velocity.fillna(0.0)  # type: ignore
 
     pdt.assert_series_equal(
         df_file["Velocity (m/s)"], velocity, check_names=False, check_index=False

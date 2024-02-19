@@ -26,45 +26,47 @@ def convert_to_datetime(value: str) -> datetime:
         d_out = datetime.strptime(value, ISO_STR_FORMAT)
         return d_out
     except ValueError as e:
-        d_out = datetime.strptime(value, ISO_STR_FORMAT2)
-        return d_out
-    except Exception as e:
-        log.exception(e)
-        raise e
+        try:
+            d_out = datetime.strptime(value, ISO_STR_FORMAT2)
+            return d_out
+        except Exception as e:
+            log.exception(e)
+            raise e
 
 
-def extend_summary_with_result_inspection(summary_dict: dict[str, list]):
-    log.debug(f"Start extending summary.")
-    summary_out = copy.deepcopy(summary_dict)
-    nb_streams = len(summary_out.get(Entities.DATASTREAMS, []))
-    for i, dsi in enumerate(summary_dict.get(Entities.DATASTREAMS, [])):
-        log.debug(f"Start extending datastream {i+1}/{nb_streams}.")
-        iot_id_list = summary_dict.get(Entities.DATASTREAMS, []).get(dsi).get(Properties.iot_id)  # type: ignore
-        results = np.empty(0)
-        for iot_id_i in iot_id_list:
-            results_ = (
-                Query(Entity.Datastream)
-                .entity_id(iot_id_i)
-                .sub_entity(Entity.Observation)
-                .select(Properties.RESULT)
-                .get_data_sets()
-            )
-            results = np.concatenate([results, results_])
-        min = np.min(results)
-        max = np.max(results)
-        mean = np.mean(results)
-        median = np.median(results)
-        nb = np.shape(results)[0]
-
-        extended_sumary = {
-            "min": min,
-            "max": max,
-            "mean": mean,
-            "median": median,
-            "nb": nb,
-        }
-        summary_out.get(Entities.DATASTREAMS).get(dsi)[Properties.RESULT] = extended_sumary  # type: ignore
-    return summary_out
+# not used, keep as reference
+# def extend_summary_with_result_inspection(summary_dict: dict[str, list]):
+#     log.debug(f"Start extending summary.")
+#     summary_out = copy.deepcopy(summary_dict)
+#     nb_streams = len(summary_out.get(Entities.DATASTREAMS, []))
+#     for i, dsi in enumerate(summary_dict.get(Entities.DATASTREAMS, [])):
+#         log.debug(f"Start extending datastream {i+1}/{nb_streams}.")
+#         iot_id_list = summary_dict.get(Entities.DATASTREAMS, []).get(dsi).get(Properties.iot_id)  # type: ignore
+#         results = np.empty(0)
+#         for iot_id_i in iot_id_list:
+#             results_ = (
+#                 Query(Entity.Datastream)
+#                 .entity_id(iot_id_i)
+#                 .sub_entity(Entity.Observation)
+#                 .select(Properties.RESULT)
+#                 .get_data_sets()
+#             )
+#             results = np.concatenate([results, results_])
+#         min = np.min(results)
+#         max = np.max(results)
+#         mean = np.mean(results)
+#         median = np.median(results)
+#         nb = np.shape(results)[0]
+# 
+#         extended_sumary = {
+#             "min": min,
+#             "max": max,
+#             "mean": mean,
+#             "median": median,
+#             "nb": nb,
+#         }
+#         summary_out.get(Entities.DATASTREAMS).get(dsi)[Properties.RESULT] = extended_sumary  # type: ignore
+#     return summary_out
 
 
 def series_to_patch_dict(
@@ -77,7 +79,7 @@ def series_to_patch_dict(
     # qc_flag is hardcoded!
     # atomicityGroup seems to improve performance, but amount of groups seems irrelevant (?)
     # UNLESS multiple runs are done simultaneously?
-    body_default = '{"resultQuality": "{value}"}'
+    body_default = f'{{"{Properties.QC_FLAG}": "{{value}}"}}'
     if not json_body_template:
         json_body_template = body_default
 
@@ -128,6 +130,8 @@ def update_response(
 
 def find_nearest_idx(array, value):
     # array = np.asarray(array)
+    if isinstance(array, list):
+        array = np.array(array)
     idx = (np.abs(array - value)).argmin()
     return idx
 
