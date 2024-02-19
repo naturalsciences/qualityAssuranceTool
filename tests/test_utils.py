@@ -14,9 +14,9 @@ from omegaconf import DictConfig
 import utils.utils as u
 from models.constants import ISO_STR_FORMAT, ISO_STR_FORMAT2
 from models.enums import Df, Entities, QualityFlags
-from utils.utils import (combine_dicts, convert_to_datetime, find_nearest_idx, get_absolute_path_to_base,
-                         get_acceleration_series, get_date_from_string,
-                         get_distance_geopy_series,
+from utils.utils import (combine_dicts, convert_to_datetime, find_nearest_idx,
+                         get_absolute_path_to_base, get_acceleration_series,
+                         get_date_from_string, get_distance_geopy_series,
                          get_dt_velocity_and_acceleration_series,
                          get_velocity_series, series_to_patch_dict)
 
@@ -98,7 +98,7 @@ def mock_response_full_obs(monkeypatch):
 
 @pytest.fixture
 def df_velocity_acceleration() -> gpd.GeoDataFrame:
-    df_t = pd.read_csv("./resources/data_velocity_acc.csv", header=0)
+    df_t = pd.read_csv("./tests/resources/data_velocity_acc.csv", header=0)
     df_t[Df.TIME] = pd.to_timedelta(df_t["Time (s)"], "s") + pd.Timestamp("now")
 
     p0 = gp_point(longitude=3.1840709669760137, latitude=51.37115902107277)
@@ -190,8 +190,8 @@ class TestUtils:
             {"first": 1, "str": "test", "float": 2.3},
             {"second": 2, "str": "ing", "float": 4.5},
         )
-        assert out == {"first": 1, "str": "testing", "second":2, "float": 6.8}
-        
+        assert out == {"first": 1, "str": "testing", "second": 2, "float": 6.8}
+
     def test_stapy_integration(self, cfg):
         q = u.Query(u.Entity.Thing).entity_id(0)
         assert q.get_query() == "http://testing.com/v1.1/Things(0)"
@@ -218,7 +218,7 @@ class TestUtils:
 
 
 def test_get_dt_velocity_and_acceleration(df_velocity_acceleration):
-    df_file = pd.read_csv("./resources/data_velocity_acc.csv", header=0)
+    df_file = pd.read_csv("./tests/resources/data_velocity_acc.csv", header=0)
     dt, velocity, acc = get_dt_velocity_and_acceleration_series(
         df_velocity_acceleration
     )
@@ -238,7 +238,7 @@ def test_get_dt_velocity_and_acceleration(df_velocity_acceleration):
 
 
 def test_get_velocity(df_velocity_acceleration):
-    df_file = pd.read_csv("./resources/data_velocity_acc.csv", header=0)
+    df_file = pd.read_csv("./tests/resources/data_velocity_acc.csv", header=0)
     dt_, velocity = get_velocity_series(df_velocity_acceleration, return_dt=True)
     velocity = velocity.fillna(0.0)
 
@@ -249,7 +249,7 @@ def test_get_velocity(df_velocity_acceleration):
 
 
 def test_get_velocity_return_dt_false(df_velocity_acceleration):
-    df_file = pd.read_csv("./resources/data_velocity_acc.csv", header=0)
+    df_file = pd.read_csv("./tests/resources/data_velocity_acc.csv", header=0)
     velocity = get_velocity_series(df_velocity_acceleration)
     velocity = velocity.fillna(0.0)  # type: ignore
 
@@ -259,7 +259,7 @@ def test_get_velocity_return_dt_false(df_velocity_acceleration):
 
 
 def test_get_acceleration(df_velocity_acceleration):
-    df_file = pd.read_csv("./resources/data_velocity_acc.csv", header=0)
+    df_file = pd.read_csv("./tests/resources/data_velocity_acc.csv", header=0)
     dt_, acceleration = get_acceleration_series(
         df_velocity_acceleration, return_dt=True
     )
@@ -286,7 +286,7 @@ def test_get_distance_geopy_Ghent_Brussels():
 
 
 def test_fixture_velocity_acceleration(df_velocity_acceleration):
-    df_file = pd.read_csv("./resources/data_velocity_acc.csv", header=0)
+    df_file = pd.read_csv("./tests/resources/data_velocity_acc.csv", header=0)
     pdt.assert_series_equal(
         get_distance_geopy_series(df_velocity_acceleration).iloc[:-1],
         df_file["Distance (m)"].iloc[1:],

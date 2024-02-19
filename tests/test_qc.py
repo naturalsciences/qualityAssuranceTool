@@ -119,7 +119,7 @@ def df_testing() -> gpd.GeoDataFrame:
 
 @pytest.fixture
 def df_velocity_acceleration() -> gpd.GeoDataFrame:
-    df_t = pd.read_csv("./resources/data_velocity_acc.csv", header=0)
+    df_t = pd.read_csv("./tests/resources/data_velocity_acc.csv", header=0)
     df_t[Df.TIME] = pd.to_timedelta(df_t["Time (s)"], "s") + pd.Timestamp("now")
 
     p0 = gp_point(longitude=3.1840709669760137, latitude=51.37115902107277)
