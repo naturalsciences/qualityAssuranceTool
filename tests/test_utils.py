@@ -12,12 +12,14 @@ from omegaconf import DictConfig
 
 import utils.utils as u
 from utils.utils import (
+    convert_to_datetime,
     get_acceleration_series,
     get_date_from_string,
     get_distance_geopy_series,
     get_dt_velocity_and_acceleration_series,
     get_velocity_series,
 )
+from models.constants import (ISO_STR_FORMAT, ISO_STR_FORMAT2)
 from models.enums import Df
 
 
@@ -115,6 +117,36 @@ def df_velocity_acceleration() -> gpd.GeoDataFrame:
 
 
 class TestUtils:
+    
+    @pytest.mark.parametrize(
+        "date_str,date_ref",
+        [
+            ("2023-01-02T13:14:15.00Z", "20230102131415"),
+            ("2023-01-02T13:14:15.030Z", "20230102131415"),
+            ("2023-01-02T13:14:15Z", "20230102131415"),
+            ("2023-01-02T10:14:15Z", "20230102101415"),
+            
+        ]
+    )
+    def test_convert_to_datetime(self, date_str, date_ref):
+        datetime_out = convert_to_datetime(date_str)
+        assert datetime_out.strftime("%Y%m%d%H%M%S") == date_ref
+        
+
+    @pytest.mark.parametrize(
+        "date_str",
+        [
+            "202301021314152",
+            "2023-01-02T10PM:14:15.030Z",
+            "2023-01-02T10:14:.030",
+            "2023-01-02 10:14:50.030",
+        ]
+    )
+    def test_convert_to_datetime_exception(self, date_str):
+        with pytest.raises(Exception) as e_info:
+            datetime_out = convert_to_datetime(date_str)
+        
+
     def test_hydra_is_loaded(self):
         print(cfg)
         assert cfg
