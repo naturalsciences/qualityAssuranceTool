@@ -16,16 +16,17 @@ from utils.utils import convert_to_datetime, log
 log = logging.getLogger(__name__)
 
 
-def features_request_to_df(request_features):
-    data = []
-    for fi in request_features["value"]:
-        v = fi.get(Properties.IOT_ID)
-        long, lat = fi.get("feature").get("coordinates")
-        idx = [oi.get(Properties.IOT_ID) for oi in fi.get(Entities.OBSERVATIONS)]
-        for idx_i in idx:
-            data.append([idx_i, v, long, lat])
-    df = pd.DataFrame(data, columns=[Df.IOT_ID, "feature_id", Df.LONG, Df.LAT])
-    return df
+# not used, keep for future reference
+# def features_request_to_df(request_features):
+#     data = []
+#     for fi in request_features["value"]:
+#         v = fi.get(Properties.IOT_ID)
+#         long, lat = fi.get("feature").get("coordinates")
+#         idx = [oi.get(Properties.IOT_ID) for oi in fi.get(Entities.OBSERVATIONS)]
+#         for idx_i in idx:
+#             data.append([idx_i, v, long, lat])
+#     df = pd.DataFrame(data, columns=[Df.IOT_ID, "feature_id", Df.LONG, Df.LAT])
+#     return df
 
 
 # not used
@@ -229,18 +230,19 @@ def intersect_df_region(db_credentials, df, max_queries, max_query_points):
     return df_out
 
 
-def do_qc(df: pd.DataFrame | gpd.GeoDataFrame, flag_config: QCFlagConfig) -> pd.Series:
-    bool_nan = flag_config.bool_function(df)
-    out = (
-        df[Df.QC_FLAG]
-        .combine(  # type: ignore
-            get_qc_flag_from_bool(
-                bool_=bool_nan,
-                flag_on_true=flag_config.flag_on_true,  # type: ignore
-            ),
-            flag_config.bool_merge_function,
-            fill_value=flag_config.flag_on_nan,  # type: ignore
-        )
-        .astype(CAT_TYPE)
-    )  # type: ignore
-    return out  # type: ignore
+# not used, keep for reference
+# def do_qc(df: pd.DataFrame | gpd.GeoDataFrame, flag_config: QCFlagConfig) -> pd.Series:
+#     bool_nan = flag_config.bool_function(df)
+#     out = (
+#         df[Df.QC_FLAG]
+#         .combine(  # type: ignore
+#             get_qc_flag_from_bool(
+#                 bool_=bool_nan,
+#                 flag_on_true=flag_config.flag_on_true,  # type: ignore
+#             ),
+#             flag_config.bool_merge_function,
+#             fill_value=flag_config.flag_on_nan,  # type: ignore
+#         )
+#         .astype(CAT_TYPE)
+#     )  # type: ignore
+#     return out  # type: ignore

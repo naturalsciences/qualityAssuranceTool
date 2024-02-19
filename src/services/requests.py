@@ -12,8 +12,7 @@ from tqdm import tqdm
 from models.constants import TQDM_BAR_FORMAT, TQDM_DESC_FORMAT
 from models.enums import (Df, Entities, Filter, Order, OrderOption, Properties,
                           Qactions, Settings)
-from services.config import filter_cfg_to_query
-from services.df import (df_type_conversions, features_request_to_df,
+from services.df import (df_type_conversions,
                          response_single_datastream_to_df)
 from utils.utils import (convert_to_datetime, get_absolute_path_to_base, log,
                          series_to_patch_dict, update_response)
@@ -381,45 +380,46 @@ def get_all_data(thing_id: int, filter_cfg: str):
     return df_out
 
 
-def get_features_of_interest(filter_cfg, top_observations):
-    filter_condition = filter_cfg_to_query(filter_cfg)
-    base_query = Query(Entity.FeatureOfInterest).get_query()
-    complete_query = (
-        base_query
-        + "?"
-        + Qactions.SELECT(
-            [Properties.IOT_ID, "feature/coordinates", Entities.OBSERVATIONS]
-        )
-        + "&"
-        + Qactions.EXPAND(
-            [
-                Entities.OBSERVATIONS(
-                    [
-                        Qactions.SELECT([Properties.IOT_ID]),
-                        Settings.TOP(top_observations),
-                    ]
-                )
-            ]
-        )
-    )
-    complete_query += "&" + Settings.TOP(top_observations)
-    log.info("Start request features")
-    log.debug(f"{complete_query}")
-    request_features = json.loads(
-        Query(Entity.FeatureOfInterest).get_with_retry(complete_query).content
-    )
-    log.info("End request features")
-
-    df_features = features_request_to_df(request_features)
-    features_observations_dict = {
-        fi.get(Properties.IOT_ID): [
-            oi.get(Properties.IOT_ID) for oi in fi.get(Entities.OBSERVATIONS)
-        ]
-        for fi in request_features["value"]
-    }
-    # possible to write to pickle?
-    # how to test if needed or not?
-    return features_observations_dict
+# NOT used, keep for later reference
+# def get_features_of_interest(filter_cfg, top_observations):
+#     filter_condition = filter_cfg_to_query(filter_cfg)
+#     base_query = Query(Entity.FeatureOfInterest).get_query()
+#     complete_query = (
+#         base_query
+#         + "?"
+#         + Qactions.SELECT(
+#             [Properties.IOT_ID, "feature/coordinates", Entities.OBSERVATIONS]
+#         )
+#         + "&"
+#         + Qactions.EXPAND(
+#             [
+#                 Entities.OBSERVATIONS(
+#                     [
+#                         Qactions.SELECT([Properties.IOT_ID]),
+#                         Settings.TOP(top_observations),
+#                     ]
+#                 )
+#             ]
+#         )
+#     )
+#     complete_query += "&" + Settings.TOP(top_observations)
+#     log.info("Start request features")
+#     log.debug(f"{complete_query}")
+#     request_features = json.loads(
+#         Query(Entity.FeatureOfInterest).get_with_retry(complete_query).content
+#     )
+#     log.info("End request features")
+# 
+#     df_features = features_request_to_df(request_features)
+#     features_observations_dict = {
+#         fi.get(Properties.IOT_ID): [
+#             oi.get(Properties.IOT_ID) for oi in fi.get(Entities.OBSERVATIONS)
+#         ]
+#         for fi in request_features["value"]
+#     }
+#     # possible to write to pickle?
+#     # how to test if needed or not?
+#     return features_observations_dict
 
 
 def get_datetime_latest_observation():
