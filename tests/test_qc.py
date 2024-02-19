@@ -201,6 +201,51 @@ def test_qc_region_to_flag(df_testing):
     )
 
 
+def test_qc_region_to_flag_set_on_false(df_testing):
+    # pandas does strange things with type hints
+    # df_out = qc_region(df_testing)
+    df_out = deepcopy(df_testing)
+    bool_nan = get_bool_null_region(df_out)
+    df_out[Df.QC_FLAG] = (
+        df_out[Df.QC_FLAG]
+        .combine(
+            get_qc_flag_from_bool(
+                bool_=bool_nan,
+                flag_on_true=QualityFlags.PROBABLY_BAD,
+                flag_on_false=QualityFlags.GOOD,
+            ),
+            max,
+            fill_value=QualityFlags.NO_QUALITY_CONTROL,
+        )
+        .astype(CAT_TYPE)
+    )
+
+    bool_mainland = get_bool_land_region(df_out)
+    df_out[Df.QC_FLAG] = (
+        df_out[Df.QC_FLAG]
+        .combine(
+            get_qc_flag_from_bool(
+                bool_=bool_mainland,
+                flag_on_true=QualityFlags.BAD,
+            ),
+            max,
+            fill_value=QualityFlags.NO_QUALITY_CONTROL,
+        )
+        .astype(CAT_TYPE)
+    )
+
+    df_out.loc[
+        df_out[Df.QC_FLAG + "_ref"] == QualityFlags.NO_QUALITY_CONTROL,
+        Df.QC_FLAG + "_ref",
+    ] = QualityFlags.GOOD
+
+    pdt.assert_series_equal(
+        df_out.loc[:, Df.QC_FLAG],
+        df_out.loc[:, Df.QC_FLAG + "_ref"],
+        check_names=False,
+    )
+
+
 @pytest.mark.parametrize(
     "idx,dx,columns",
     [
@@ -253,7 +298,9 @@ def test_location_outlier_eq(df_testing, idx, column):
     set_column_tmp.remove(column)
     col2 = set_column_tmp.pop()
     for idx_i in idx:
-        df_testing.iloc[idx_i, df_testing.columns.get_loc(col1)] = df_testing.iloc[idx_i,  df_testing.columns.get_loc(col2)]
+        df_testing.iloc[idx_i, df_testing.columns.get_loc(col1)] = df_testing.iloc[
+            idx_i, df_testing.columns.get_loc(col2)
+        ]
 
     # df_testing.set_geometry("geometry")
     df_testing = df_testing.set_geometry(
@@ -820,7 +867,9 @@ def test_qc_dependent_quantities_secondary_fct_missing_dependent(
     assert (
         df_testing.loc[
             idx_
-            + int((df_testing.shape[0] + 1) / len(df_testing[Df.DATASTREAM_ID].unique())), # TODO: refactoring!
+            + int(
+                (df_testing.shape[0] + 1) / len(df_testing[Df.DATASTREAM_ID].unique())
+            ),  # TODO: refactoring!
             Df.QC_FLAG,
         ]
         == QualityFlags.BAD

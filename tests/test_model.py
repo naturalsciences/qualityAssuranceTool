@@ -5,8 +5,12 @@ from models.enums import (Entities, Filter, Order, OrderOption, Properties,
 
 
 class TestEnums:
-    def test_feature_repr(self):
+    def test_feature_str(self):
         featureOfInterest = f"{Entities.FEATUREOFINTEREST}"
+        assert featureOfInterest == "FeatureOfInterest"
+    
+    def test_feature_repr(self):
+        featureOfInterest = f"{Entities.FEATUREOFINTEREST.__repr__()}"
         assert featureOfInterest == "FeatureOfInterest"
 
     def test_feature_call(self):
