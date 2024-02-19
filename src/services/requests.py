@@ -71,7 +71,7 @@ def build_query_observations(
     filter_conditions: str | None,
     top_observations: int,
     expand_feature_of_interest: bool = True,
-) -> Literal:
+) -> Literal["str"]:
     Q_filter = ""
     if filter_conditions:
         Q_filter = "&" + Filter.FILTER(filter_conditions)
@@ -103,7 +103,7 @@ def get_observations_count_thing_query(
     entity_id: int,
     filter_condition: str = "",
     skip_n: int = 0,
-) -> Literal:
+) -> Literal["str"]:
     # https://dev-sensors.naturalsciences.be/sta/v1.1/Things(1)/Datastreams?$expand=Observations($count=True;$top=0)&$select=Observations/@iot.count
     # expand_list = [
     # Entities.OBSERVATIONS(
@@ -157,7 +157,7 @@ def get_results_n_datastreams_query(
     top_observations: int | None = None,
     filter_condition: str = "",
     expand_feature_of_interest: bool = True,
-) -> Literal:
+) -> Literal["str"]:
     # TODO: cleanup!!
     idx_slice: int = 3
     if expand_feature_of_interest:
