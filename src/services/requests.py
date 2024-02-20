@@ -12,8 +12,7 @@ from tqdm import tqdm
 from models.constants import TQDM_BAR_FORMAT, TQDM_DESC_FORMAT
 from models.enums import (Df, Entities, Filter, Order, OrderOption, Properties,
                           Qactions, Settings)
-from services.df import (df_type_conversions,
-                         response_single_datastream_to_df)
+from services.df import df_type_conversions, response_single_datastream_to_df
 from utils.utils import (convert_to_datetime, get_absolute_path_to_base, log,
                          series_to_patch_dict, update_response)
 
@@ -122,10 +121,7 @@ def get_observations_count_thing_query(
                     Qactions.EXPAND(
                         [
                             Entities.OBSERVATIONS(
-                                [
-                                    Filter.FILTER(filter_condition),
-                                    Settings.COUNT(True)
-                                ],
+                                [Filter.FILTER(filter_condition), Settings.COUNT(True)],
                             )
                         ]
                     ),
@@ -304,26 +300,11 @@ def get_total_observations_count(thing_id: int, filter_cfg: str) -> int:
     return total_observations_count
 
 
-def get_all_data(thing_id: int, filter_cfg: str):
-    log.info(f"Retrieving data of Thing {thing_id}.")
-    log.info(f"---- filter: {filter_cfg}")
-    log.debug("Get all data of thing {thing_id} with filter {filter_cfg}")
-
-    # get total count of observations to be retrieved
-    total_observations_count = get_total_observations_count(
-        thing_id=thing_id, filter_cfg=filter_cfg
-    )
-
-    # get the actual data
+def get_query_response(
+    query: str, total_count: int | None = None, follow_obs_nextlinks: bool = True
+) -> dict:
     status_code, response = 0, {}
-    query = get_results_n_datastreams_query(
-        entity_id=thing_id, filter_condition=filter_cfg
-    )
 
-    # TODO: refactor:
-    #       due to different response from query constructed as above and iot.nextLink, not possible in same loop
-    #       should rewrite code to get consistent result?
-    #       might not be possible as initial query return complete structure
     status_code, response_i = get_results_n_datastreams(query)
     response = update_response(response, response_i)
     # follow nextLinks (Datastreams)
@@ -339,15 +320,16 @@ def get_all_data(thing_id: int, filter_cfg: str):
 
         query = response_i.get("@iot.nextLink", None)
         response[Entities.DATASTREAMS + "@iot.nextLink"] = str(query)
-
-    pbar = tqdm(
-        total=total_observations_count,
-        desc=TQDM_DESC_FORMAT.format("Observations count"),
-        bar_format=TQDM_BAR_FORMAT,
-    )
+    if total_count:
+        pbar = tqdm(
+            total=total_count,
+            desc=TQDM_DESC_FORMAT.format("Observations count"),
+            bar_format=TQDM_BAR_FORMAT,
+        )
     count_observations = 0
     for ds_i in response.get(Entities.DATASTREAMS, {}):  # type: ignore
         query = ds_i.get(Entities.OBSERVATIONS + "@iot.nextLink", None)
+        query = [None, query][follow_obs_nextlinks]
         while query:
             retrieved_nb_observations = count_observations + len(
                 ds_i[Entities.OBSERVATIONS]
@@ -360,10 +342,37 @@ def get_all_data(thing_id: int, filter_cfg: str):
                 ds_i.get(Entities.OBSERVATIONS, []) + response_i["value"]
             )
             query = response_i.get("@iot.nextLink", None)
+            query = [None, query][follow_obs_nextlinks]
             ds_i[Entities.OBSERVATIONS + "@iot.nextLink"] = query
         count_observations += len(ds_i[Entities.OBSERVATIONS])
-        pbar.update(len(ds_i[Entities.OBSERVATIONS]))
-    pbar.close()
+        if total_count:
+            pbar.update(len(ds_i[Entities.OBSERVATIONS]))
+    if total_count:
+        pbar.close()
+
+    return response
+
+
+def get_all_data(thing_id: int, filter_cfg: str):
+    log.info(f"Retrieving data of Thing {thing_id}.")
+    log.info(f"---- filter: {filter_cfg}")
+    log.debug("Get all data of thing {thing_id} with filter {filter_cfg}")
+
+    # get total count of observations to be retrieved
+    total_observations_count = get_total_observations_count(
+        thing_id=thing_id, filter_cfg=filter_cfg
+    )
+
+    # get the actual data
+    query = get_results_n_datastreams_query(
+        entity_id=thing_id, filter_condition=filter_cfg
+    )
+
+    # TODO: refactor:
+    #       due to different response from query constructed as above and iot.nextLink, not possible in same loop
+    #       should rewrite code to get consistent result?
+    #       might not be possible as initial query return complete structure
+    response = get_query_response(query, total_count=total_observations_count)
 
     df_out = response_datastreams_to_df(response)
 
@@ -409,7 +418,7 @@ def get_all_data(thing_id: int, filter_cfg: str):
 #         Query(Entity.FeatureOfInterest).get_with_retry(complete_query).content
 #     )
 #     log.info("End request features")
-# 
+#
 #     df_features = features_request_to_df(request_features)
 #     features_observations_dict = {
 #         fi.get(Properties.IOT_ID): [
