@@ -21,13 +21,14 @@ log = logging.getLogger(__name__)
 CAT_TYPE = CategoricalDtype(list(QualityFlags), ordered=True)
 
 
-def get_null_mask(df: pd.DataFrame, qc_type: str) -> pd.Series:
-    mask_out = (
-        ~df[[f"qc_{'_'.join([qc_type, i])}" for i in ["min", "max"]]]
-        .isnull()
-        .any(axis=1)
-    )
-    return mask_out
+# not used, kept as reference
+# def get_null_mask(df: pd.DataFrame, qc_type: str) -> pd.Series:
+#     mask_out = (
+#         ~df[[f"qc_{'_'.join([qc_type, i])}" for i in ["min", "max"]]]
+#         .isnull()
+#         .any(axis=1)
+#     )
+#     return mask_out
 
 
 def get_bool_out_of_range(
