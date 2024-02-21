@@ -34,7 +34,7 @@ do
     END_I=$(date -u --date="$START_I UTC +$((DT_INT))""$DT_UNIT" "+%Y-%m-%d %H:%M")
 
     docker run \
-        -it --network=host --user "$(id -u):$(id -g)"\
+        --rm -d --network=host --user "$(id -u):$(id -g)"\
         --workdir /app \
         -v "$CONFIG_FOLDER":/app/conf \
         -v "$OUTPUT_FOLDER":/app/outputs \
