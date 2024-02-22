@@ -126,11 +126,18 @@ def main(cfg):
 
     thing_id = cfg.data_api.things.id
 
+    # TODO: include sensors info 
     # query_ds_info = get_results_specified_datastreams_query(
     #     cfg.data_api.things.id, top_observations=0
     # )
     # ds_info = get_query_response(query_ds_info, follow_obs_nextlinks=False)
-    # df_info = pd.DataFrame(ds_info)
+    # df_info = pd.DataFrame(ds_info["Datastreams"]).drop(columns=["Observations", "Observations@iot.navigationLink"])
+    # df_info["unitOfMeasurement"] = df_info["unitOfMeasurement"].apply(lambda x: x.get("name", None)).astype("string")
+    # df_info[["ObservedProperty", "ObservedProperty_id"]] = df_info["ObservedProperty"].apply(pd.Series)
+    # df_info["description"] = df_info["description"].astype("string")
+
+    # df_info.to_csv("/tmp/testing.csv")
+    # return 0
 
     filter_obs_cfg = filter_cfg_to_query(cfg.data_api.filter)
 

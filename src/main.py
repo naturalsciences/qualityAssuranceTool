@@ -192,6 +192,7 @@ def main(cfg: QCconf):
     # find geographical outliers
     qc_flag_config_outlier = QCFlagConfig(
         "spacial_outliers",
+        # bool_function=lambda x: pd.Series(False, index=x.index), # easiest method to disable this
         bool_function=partial(
             get_bool_spacial_outlier_compared_to_median,
             max_dx_dt=cfg.location.max_dx_dt,
@@ -373,6 +374,7 @@ def main(cfg: QCconf):
     auth_in = [None, auth_tuple][all(auth_tuple)]
     while counter_flag_outliers.is_alive():
         time.sleep(5)
+    return 0
     counter = patch_qc_flags(
         df_all.reset_index(),
         url=url_batch,
