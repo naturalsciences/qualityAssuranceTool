@@ -36,6 +36,7 @@ class Entities(StrEnum):
     OBSERVATIONS = "Observations"
     FEATUREOFINTEREST = "FeatureOfInterest"
     FEATURESOFINTEREST = "FeaturesOfInterest"
+    SENSOR = "Sensor"
 
     def __call__(self, args: list[Properties] | list["Qactions"] | list[str]):
         out = f"{self}({';'.join(list(filter(None, args)))})"

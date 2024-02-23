@@ -42,6 +42,7 @@ def get_results_specified_datastreams_query(
         Entities.OBSERVATIONS(
             [
                 Filter.FILTER(filter_condition_observations),
+                Settings.COUNT("false"),
                 Settings.TOP(top_observations),
                 Qactions.SELECT(
                     [
@@ -74,6 +75,17 @@ def get_results_specified_datastreams_query(
                 )
             ]
         ),
+        Entities.SENSOR(
+            [
+                Qactions.SELECT(
+                    [
+                        Properties.NAME,
+                        Properties.IOT_ID,
+                        Properties.DESCRIPTION,
+                    ]
+                )
+            ]
+        ),
     ]
     Q = Qactions.EXPAND(
         [
@@ -85,6 +97,7 @@ def get_results_specified_datastreams_query(
                     Qactions.SELECT(
                         [
                             Properties.IOT_ID,
+                            Properties.NAME,
                             Properties.DESCRIPTION,
                             Properties.UNITOFMEASUREMENT,
                             Entities.OBSERVATIONS,
@@ -126,18 +139,41 @@ def main(cfg):
 
     thing_id = cfg.data_api.things.id
 
-    # TODO: include sensors info 
-    # query_ds_info = get_results_specified_datastreams_query(
-    #     cfg.data_api.things.id, top_observations=0
-    # )
-    # ds_info = get_query_response(query_ds_info, follow_obs_nextlinks=False)
-    # df_info = pd.DataFrame(ds_info["Datastreams"]).drop(columns=["Observations", "Observations@iot.navigationLink"])
-    # df_info["unitOfMeasurement"] = df_info["unitOfMeasurement"].apply(lambda x: x.get("name", None)).astype("string")
-    # df_info[["ObservedProperty", "ObservedProperty_id"]] = df_info["ObservedProperty"].apply(pd.Series)
-    # df_info["description"] = df_info["description"].astype("string")
+    filter_ = filter_cfg_to_query(cfg.data_api.filter)
+    # counting observations per stream increases computational time drastically
+    query_ds_info = get_results_specified_datastreams_query(
+        cfg.data_api.things.id, top_observations=0, filter_condition_observations=filter_
+    )
+    ds_info = get_query_response(query_ds_info, follow_obs_nextlinks=False)
+    df_info = pd.DataFrame(ds_info["Datastreams"])
+    df_info["unitOfMeasurement"] = (
+        df_info["unitOfMeasurement"]
+        .apply(lambda x: x.get("name", None))
+        .astype("string")
+    )
 
-    # df_info.to_csv("/tmp/testing.csv")
-    # return 0
+    df_info = pd.concat(
+        [
+            df_info,
+            df_info["ObservedProperty"].apply(pd.Series).add_prefix("ObservedProperty_"),
+            df_info["Sensor"].apply(pd.Series).add_prefix("Sensor_"),
+        ],
+        axis=1,
+    ).drop(
+        columns=["Observations", "Observations@iot.navigationLink", "Sensor", "ObservedProperty"]
+    )
+
+
+    df_info["description"] = df_info["description"].astype("string")
+
+    column_order = ["@iot.id", "name", "description", "Sensor_name", "ObservedProperty_name", "unitOfMeasurement"]
+    column_remaining = list(set(df_info.columns).difference(column_order))
+
+    df_info = df_info[column_order + column_remaining]
+    df_info["Sensor_name"] = df_info["Sensor_name"].str.replace("11BU RV Belgica ", "")
+
+    df_info.to_csv("/tmp/testing.csv")
+    return 0
 
     filter_obs_cfg = filter_cfg_to_query(cfg.data_api.filter)
 
