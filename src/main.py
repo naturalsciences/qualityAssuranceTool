@@ -374,7 +374,6 @@ def main(cfg: QCconf):
     auth_in = [None, auth_tuple][all(auth_tuple)]
     while counter_flag_outliers.is_alive():
         time.sleep(5)
-    return 0
     counter = patch_qc_flags(
         df_all.reset_index(),
         url=url_batch,
