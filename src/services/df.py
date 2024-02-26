@@ -64,6 +64,12 @@ def response_single_datastream_to_df(response_datastream: dict) -> pd.DataFrame:
         df_i[Properties.PHENOMENONTIME] = df_i[Properties.PHENOMENONTIME].apply(
             convert_to_datetime
         )
+        if Properties.DESCRIPTION in response_datastream.keys():
+            df_i[Properties.DESCRIPTION] = response_datastream.get(Properties.DESCRIPTION)
+            df_i[Properties.DESCRIPTION] = df_i[Properties.DESCRIPTION].astype("category")
+        if Entities.SENSOR in response_datastream.keys():
+            df_i[str(Entities.SENSOR)] = response_datastream.get(Entities.SENSOR, {}).get("name")
+            df_i[str(Entities.SENSOR)] = df_i[str(Entities.SENSOR)].astype("category")
         df_i[Df.OBSERVATION_TYPE] = response_datastream.get(
             Entities.OBSERVEDPROPERTY, {}
         ).get(Properties.NAME)
@@ -177,7 +183,7 @@ def query_all_nan_regions(db_credentials, df):
 
 def df_type_conversions(df):
     df_out = deepcopy(df)
-    list_columns = [Df.OBSERVATION_TYPE, Df.UNITS, Df.REGION, Df.SUB_REGION]
+    list_columns = [Df.OBSERVATION_TYPE, Df.UNITS, Df.REGION, Df.SUB_REGION, Properties.DESCRIPTION, Entities.SENSOR]
     for ci in set(list_columns).intersection(df.columns):
         mu0 = df_out[[ci]].memory_usage().get(ci)
         df_out[ci] = df_out[ci].astype("category")
