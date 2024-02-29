@@ -14,8 +14,8 @@ data_api:
   # base_url: http://localhost:8080/FROST-Server/v1.1
   # base_url: http://192.168.0.25:8080/FROST-Server/v1.1
   # base_url: http://frost-docker_frosty_net:8080/FROST-Server/v1.1
-  # base_url: https://dev-sensors.naturalsciences.be/sta/v1.1
-  base_url: https://belgica11busta.rbins.be/FROST-Server/v1.1
+  base_url: https://dev-sensors.naturalsciences.be/sta/v1.1
+  # base_url: https://belgica11busta.rbins.be/FROST-Server/v1.1
   auth:
     username: ${oc.env:DEV_SENSORS_USER,""}
     passphrase: ${oc.env:DEV_SENSORS_PASS,""}
@@ -41,7 +41,7 @@ location:
   #   port: 8901
   #   passphrase: ChangeMe
   crs: EPSG:4326 # not fully used
-  time_window: 24h
+  time_window: 10min
   max_dx_dt: 6.89 # check units
   max_ddx_dtdt: 0.15 # VERY high value, needs to be re-evaluated when shorted time intervals are available
 QC_dependent:
