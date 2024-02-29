@@ -177,7 +177,7 @@ def main(cfg):
         .first()
     )
     pivoted = pivoted.drop(index=[Df.LAT, Df.LONG])
-    column_time_round = tuple([Df.TIME + "_round"] + ["" for i in pivoted.columns.levels[1:]])
+    column_time_round = tuple([Df.TIME + "_round"] + ["" for i in pivoted.columns.levels[1:]]) # type: ignore
     pivoted.to_csv("raw_data.csv")
     df_out = pd.DataFrame()
     for ds_i in datastreams:
