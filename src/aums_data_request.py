@@ -1,22 +1,18 @@
 from pathlib import Path
 from typing import Literal
+from copy import deepcopy
+import matplotlib.pyplot as plt
 
 import hydra
+import numpy as np
 import pandas as pd
 import stapy
 from hydra.utils import get_original_cwd
 from omegaconf import OmegaConf
 from stapy import Entity, Query
 
-from models.enums import (
-    Df,
-    Entities,
-    Filter,
-    Properties,
-    Qactions,
-    Settings,
-    QualityFlags,
-)
+from models.enums import Df, Entities, Filter, Properties, Qactions, Settings
+from services.qc import QualityFlags
 from services.config import filter_cfg_to_query
 from services.requests import get_query_response, response_datastreams_to_df
 from utils.utils import get_date_from_string
@@ -192,12 +188,10 @@ def main(cfg):
     response = get_query_response(query)
     df = response_datastreams_to_df(response)
     df[Df.TIME + "_round"] = df[Df.TIME].dt.round("1s")
-    df[Df.LAT] = df[Df.LAT].round(5)
-    df[Df.LONG] = df[Df.LONG].round(5)
-    df[Df.QC_FLAG] = df[Df.QC_FLAG].astype(str)
+    df["dt"] = np.abs((df[Df.TIME]-df[Df.TIME + "_round"]).dt.total_seconds())
 
     pivoted = df.pivot(
-        index=[Df.TIME, Df.TIME + "_round", Df.LAT, Df.LONG, Df.IOT_ID, Df.QC_FLAG],
+        index=[Df.TIME + "_round", "dt", Df.LAT, Df.LONG, Df.IOT_ID],
         columns=[
             Df.DATASTREAM_ID,
             Properties.DESCRIPTION,
@@ -205,25 +199,56 @@ def main(cfg):
             Df.OBSERVATION_TYPE,
             Df.UNITS,
         ],
-        values=[Df.RESULT],
+        values=[Df.QC_FLAG, Df.RESULT],
     )
-    tmp_df = (
-        pivoted.reset_index()
-        .sort_index(axis=1)
-        .drop(columns=[Df.IOT_ID, Df.TIME], level=0)
-    )
+    cq = pivoted.columns[pivoted.columns.get_level_values(0).isin([Df.QC_FLAG])]
+    pivoted[cq] = pivoted[cq].fillna(9).applymap(QualityFlags)
+    datastreams = pivoted.columns.get_level_values(Df.DATASTREAM_ID).unique()
 
-    grouped = (
-        # tmp_df.loc[tmp_df[Df.QC_FLAG] <= QualityFlags.PROBABLY_GOOD]
-        tmp_df
-        # .drop(columns=[Df.QC_FLAG], index=1)
-        .groupby(by=[Df.TIME + "_round", Df.LAT, Df.LONG, Df.QC_FLAG])
-        .mean()
-    )
-    grouped.columns = grouped.columns.swaplevel(0, 1)  # type: ignore
-    grouped = grouped.sort_index(axis=1, level=0)
+    pivoted = pivoted.droplevel(Df.IOT_ID)
+    df_out = pd.DataFrame()
+    df_out_coordinates = pivoted.index.to_frame().reset_index(drop=True).sort_values([Df.TIME + "_round", "dt"]).groupby(Df.TIME+"_round").first().drop(columns="dt")
+    df_out_coordinates.columns = pivoted.reset_index([Df.LAT, Df.LONG])[[Df.LAT, Df.LONG]].columns
+    pivoted = pivoted.drop(index=[Df.LAT, Df.LONG])
+    df_out = pd.DataFrame()
+    for ds_i in datastreams:
+        df_i = pivoted[pivoted.columns[pivoted.columns.get_level_values(Df.DATASTREAM_ID) == ds_i]]
+        df_i = df_i.dropna(how="all", subset=df_i.columns[df_i.columns.get_level_values(0) == Df.RESULT])
+        df_i = df_i.reset_index([Df.LAT, Df.LONG], drop=True)
+        qc_c_i = df_i.columns[df_i.columns.get_level_values(0) == Df.QC_FLAG]
+        assert len(qc_c_i) == 1
+        df_i = df_i.sort_values([Df.TIME + "_round", qc_c_i[0], "dt"]).reset_index("dt", drop=True)
+        df_out_i = df_i.reset_index().groupby([Df.TIME + "_round"]).first()
 
-    grouped.to_csv(cfg.csv_file)
+        df_out = pd.concat([df_out, df_out_i], axis=1, sort=True)
+        # df_out = df_out.merge(df_out_i, left_index=True, right_index=True).sort_index()
+
+    df_out = df_out.sort_index(axis=1, level=0)
+    df_out.columns = df_out.columns.swaplevel(0, 1)  # type: ignore
+    df_out = df_out.sort_index(axis=1, level=0)
+    df_out.to_csv("/tmp/final_questionmark.csv")
+    print("testing")
+        
+    # grouped = (
+    #     pivoted.reset_index()
+    #     .sort_index(axis=1)
+    #     # .drop(columns=[Df.IOT_ID, Df.TIME], level=0)
+    #     .drop(columns=[Df.IOT_ID], level=0)
+    #     .groupby(by=[Df.TIME, Df.TIME + "_round", Df.LAT, Df.LONG])
+    #     .agg(get_unique_value_series)
+    # )
+    # grouped.columns = grouped.columns.swaplevel(0, 1)  # type: ignore
+    # grouped = grouped.sort_index(axis=1, level=0)
+
+    # tmp_grouped = deepcopy(grouped)
+    # tmp_grouped[Df.LAT] = grouped.index.get_level_values(2) 
+    # tmp_grouped[Df.LONG] = grouped.index.get_level_values(3) 
+    # grouped["delta_lat"] = tmp_grouped[Df.LAT].shift()- tmp_grouped[Df.LAT]
+    # grouped["delta_lat_cumsum"] = grouped["delta_lat"].cumsum()
+    # grouped["delta_long"] = tmp_grouped[Df.LONG].shift()- tmp_grouped[Df.LONG]
+    # grouped["delta_long_cumsum"] = grouped["delta_long"].cumsum()
+
+    # grouped.to_csv(cfg.csv_file)
 
 
 if __name__ == "__main__":
