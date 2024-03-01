@@ -1,7 +1,10 @@
+from copy import deepcopy
 from pathlib import Path
-from typing import Literal
+from typing import List, Literal
 
 import hydra
+import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import stapy
 from hydra.utils import get_original_cwd
@@ -10,6 +13,7 @@ from stapy import Entity, Query
 
 from models.enums import Df, Entities, Filter, Properties, Qactions, Settings
 from services.config import filter_cfg_to_query
+from services.qc import QualityFlags
 from services.requests import get_query_response, response_datastreams_to_df
 from utils.utils import get_date_from_string
 
@@ -126,49 +130,96 @@ def get_unique_value_series(series):
         return pd.NA
 
 
+def time_conversions(df: pd.DataFrame) -> pd.DataFrame:
+    df[Df.TIME + "_round"] = df[Df.TIME].dt.round("1s")
+    df["dt"] = np.abs((df[Df.TIME] - df[Df.TIME + "_round"]).dt.total_seconds())
+    return df
+
+
+def wrapper_pivot_df(df: pd.DataFrame) -> pd.DataFrame:
+    pivoted = df.pivot(
+        index=[Df.TIME + "_round", "dt", Df.LAT, Df.LONG, Df.IOT_ID],
+        columns=[
+            Df.DATASTREAM_ID,
+            Properties.DESCRIPTION,
+            str(Entities.SENSOR),
+            Df.OBSERVATION_TYPE,
+            Df.UNITS,
+        ],
+        values=[Df.QC_FLAG, Df.RESULT],
+    )
+    return pivoted
+
+
+def get_flag_columns(df: pd.DataFrame) -> pd.Index:
+    cq = df.columns[df.columns.get_level_values(0).isin([Df.QC_FLAG])]
+    return cq
+
+
+def get_agg_data_from_pivoted(
+    pivoted: pd.DataFrame, flag_columns: pd.Index | List[str]
+) -> pd.DataFrame:
+    pivoted[flag_columns] = pivoted[flag_columns].fillna(9).map(QualityFlags)
+    datastreams = pivoted.columns.get_level_values(Df.DATASTREAM_ID).unique()
+
+    pivoted = pivoted.droplevel(Df.IOT_ID)
+    df_out = pd.DataFrame()
+    df_out_coordinates = (
+        pivoted.reset_index([Df.LAT, Df.LONG])[[Df.LAT, Df.LONG]]
+        .sort_values([Df.TIME + "_round", "dt"])
+        .groupby(Df.TIME + "_round")
+        .first()
+    )
+    pivoted = pivoted.drop(index=[Df.LAT, Df.LONG])
+    column_time_round = tuple([Df.TIME + "_round"] + ["" for i in pivoted.columns.levels[1:]])  # type: ignore
+    pivoted.to_csv("raw_data.csv")
+    df_out = pd.DataFrame()
+    # df_out = deepcopy(df_out_coordinates)
+    for ds_i in datastreams:
+        df_i = pivoted[
+            pivoted.columns[pivoted.columns.get_level_values(Df.DATASTREAM_ID) == ds_i]
+        ]
+        df_i = df_i.dropna(
+            how="all",
+            subset=df_i.columns[df_i.columns.get_level_values(0) == Df.RESULT],
+        )
+        df_i = df_i.reset_index([Df.LAT, Df.LONG], drop=True)
+        qc_c_i = df_i.columns[df_i.columns.get_level_values(0) == Df.QC_FLAG]
+        assert len(qc_c_i) == 1
+        df_i = df_i.sort_values([Df.TIME + "_round", qc_c_i[0], "dt"]).reset_index(
+            "dt", drop=True
+        )
+        df_i = df_i.reset_index()
+        df_out_i = df_i.groupby([column_time_round]).first()
+
+        df_out = pd.concat([df_out, df_out_i], axis=1, sort=True)
+
+    df_out = df_out.sort_index(axis=1, level=0)
+    df_out.columns = df_out.columns.swaplevel(0, 1)  # type: ignore
+    df_out = df_out.sort_index(axis=1, level=0)
+    df_out = pd.concat([df_out_coordinates, df_out], axis=1, sort=False)
+
+    df_out.index.name = Df.TIME
+    return df_out
+
+
+def get_agg_from_response(response: dict) -> pd.DataFrame:
+    df = response_datastreams_to_df(response)
+    df = time_conversions(df)
+
+    pivoted = wrapper_pivot_df(df)
+    cq = get_flag_columns(pivoted)
+    df_out = get_agg_data_from_pivoted(pivoted, flag_columns=cq)
+
+    return df_out
+
+
 @hydra.main(
     config_path="../conf", config_name="config_aums_request.yaml", version_base="1.2"
 )
 def main(cfg):
     stapy.config.filename = Path(get_original_cwd()).joinpath("outputs/.stapy.ini")
     stapy.set_sta_url(cfg.data_api.base_url)
-
-    thing_id = cfg.data_api.things.id
-
-    filter_ = filter_cfg_to_query(cfg.data_api.filter)
-    # # counting observations per stream increases computational time drastically
-    # query_ds_info = get_results_specified_datastreams_query(
-    #     cfg.data_api.things.id, top_observations=0, filter_condition_observations=filter_
-    # )
-    # ds_info = get_query_response(query_ds_info, follow_obs_nextlinks=False)
-    # df_info = pd.DataFrame(ds_info["Datastreams"])
-    # df_info["unitOfMeasurement"] = (
-    #     df_info["unitOfMeasurement"]
-    #     .apply(lambda x: x.get("name", None))
-    #     .astype("string")
-    # )
-
-    # df_info = pd.concat(
-    #     [
-    #         df_info,
-    #         df_info["ObservedProperty"].apply(pd.Series).add_prefix("ObservedProperty_"),
-    #         df_info["Sensor"].apply(pd.Series).add_prefix("Sensor_"),
-    #     ],
-    #     axis=1,
-    # ).drop(
-    #     columns=["Observations", "Observations@iot.navigationLink", "Sensor", "ObservedProperty"]
-    # )
-
-    # df_info["description"] = df_info["description"].astype("string")
-
-    # column_order = ["@iot.id", "name", "description", "Sensor_name", "ObservedProperty_name", "unitOfMeasurement"]
-    # column_remaining = list(set(df_info.columns).difference(column_order))
-
-    # df_info = df_info[column_order + column_remaining]
-    # df_info["Sensor_name"] = df_info["Sensor_name"].str.replace("11BU RV Belgica ", "")
-
-    # df_info.to_csv("/tmp/testing.csv")
-    # return 0
 
     filter_obs_cfg = filter_cfg_to_query(cfg.data_api.filter)
 
@@ -182,31 +233,9 @@ def main(cfg):
     )
 
     response = get_query_response(query)
-    df = response_datastreams_to_df(response)
-    df[Df.TIME + "_round"] = df[Df.TIME].dt.round("1s")
+    df_out = get_agg_from_response(response)
 
-    pivoted = df.pivot(
-        index=[Df.TIME, Df.TIME + "_round", Df.LAT, Df.LONG, Df.IOT_ID],
-        columns=[
-            Df.DATASTREAM_ID,
-            Properties.DESCRIPTION,
-            str(Entities.SENSOR),
-            Df.OBSERVATION_TYPE,
-            Df.UNITS,
-        ],
-        values=[Df.QC_FLAG, Df.RESULT],
-    )
-    grouped = (
-        pivoted.reset_index()
-        .sort_index(axis=1)
-        .drop(columns=[Df.IOT_ID, Df.TIME], level=0)
-        .groupby(by=[Df.TIME + "_round", Df.LAT, Df.LONG])
-        .agg(get_unique_value_series)
-    )
-    grouped.columns = grouped.columns.swaplevel(0, 1)  # type: ignore
-    grouped = grouped.sort_index(axis=1, level=0)
-
-    grouped.to_csv(cfg.csv_file)
+    df_out.to_csv(cfg.csv_file)
 
 
 if __name__ == "__main__":
