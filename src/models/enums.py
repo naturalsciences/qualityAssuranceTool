@@ -75,7 +75,7 @@ class Qactions(BaseQueryStrEnum):
         ) = None,
     ):
         out = ""
-        if isinstance(arg, list):
+        if arg:
             str_arg = ",".join(arg)
             out = f"{str(self)}={str_arg}"
         # change to None? for now this would result in error
@@ -152,9 +152,12 @@ class Df(StrEnum):
 
 
 class Query:
-    def __init__(self, base_url: str, root_entity: Entities):
+    def __init__(self, base_url: str, root_entity: Entities | Entity):
         self.base_url = base_url
-        self.root_entity = root_entity
+        if isinstance(root_entity, Entities):
+            self.root_entity = Entity(type=root_entity)
+        else:
+            self.root_entity = root_entity
 
     @staticmethod
     def selection_to_list(entity):
@@ -194,10 +197,21 @@ class Query:
                 else:
                     out.append(ei)
         return out
-    
-    
+
     def build(self):
-        out = self.base_url + self.root_entity
+        out_list = [
+            Filter.FILTER(Query.filter_to_str(self.root_entity)),
+            Query.settings_to_list(self.root_entity),
+            Qactions.SELECT(Query.selection_to_list(self.root_entity)),
+            Qactions.EXPAND(Query.expand_to_list(self.root_entity)),
+        ]
+        out_list = list(filter(None, out_list))
+        out = f"{self.base_url.strip('/')}/{self.root_entity()}"
+        if out_list:
+            out += '?'
+            out += ";".join(out_list)
+
+        return out
 
 
 @dataclass
@@ -209,10 +223,16 @@ class Entity:
     expand: List[Entity | Entities | Properties | None] = field(default_factory=list)
     filters: List[str | None] = field(default_factory=list)
 
+    def __call__(self) -> str:
+        out = f"{self.type}"
+        if self.id:
+            out += f"({self.id})"
+        return out
+
     @property
-    def filter(self):
+    def filter(self) -> List[str | None]:
         return self.filters
 
     @filter.setter
-    def filter(self, filter_i):
+    def filter(self, filter_i) -> None:
         self.filters += [filter_i]
