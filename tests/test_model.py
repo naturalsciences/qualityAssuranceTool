@@ -1,7 +1,7 @@
 import pytest
 
 from models.enums import (Entities, Filter, Order, OrderOption, Properties,
-                          Qactions, Settings)
+                          Qactions, Query, Settings, Entity)
 
 
 class TestEnums:
@@ -40,3 +40,54 @@ class TestEnums:
     def test_settings_call_empty_argument_none(self):
         out = Settings.TOP()
         assert out == ""
+
+class TestQuery:
+    def test_class_creation(self):
+        thing_1 = Entity(Entities.THING)
+        q_out0 = Query(base_url="http://testing.be", root_entity=Entities.THING)
+
+        thing_1.id = 5
+        thing_1.selection = [Entities.DATASTREAMS, Properties.DESCRIPTION]
+        thing_1.expand = [Entities.OBSERVATIONS]
+
+        assert Qactions.SELECT(Query.selection_to_list(thing_1)) == "$select=Datastreams,description"
+
+        ds0 = Entity(Entities.DATASTREAMS)
+        ds0.settings = [Settings.SKIP(2)]
+        assert Query.settings_to_list(ds0) == ["$skip=2"]
+
+        obs0 = Entity(Entities.OBSERVATIONS)
+        obs0.filter = "result gt 0.6"
+        assert Filter.FILTER(Query.filter_to_str(obs0)) == "$filter=result gt 0.6"
+        obs0.filter = "phenomenonTime gt 2023-01-02"
+        assert Filter.FILTER(Query.filter_to_str(obs0)) == "$filter=result gt 0.6 and phenomenonTime gt 2023-01-02"
+
+        assert Qactions.EXPAND(Query.expand_to_list(thing_1)) == "$expand=Observations"
+        thing_1.expand = [obs0]
+        assert Qactions.EXPAND(Query.expand_to_list(thing_1)) == "$expand=Observations($filter=result gt 0.6 and phenomenonTime gt 2023-01-02)"
+        # # assert q_out0.build() == "http://testing.be/Thing"
+        # # thing_1.id = 5
+        # # q_out1 = Query(base_url="http://testing.be", root_entity=thing_1)
+        # # assert q_out1.build() == "http://testing.be/Thing(5)"
+        # # thing_1.selection = [Entities.DATASTREAMS, Properties.DESCRIPTION]
+        # # assert (q_out1.build() == "http://testing.be/Thing(5)"
+        # #         "?$select=Datastreams,description")
+
+        # # ds0 = Entities.DATASTREAMS
+        # # ds0.settings = [Settings.SKIP(2)]
+        # # assert Query.build_entity(ds0) == "Datastreams($skip=2)"
+
+        # # obs0 = Entities.OBSERVATIONS
+        # # ds0.expand = [obs0]
+        # # # assert Query.build_entity(ds0) == "Datastreams($skip=2;$expand=Observations)"
+        # # obs0.filter = "phenomenonTime gt 2023-01-02"
+        # # assert Query.build_entity(obs0) == "Observations($filter=phenomenonTime gt 2023-01-02)"
+        # # obs0.filter = "result gt 0.6"
+        # # assert Query.build_entity(obs0) == "Observations($filter=phenomenonTime gt 2023-01-02 and result gt 0.6)"
+        # # thing_1.expand = [Entities.OBSERVATIONS]
+
+        # # assert ";".join(Query.expansion(thing_1.expand)) == "Observations($filter=phenomenonTime gt 2023-01-02 and result gt 0.6)"
+        # # # assert Query.build_entity(thing_1) == "&$expand=Datastreams($skip=2;"
+        # # # "$expand=Observations($filter=phenomenonTime gt 2023-01-02;$count=True);"
+
+

@@ -4,20 +4,24 @@ import pandas as pd
 import pandas.testing as pdt
 import pytest
 from pandas.api import types
+
 # from numpy.testing import
-from test_utils import (cfg, mock_response, mock_response_full,
-                        mock_response_full_obs)
+from test_utils import cfg, mock_response, mock_response_full, mock_response_full_obs
 
 from models.enums import Df, Entities, Properties, QualityFlags
 from services.config import QCconf, filter_cfg_to_query
 from services.df import response_obs_to_df, response_single_datastream_to_df
 from services.qc import CAT_TYPE
-from services.requests import (build_query_datastreams,
-                               build_query_observations,
-                               get_nb_datastreams_of_thing, get_request,
-                               get_results_n_datastreams,
-                               get_results_n_datastreams_query,
-                               response_datastreams_to_df)
+from services.requests import (
+    build_query_datastreams,
+    build_query_observations,
+    get_nb_datastreams_of_thing,
+    get_observations_count_thing_query,
+    get_request,
+    get_results_n_datastreams,
+    get_results_n_datastreams_query,
+    response_datastreams_to_df,
+)
 
 # from services.df import response_datastreams_to_df
 #
@@ -38,6 +42,20 @@ class TestServicesConfig:
 
 
 class TestServicesRequests:
+    def test_get_observations_count_thing_query(self, cfg: QCconf):
+        q = get_observations_count_thing_query(
+            entity_id=cfg.data_api.things.id,
+            filter_condition=f"{Df.TIME} gt 2023-01-02",
+            skip_n=2,
+        )
+        assert (
+            q == "http://testing.com/v1.1/Things(1)"
+            "?$select=Datastreams"
+            "&$expand=Datastreams($skip=2;"
+            "$expand=Observations($filter=phenomenonTime gt 2023-01-02;$count=True);"
+            "$select=Observations/@iot.count)"
+        )
+
     def test_build_query_datastreams(self, cfg: QCconf):
         q = build_query_datastreams(entity_id=cfg.data_api.things.id)
         assert (
