@@ -36,7 +36,7 @@ class TestServicesRequests:
             q == "http://testing.com/v1.1/Things(1)"
             "?$select=Datastreams"
             "&$expand=Datastreams($skip=2;"
-            "$expand=Observations($filter=phenomenonTime gt 2023-01-02;$count=True);"
+            "$expand=Observations($filter=phenomenonTime gt 2023-01-02;$count=true);"
             "$select=Observations/@iot.count)"
         )
 
@@ -47,7 +47,7 @@ class TestServicesRequests:
             "?$select=name,@iot.id,Datastreams"
             "&$expand=Datastreams($count=true;"
             "$expand=ObservedProperty($select=name,@iot.id),"
-            "Observations($count=true;$select=@iot.id;$top=0);"
+            "Observations($count=true;$top=0;$select=@iot.id);"
             "$select=name,@iot.id,description,unitOfMeasurement/name,ObservedProperty)"
         )
 

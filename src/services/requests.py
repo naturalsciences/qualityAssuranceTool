@@ -16,50 +16,50 @@ from models.enums import Filter, Order, OrderOption, Properties, Qactions
 from models.enums import Query as Query_m
 from models.enums import Settings
 from services.df import df_type_conversions, response_single_datastream_to_df
-from utils.utils import (convert_to_datetime, get_absolute_path_to_base, log,
-                         series_to_patch_dict, update_response)
+from utils.utils import (
+    convert_to_datetime,
+    get_absolute_path_to_base,
+    log,
+    series_to_patch_dict,
+    update_response,
+)
 
 log = logging.getLogger(__name__)
 
 
 def build_query_datastreams(entity_id: int) -> str:
-    base_query = Query(Entity.Thing).entity_id(entity_id)
-    out_query = base_query.select(
-        Properties.NAME, Properties.IOT_ID, Entities.DATASTREAMS
-    )
-    additional_query = Qactions.EXPAND(
-        [
-            Entities.DATASTREAMS(
-                [
-                    Settings.COUNT("true"),
-                    Qactions.EXPAND(
-                        [
-                            Entities.OBSERVEDPROPERTY(
-                                [Qactions.SELECT([Properties.NAME, Properties.IOT_ID])]
-                            ),
-                            Entities.OBSERVATIONS(
-                                [
-                                    Settings.COUNT("true"),
-                                    Qactions.SELECT([Properties.IOT_ID]),
-                                    Settings.TOP(0),
-                                ]
-                            ),
-                        ]
-                    ),
-                    Qactions.SELECT(
-                        [
-                            Properties.NAME,
-                            Properties.IOT_ID,
-                            Properties.DESCRIPTION,
-                            Properties.UNITOFMEASUREMENT,
-                            Entities.OBSERVEDPROPERTY,
-                        ]
-                    ),
-                ]
-            )
-        ]
-    )
-    return out_query.get_query() + "&" + additional_query
+    obsprop = Entity_m(Entities.OBSERVEDPROPERTY)
+    obsprop.selection = [
+        Properties.NAME,
+        Properties.IOT_ID
+    ]
+
+    obs = Entity_m(Entities.OBSERVATIONS)
+    obs.settings = [Settings.COUNT("true"), Settings.TOP(0)]
+    obs.selection = [Properties.IOT_ID]
+
+    ds = Entity_m(Entities.DATASTREAMS)
+    ds.settings = [Settings.COUNT("true")]
+    ds.expand = [obsprop, obs]
+    ds.selection = [
+        Properties.NAME,
+        Properties.IOT_ID,
+        Properties.DESCRIPTION,
+        Properties.UNITOFMEASUREMENT,
+        Entities.OBSERVEDPROPERTY,
+    ]
+    thing = Entity_m(Entities.THINGS)
+    thing.id = entity_id
+    thing.selection = [
+        Properties.NAME,
+        Properties.IOT_ID,
+        Entities.DATASTREAMS
+    ]
+    thing.expand = [ds]
+    query = Query_m(base_url=config.load_sta_url(), root_entity=thing)
+    query_http = query.build()
+
+    return query_http
 
 
 def get_request(query: str) -> Tuple[int, dict]:
@@ -68,46 +68,13 @@ def get_request(query: str) -> Tuple[int, dict]:
     return request.status_code, request_out
 
 
-# not used
-def build_query_observations(
-    filter_conditions: str | None,
-    top_observations: int,
-    expand_feature_of_interest: bool = True,
-) -> Literal["str"]:
-    Q_filter = ""
-    if filter_conditions:
-        Q_filter = "&" + Filter.FILTER(filter_conditions)
-    Q_select = "&" + Qactions.SELECT(
-        [
-            Properties.IOT_ID,
-            Properties.RESULT,
-            Properties.PHENOMENONTIME,
-            Entities.FEATUREOFINTEREST,
-        ]
-    )
-    Q_exp = ""
-    if expand_feature_of_interest:
-        Q_exp = "&" + Qactions.EXPAND([Entities.FEATUREOFINTEREST])
-
-    Q_out = (
-        Query(Entity.Observation)
-        .limit(top_observations)
-        .select(Entities.FEATUREOFINTEREST)
-        .get_query()
-        + Q_filter
-        + Q_select
-        + Q_exp
-    )
-    return Q_out
-
-
 def get_observations_count_thing_query(
     entity_id: int,
     filter_condition: str = "",
     skip_n: int = 0,
 ) -> str:
     observations = Entity_m(Entities.OBSERVATIONS)
-    observations.settings = [Settings.COUNT("True")]
+    observations.settings = [Settings.COUNT("true")]
     observations.filter = filter_condition
     datastreams = Entity_m(Entities.DATASTREAMS)
     datastreams.settings = [Settings.SKIP(skip_n)]
@@ -177,25 +144,26 @@ def get_results_n_datastreams(Q):
 
 
 def get_nb_datastreams_of_thing(thing_id: int) -> int:
-    base_query = (
-        Query(Entity.Thing).entity_id(thing_id).select("Datastreams/@iot.count")
-    )
-    add_query_nb = Qactions.EXPAND(
-        [
-            Entities.DATASTREAMS(
-                [Settings.COUNT("true"), Qactions.SELECT([Properties.IOT_ID])]
-            )
-        ]
-    )
+    thing = Entity_m(Entities.THINGS)
+    thing.id = thing_id
+    ds = Entity_m(Entities.DATASTREAMS)
+    ds.settings = [Settings.COUNT("true")]
+    ds.selection = [Properties.IOT_ID]
+    thing.expand = [ds]
+    thing.selection = [Entities.DATASTREAMS]
+    query = Query_m(base_url=config.load_sta_url(), root_entity=thing)
+    query_http = query.build()
+    
     nb_datastreams = (
         (
             Query(Entity.Datastream).get_with_retry(
-                base_query.get_query() + "&" + add_query_nb
+                query_http
             )
         )
         .json()
         .get("Datastreams@iot.count")
     )
+    
     return nb_datastreams
 
 
@@ -331,48 +299,6 @@ def get_all_data(thing_id: int, filter_cfg: str):
     log.debug(f"Columns of constructed df: {df_out.columns}.")
     log.debug(f"Datastreams observation types: {df_out[Df.OBSERVATION_TYPE].unique()}")
     return df_out
-
-
-# NOT used, keep for later reference
-# def get_features_of_interest(filter_cfg, top_observations):
-#     filter_condition = filter_cfg_to_query(filter_cfg)
-#     base_query = Query(Entity.FeatureOfInterest).get_query()
-#     complete_query = (
-#         base_query
-#         + "?"
-#         + Qactions.SELECT(
-#             [Properties.IOT_ID, "feature/coordinates", Entities.OBSERVATIONS]
-#         )
-#         + "&"
-#         + Qactions.EXPAND(
-#             [
-#                 Entities.OBSERVATIONS(
-#                     [
-#                         Qactions.SELECT([Properties.IOT_ID]),
-#                         Settings.TOP(top_observations),
-#                     ]
-#                 )
-#             ]
-#         )
-#     )
-#     complete_query += "&" + Settings.TOP(top_observations)
-#     log.info("Start request features")
-#     log.debug(f"{complete_query}")
-#     request_features = json.loads(
-#         Query(Entity.FeatureOfInterest).get_with_retry(complete_query).content
-#     )
-#     log.info("End request features")
-#
-#     df_features = features_request_to_df(request_features)
-#     features_observations_dict = {
-#         fi.get(Properties.IOT_ID): [
-#             oi.get(Properties.IOT_ID) for oi in fi.get(Entities.OBSERVATIONS)
-#         ]
-#         for fi in request_features["value"]
-#     }
-#     # possible to write to pickle?
-#     # how to test if needed or not?
-#     return features_observations_dict
 
 
 def get_datetime_latest_observation():
