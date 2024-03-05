@@ -25,6 +25,7 @@ class Properties(StrEnum):
     PHENOMENONTIME = "phenomenonTime"
     RESULT = "result"
     QC_FLAG = "resultQuality"
+    OBSERVATIONS_COUNT = "Observations/@iot.count" # can this be dynamic? base_entity/count?
 
     def __str__(self):
         return f"{self.value}"
@@ -52,7 +53,7 @@ class Entities(StrEnum):
     FEATUREOFINTEREST = "FeatureOfInterest"
     FEATURESOFINTEREST = "FeaturesOfInterest"
     SENSOR = "Sensor"
-    THING = "Thing"
+    THINGS = "Things"
 
     def __call__(self, args: list[Properties] | list["Qactions"] | list[str]):
         out = f"{self}({';'.join(list(filter(None, args)))})"
@@ -209,7 +210,7 @@ class Query:
         out = f"{self.base_url.strip('/')}/{self.root_entity()}"
         if out_list:
             out += '?'
-            out += ";".join(out_list)
+            out += "&".join(out_list)
 
         return out
 

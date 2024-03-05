@@ -43,14 +43,14 @@ class TestEnums:
 
 class TestQuery:
     def test_class_creation(self):
-        thing_1 = Entity(Entities.THING)
-        q_out0 = Query(base_url="http://testing.be", root_entity=Entities.THING)
+        thing_1 = Entity(Entities.THINGS)
+        q_out0 = Query(base_url="http://testing.be", root_entity=Entities.THINGS)
 
         thing_1.id = 5
 
         q_out1 = Query(base_url="http://testing.be", root_entity=thing_1)
         q1 = q_out1.build()
-        assert q1 == "http://testing.be/Thing(5)"
+        assert q1 == "http://testing.be/Things(5)"
 
         thing_1.selection = [Entities.DATASTREAMS, Properties.DESCRIPTION]
         thing_1.expand = [Entities.OBSERVATIONS]
@@ -72,5 +72,5 @@ class TestQuery:
         assert Qactions.EXPAND(Query.expand_to_list(thing_1)) == "$expand=Observations($filter=result gt 0.6 and phenomenonTime gt 2023-01-02)"
 
         q = q_out0.build()
-        assert q == "http://testing.be/Thing"
+        assert q == "http://testing.be/Things"
 

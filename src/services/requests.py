@@ -6,12 +6,14 @@ from typing import List, Literal, Tuple
 
 import pandas as pd
 from requests import get, post
-from stapy import Entity, Query
+from stapy import Entity, Query, config
 from tqdm import tqdm
 
 from models.constants import TQDM_BAR_FORMAT, TQDM_DESC_FORMAT
 from models.enums import (Df, Entities, Filter, Order, OrderOption, Properties,
                           Qactions, Settings)
+from models.enums import Entity as Entity_m
+from models.enums import Query as Query_m
 from services.df import df_type_conversions, response_single_datastream_to_df
 from utils.utils import (convert_to_datetime, get_absolute_path_to_base, log,
                          series_to_patch_dict, update_response)
@@ -113,6 +115,20 @@ def get_observations_count_thing_query(
     # ]
     # )
     # ]
+    observations = Entity_m(Entities.OBSERVATIONS)
+    observations.settings = [Settings.SKIP(skip_n)]
+    observations.filter = filter_condition
+    datastreams = Entity_m(Entities.DATASTREAMS)
+    datastreams.settings = [Settings.SKIP(skip_n)]
+    datastreams.selection = [Properties.OBSERVATIONS_COUNT]
+    datastreams.expand = [observations]
+
+    thing = Entity_m(Entities.THINGS)
+    thing.id = entity_id
+    thing.expand = [datastreams]
+    thing.selection = [Entities.DATASTREAMS]
+    query = Query_m(base_url=config.load_sta_url(), root_entity=thing)
+    query_http = query.build()
     Q = Qactions.EXPAND(
         [
             Entities.DATASTREAMS(
