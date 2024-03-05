@@ -214,10 +214,7 @@ def main(cfg: QCconf):
         target=patch_qc_flags,
         name="Patch_qc_spacial_outliers",
         kwargs={
-            "df": [
-                df_all.loc[qc_flag_config_outlier.bool_series].reset_index(),
-                df_all.reset_index(),
-            ][RESET_FEATURE_FLAGS],
+            "df": df_all.reset_index(),
             # "df": df_all.reset_index(),
             "url": url_batch,
             "auth": auth_in,
