@@ -1,10 +1,19 @@
-from strenum import StrEnum
+from __future__ import annotations
+
+import enum
+from dataclasses import dataclass, field
+from typing import Dict, List
+
 from ordered_enum.ordered_enum import OrderedEnum
+from strenum import StrEnum
 
 
 class BaseQueryStrEnum(StrEnum):
     def __str__(self):
-        return f"${self.value}"
+        if self.value:
+            return f"${self.value}"
+        else:
+            return ""
 
 
 class Properties(StrEnum):
@@ -16,6 +25,12 @@ class Properties(StrEnum):
     PHENOMENONTIME = "phenomenonTime"
     RESULT = "result"
     QC_FLAG = "resultQuality"
+
+    def __str__(self):
+        return f"{self.value}"
+
+    def __repr__(self):
+        return f"{self.value}"
 
 
 class Settings(BaseQueryStrEnum):
@@ -37,6 +52,7 @@ class Entities(StrEnum):
     FEATUREOFINTEREST = "FeatureOfInterest"
     FEATURESOFINTEREST = "FeaturesOfInterest"
     SENSOR = "Sensor"
+    THING = "Thing"
 
     def __call__(self, args: list[Properties] | list["Qactions"] | list[str]):
         out = f"{self}({';'.join(list(filter(None, args)))})"
@@ -45,22 +61,24 @@ class Entities(StrEnum):
     def __repr__(self):
         return f"{self.value}"
 
-    def __str__(self):
-        return f"{self.value}"
-
 
 class Qactions(BaseQueryStrEnum):
     EXPAND = "expand"
     SELECT = "select"
     ORDERBY = "orderby"
+    NONE = ""
 
     def __call__(
-        self, arg: Entities | Properties | list[Properties] | list[Entities] | list[str]
+        self,
+        arg: (
+            Entities | Properties | list[Properties] | list[Entities] | list[str] | None
+        ) = None,
     ):
         out = ""
-        if isinstance(arg, list):
+        if arg:
             str_arg = ",".join(arg)
             out = f"{str(self)}={str_arg}"
+        # change to None? for now this would result in error
         return out
 
 
@@ -97,6 +115,7 @@ class QualityFlags(OrderedEnum):
     Returns:
         _type_: _description_
     """
+
     NO_QUALITY_CONTROL = 0
     GOOD = 1
     PROBABLY_GOOD = 2
@@ -130,3 +149,90 @@ class Df(StrEnum):
     LAT = "lat"
     OBSERVED_PROPERTY_ID = "observed_property_id"
     FEATURE_ID = "feature_id"
+
+
+class Query:
+    def __init__(self, base_url: str, root_entity: Entities | Entity):
+        self.base_url = base_url
+        if isinstance(root_entity, Entities):
+            self.root_entity = Entity(type=root_entity)
+        else:
+            self.root_entity = root_entity
+
+    @staticmethod
+    def selection_to_list(entity):
+        out = []
+        for si in entity.selection:
+            out.append(si)
+        return out
+
+    @staticmethod
+    def filter_to_str(entity):
+        out = ""
+        if entity:
+            out = " and ".join(entity.filters)
+        return out
+
+    @staticmethod
+    def settings_to_list(entity):
+        out = []
+        for si in entity.settings:
+            out.append(si)
+        return out
+
+    @staticmethod
+    def expand_to_list(entity):
+        out = []
+        if entity.expand:
+            for ei in entity.expand:
+                if isinstance(ei, Entity):
+                    out.append(
+                        ei.type(
+                            [Filter.FILTER(Query.filter_to_str(ei))]
+                            + Query.settings_to_list(ei)
+                            + Query.selection_to_list(ei)
+                            + Query.expand_to_list(ei)
+                        )
+                    )
+                else:
+                    out.append(ei)
+        return out
+
+    def build(self):
+        out_list = [
+            Filter.FILTER(Query.filter_to_str(self.root_entity)),
+            Query.settings_to_list(self.root_entity),
+            Qactions.SELECT(Query.selection_to_list(self.root_entity)),
+            Qactions.EXPAND(Query.expand_to_list(self.root_entity)),
+        ]
+        out_list = list(filter(None, out_list))
+        out = f"{self.base_url.strip('/')}/{self.root_entity()}"
+        if out_list:
+            out += '?'
+            out += ";".join(out_list)
+
+        return out
+
+
+@dataclass
+class Entity:
+    type: Entities
+    id: int | None = None
+    selection: List[Entities | Properties | None] = field(default_factory=list)
+    settings: List[str | None] = field(default_factory=list)
+    expand: List[Entity | Entities | Properties | None] = field(default_factory=list)
+    filters: List[str | None] = field(default_factory=list)
+
+    def __call__(self) -> str:
+        out = f"{self.type}"
+        if self.id:
+            out += f"({self.id})"
+        return out
+
+    @property
+    def filter(self) -> List[str | None]:
+        return self.filters
+
+    @filter.setter
+    def filter(self, filter_i) -> None:
+        self.filters += [filter_i]
