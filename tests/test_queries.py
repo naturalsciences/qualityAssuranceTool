@@ -93,11 +93,12 @@ class TestServicesRequests:
         assert (
             out
             == "http://testing.com/v1.1/Things(1)?$select=Datastreams&$expand=Datastreams("
-            "$select=@iot.id,unitOfMeasurement/name,Observations;"
             "$expand=Observations("
             "$filter=phenomenonTime gt 1002-01-01T00:00:00.000000Z and phenomenonTime lt 3003-01-01T00:00:00.000000Z;"
             "$select=@iot.id,result,phenomenonTime,resultQuality),"
-            "ObservedProperty($select=@iot.id,name))"
+            "ObservedProperty($select=@iot.id,name);"
+            "$select=@iot.id,unitOfMeasurement/name,Observations"
+            ")"
         )
 
     def test_get_results_n_datastreams_query_none(self, cfg):
@@ -113,11 +114,11 @@ class TestServicesRequests:
         assert (
             out
             == "http://testing.com/v1.1/Things(1)?$select=Datastreams&$expand=Datastreams("
-            "$select=@iot.id,unitOfMeasurement/name,Observations;"
             "$expand=Observations("
             "$filter=phenomenonTime gt 1002-01-01T00:00:00.000000Z and phenomenonTime lt 3003-01-01T00:00:00.000000Z;"
             "$select=@iot.id,result,phenomenonTime,resultQuality),"
-            "ObservedProperty($select=@iot.id,name))"
+            "ObservedProperty($select=@iot.id,name);"
+            "$select=@iot.id,unitOfMeasurement/name,Observations)"
         )
 
     def test_get_results_n_datastreams(self, mock_response_full):

@@ -10,10 +10,11 @@ from stapy import Entity, Query, config
 from tqdm import tqdm
 
 from models.constants import TQDM_BAR_FORMAT, TQDM_DESC_FORMAT
-from models.enums import (Df, Entities, Filter, Order, OrderOption, Properties,
-                          Qactions, Settings)
+from models.enums import Df, Entities
 from models.enums import Entity as Entity_m
+from models.enums import Filter, Order, OrderOption, Properties, Qactions
 from models.enums import Query as Query_m
+from models.enums import Settings
 from services.df import df_type_conversions, response_single_datastream_to_df
 from utils.utils import (convert_to_datetime, get_absolute_path_to_base, log,
                          series_to_patch_dict, update_response)
@@ -104,19 +105,9 @@ def get_observations_count_thing_query(
     entity_id: int,
     filter_condition: str = "",
     skip_n: int = 0,
-) -> Literal["str"]:
-    # https://dev-sensors.naturalsciences.be/sta/v1.1/Things(1)/Datastreams?$expand=Observations($count=True;$top=0)&$select=Observations/@iot.count
-    # expand_list = [
-    # Entities.OBSERVATIONS(
-    # [
-    # Filter.FILTER(filter_condition),
-    # Settings.COUNT("true"),
-    # Settings.TOP(0),
-    # ]
-    # )
-    # ]
+) -> str:
     observations = Entity_m(Entities.OBSERVATIONS)
-    observations.settings = [Settings.SKIP(skip_n)]
+    observations.settings = [Settings.COUNT("True")]
     observations.filter = filter_condition
     datastreams = Entity_m(Entities.DATASTREAMS)
     datastreams.settings = [Settings.SKIP(skip_n)]
@@ -129,37 +120,8 @@ def get_observations_count_thing_query(
     thing.selection = [Entities.DATASTREAMS]
     query = Query_m(base_url=config.load_sta_url(), root_entity=thing)
     query_http = query.build()
-    Q = Qactions.EXPAND(
-        [
-            Entities.DATASTREAMS(
-                [
-                    Settings.SKIP(skip_n),
-                    Qactions.EXPAND(
-                        [
-                            Entities.OBSERVATIONS(
-                                [Filter.FILTER(filter_condition), Settings.COUNT(True)],
-                            )
-                        ]
-                    ),
-                    Qactions.SELECT(
-                        [
-                            "Observations/@iot.count",
-                        ]
-                    ),
-                    # Qactions.EXPAND(expand_list),
-                ]
-            )
-        ]
-    )
-    Q_out = (
-        Query(Entity.Thing)
-        .entity_id(entity_id)
-        .select(Entities.DATASTREAMS)
-        .get_query()
-        + "&"
-        + Q
-    )
-    return Q_out
+
+    return query_http
 
 
 def get_results_n_datastreams_query(
@@ -169,75 +131,41 @@ def get_results_n_datastreams_query(
     top_observations: int | None = None,
     filter_condition: str = "",
     expand_feature_of_interest: bool = True,
-) -> Literal["str"]:
-    # TODO: cleanup!!
-    idx_slice: int = 3
-    if expand_feature_of_interest:
-        idx_slice = 4
-    expand_list = [
-        Entities.OBSERVATIONS(
-            [
-                Filter.FILTER(filter_condition),
-                Settings.TOP(top_observations),
-                Qactions.SELECT(
-                    [
-                        Properties.IOT_ID,
-                        Properties.RESULT,
-                        Properties.PHENOMENONTIME,
-                        Properties.QC_FLAG,
-                    ]
-                ),
-                Qactions.EXPAND(
-                    [
-                        Entities.FEATUREOFINTEREST(
-                            [
-                                Qactions.SELECT(
-                                    [Properties.COORDINATES, Properties.IOT_ID]
-                                )
-                            ]
-                        )
-                    ]
-                ),
-            ][:idx_slice]
-        ),
-        Entities.OBSERVEDPROPERTY(
-            [
-                Qactions.SELECT(
-                    [
-                        Properties.IOT_ID,
-                        Properties.NAME,
-                    ]
-                )
-            ]
-        ),
+) -> str:
+    obs = Entity_m(Entities.OBSERVATIONS)
+    obs.filter = filter_condition
+    obs.settings = [Settings.TOP(top_observations)]
+    obs.selection = [
+        Properties.IOT_ID,
+        Properties.RESULT,
+        Properties.PHENOMENONTIME,
+        Properties.QC_FLAG,
     ]
-    Q = Qactions.EXPAND(
-        [
-            Entities.DATASTREAMS(
-                [
-                    Settings.TOP(n),
-                    Settings.SKIP(skip),
-                    Qactions.SELECT(
-                        [
-                            Properties.IOT_ID,
-                            Properties.UNITOFMEASUREMENT,
-                            Entities.OBSERVATIONS,
-                        ]
-                    ),
-                    Qactions.EXPAND(expand_list),
-                ]
-            )
-        ]
-    )
-    Q_out = (
-        Query(Entity.Thing)
-        .entity_id(entity_id)
-        .select(Entities.DATASTREAMS)
-        .get_query()
-        + "&"
-        + Q
-    )
-    return Q_out
+    foi = Entity_m(Entities.FEATUREOFINTEREST)
+    foi.selection = [Properties.COORDINATES, Properties.IOT_ID]
+    if expand_feature_of_interest:
+        obs.expand = [foi]
+
+    obsprop = Entity_m(Entities.OBSERVEDPROPERTY)
+    obsprop.selection = [Properties.IOT_ID, Properties.NAME]
+
+    ds = Entity_m(Entities.DATASTREAMS)
+    ds.settings = [Settings.TOP(n), Settings.SKIP(skip)]
+    ds.selection = [
+        Properties.IOT_ID,
+        Properties.UNITOFMEASUREMENT,
+        Entities.OBSERVATIONS,
+    ]
+    ds.expand = [obs, obsprop]
+
+    thing = Entity_m(Entities.THINGS)
+    thing.id = entity_id
+    thing.expand = [ds]
+    thing.selection = [Entities.DATASTREAMS]
+    query = Query_m(base_url=config.load_sta_url(), root_entity=thing)
+    query_http = query.build()
+
+    return query_http
 
 
 def get_results_n_datastreams(Q):

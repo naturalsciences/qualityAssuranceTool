@@ -25,7 +25,9 @@ class Properties(StrEnum):
     PHENOMENONTIME = "phenomenonTime"
     RESULT = "result"
     QC_FLAG = "resultQuality"
-    OBSERVATIONS_COUNT = "Observations/@iot.count" # can this be dynamic? base_entity/count?
+    OBSERVATIONS_COUNT = (
+        "Observations/@iot.count"  # can this be dynamic? base_entity/count?
+    )
 
     def __str__(self):
         return f"{self.value}"
@@ -186,18 +188,19 @@ class Query:
         out = []
         if entity.expand:
             for ei in entity.expand:
+                out_i = None
                 if isinstance(ei, Entity):
-                    out.append(
-                        ei.type(
-                            [Filter.FILTER(Query.filter_to_str(ei))]
-                            + Query.settings_to_list(ei)
-                            + Query.selection_to_list(ei)
-                            + Query.expand_to_list(ei)
-                        )
+                    out_i = ei.type(
+                        [Filter.FILTER(Query.filter_to_str(ei))]
+                        + Query.settings_to_list(ei)
+                        + [Qactions.EXPAND(Query.expand_to_list(ei))]
+                        + [Qactions.SELECT(Query.selection_to_list(ei))]
                     )
                 else:
-                    out.append(ei)
-        return out
+                    out_i = ei
+                out.append(out_i)
+
+        return list(out)
 
     def build(self):
         out_list = [
@@ -209,7 +212,7 @@ class Query:
         out_list = list(filter(None, out_list))
         out = f"{self.base_url.strip('/')}/{self.root_entity()}"
         if out_list:
-            out += '?'
+            out += "?"
             out += "&".join(out_list)
 
         return out
@@ -221,7 +224,7 @@ class Entity:
     id: int | None = None
     selection: List[Entities | Properties | None] = field(default_factory=list)
     settings: List[str | None] = field(default_factory=list)
-    expand: List[Entity | Entities | Properties | None] = field(default_factory=list)
+    expand: List[Entity | Entities | None] = field(default_factory=list)
     filters: List[str | None] = field(default_factory=list)
 
     def __call__(self) -> str:
@@ -237,3 +240,11 @@ class Entity:
     @filter.setter
     def filter(self, filter_i) -> None:
         self.filters += [filter_i]
+
+    # @property
+    # def expand(self) -> List[Entity | Entities | None]:
+    #     return self.expand
+
+    # @expand.setter
+    # def expand(self, list_values):
+    #     self.expand = list(list_values)
