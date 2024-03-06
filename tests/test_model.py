@@ -7,10 +7,9 @@ from models.enums import (
     OrderOption,
     Properties,
     Qactions,
-    Query,
     Settings,
-    Entity,
 )
+from services.requests import Entity, Query
 
 
 class TestEnums:

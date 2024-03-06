@@ -7,13 +7,11 @@ import pandas as pd
 from hydra.utils import get_original_cwd
 from omegaconf import OmegaConf
 
-from models.enums import Df, Entities, set_sta_url, config
-from models.enums import Entity, Query
-from models.enums import Properties
-from models.enums import Settings
+from models.enums import Df, Entities, Properties, Settings
 from services.config import filter_cfg_to_query
 from services.qc import QualityFlags
-from services.requests import get_query_response, response_datastreams_to_df
+from services.requests import (Entity, Query, config, get_query_response,
+                               response_datastreams_to_df, set_sta_url)
 from utils.utils import get_date_from_string
 
 OmegaConf.register_new_resolver("datetime_to_date", get_date_from_string, replace=True)

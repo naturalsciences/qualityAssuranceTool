@@ -6,10 +6,8 @@ from test_utils import (cfg, mock_response, mock_response_full,
                         mock_response_full_obs)
 
 from models.enums import Df, Entities
-from models.enums import Entity, Query
 from services.config import QCconf, filter_cfg_to_query
-from services.qc import CAT_TYPE
-from services.requests import (build_query_datastreams,
+from services.requests import (Query, build_query_datastreams,
                                get_nb_datastreams_of_thing,
                                get_observations_count_thing_query, get_request,
                                get_results_n_datastreams,

@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 from omegaconf import OmegaConf
 
 from models.constants import FEATURES_BODY_TEMPLATE
-from models.enums import Df, Entities, QualityFlags, config, set_sta_url
+from models.enums import Df, Entities, QualityFlags
 from services.config import QCconf, filter_cfg_to_query
 from services.df import intersect_df_region
 from services.qc import (QCFlagConfig, calc_gradient_results,
@@ -25,7 +25,7 @@ from services.qc import (QCFlagConfig, calc_gradient_results,
                          qc_dependent_quantity_base,
                          qc_dependent_quantity_secondary,
                          update_flag_history_series)
-from services.requests import get_all_data, get_elev_netcdf, patch_qc_flags
+from services.requests import get_all_data, get_elev_netcdf, patch_qc_flags, set_sta_url, config
 from utils.utils import (get_date_from_string,
                          get_dt_velocity_and_acceleration_series)
 
