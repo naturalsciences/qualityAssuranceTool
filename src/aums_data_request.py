@@ -107,6 +107,7 @@ def get_flag_columns(df: pd.DataFrame) -> pd.Index:
     return cq
 
 
+# refactoring needed, too complicated function
 def get_agg_data_from_pivoted(
     pivoted: pd.DataFrame, flag_columns: pd.Index | List[str]
 ) -> pd.DataFrame:
