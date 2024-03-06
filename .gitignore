@@ -6,3 +6,6 @@ features.pkl
 *.pkl
 resources/*.nc
 counter.txt
+**/*.csv
+**/DEPR/*
+**/*.log

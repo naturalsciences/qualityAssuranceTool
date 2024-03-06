@@ -9,7 +9,6 @@ from pathlib import Path
 import geopandas as gpd
 import hydra
 import pandas as pd
-import stapy
 from dotenv import load_dotenv
 from omegaconf import OmegaConf
 
@@ -26,7 +25,7 @@ from services.qc import (QCFlagConfig, calc_gradient_results,
                          qc_dependent_quantity_base,
                          qc_dependent_quantity_secondary,
                          update_flag_history_series)
-from services.requests import get_all_data, get_elev_netcdf, patch_qc_flags
+from services.requests import get_all_data, get_elev_netcdf, patch_qc_flags, set_sta_url, config
 from utils.utils import (get_date_from_string,
                          get_dt_velocity_and_acceleration_series)
 
@@ -72,8 +71,8 @@ def main(cfg: QCconf):
     # setup
     log.info("Setup")
     t_df0 = time.time()
-    stapy.config.filename = Path("outputs/.stapy.ini")
-    stapy.set_sta_url(cfg.data_api.base_url)
+    config.filename = Path("outputs/.staconf.ini")
+    set_sta_url(cfg.data_api.base_url)
     url_batch = cfg.data_api.base_url + "/$batch"
 
     auth_tuple = (
@@ -214,10 +213,7 @@ def main(cfg: QCconf):
         target=patch_qc_flags,
         name="Patch_qc_spacial_outliers",
         kwargs={
-            "df": [
-                df_all.loc[qc_flag_config_outlier.bool_series].reset_index(),
-                df_all.reset_index(),
-            ][RESET_FEATURE_FLAGS],
+            "df": df_all.reset_index(),
             # "df": df_all.reset_index(),
             "url": url_batch,
             "auth": auth_in,

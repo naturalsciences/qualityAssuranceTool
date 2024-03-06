@@ -1,149 +1,196 @@
+from __future__ import annotations
+from dataclasses import dataclass, field
+import configparser
 import json
 import logging
 from collections import Counter
 from functools import partial
-from typing import List, Literal, Tuple
+from typing import List, Tuple
+
 
 import pandas as pd
-from requests import get, post
-from stapy import Entity, Query
+import requests
 from tqdm import tqdm
 
 from models.constants import TQDM_BAR_FORMAT, TQDM_DESC_FORMAT
-from models.enums import (Df, Entities, Filter, Order, OrderOption, Properties,
-                          Qactions, Settings)
+from models.enums import Df, Entities, Filter, log, retry
+from models.enums import Order, OrderOption, Properties, Qactions
+from models.enums import Settings
 from services.df import df_type_conversions, response_single_datastream_to_df
-from utils.utils import (convert_to_datetime, get_absolute_path_to_base, log,
-                         series_to_patch_dict, update_response)
+from utils.utils import (
+    convert_to_datetime,
+    get_absolute_path_to_base,
+    log,
+    series_to_patch_dict,
+    update_response,
+)
 
 log = logging.getLogger(__name__)
 
 
-def build_query_datastreams(entity_id: int) -> str:
-    base_query = Query(Entity.Thing).entity_id(entity_id)
-    out_query = base_query.select(
-        Properties.NAME, Properties.IOT_ID, Entities.DATASTREAMS
-    )
-    additional_query = Qactions.EXPAND(
-        [
-            Entities.DATASTREAMS(
-                [
-                    Settings.COUNT("true"),
-                    Qactions.EXPAND(
-                        [
-                            Entities.OBSERVEDPROPERTY(
-                                [Qactions.SELECT([Properties.NAME, Properties.IOT_ID])]
-                            ),
-                            Entities.OBSERVATIONS(
-                                [
-                                    Settings.COUNT("true"),
-                                    Qactions.SELECT([Properties.IOT_ID]),
-                                    Settings.TOP(0),
-                                ]
-                            ),
-                        ]
-                    ),
-                    Qactions.SELECT(
-                        [
-                            Properties.NAME,
-                            Properties.IOT_ID,
-                            Properties.DESCRIPTION,
-                            Properties.UNITOFMEASUREMENT,
-                            Entities.OBSERVEDPROPERTY,
-                        ]
-                    ),
-                ]
-            )
+@retry(requests.HTTPError, tries=5, delay=1, backoff=2)
+def get_with_retry(query: str):
+    """
+    This method retries to fetch data from the specified path according to the retry parameters
+    :param path: the path which should be opened
+    """
+    auth = config.load_authentication()
+    return requests.get(query, auth=auth)
+
+
+@dataclass
+class Entity:
+    type: Entities
+    id: int | None = None
+    selection: List[Entities | Properties | None] = field(default_factory=list)
+    settings: List[str | None] = field(default_factory=list)
+    expand: List[Entity | Entities | None] = field(default_factory=list)
+    filters: List[str | None] = field(default_factory=list)
+
+    def __call__(self) -> str:
+        out = f"{self.type}"
+        if self.id:
+            out += f"({self.id})"
+        return out
+
+    @property
+    def filter(self) -> List[str | None]:
+        return self.filters
+
+    @filter.setter
+    def filter(self, filter_i) -> None:
+        self.filters += [filter_i]
+
+
+class Query:
+    def __init__(self, base_url: str, root_entity: Entities | Entity):
+        self.base_url = base_url
+        if isinstance(root_entity, Entities):
+            self.root_entity = Entity(type=root_entity)
+        else:
+            self.root_entity = root_entity
+
+    @staticmethod
+    def selection_to_list(entity):
+        out = []
+        for si in entity.selection:
+            out.append(si)
+        return out
+
+    @staticmethod
+    def filter_to_str(entity):
+        out = ""
+        if entity:
+            out = " and ".join(entity.filters)
+        return out
+
+    @staticmethod
+    def settings_to_list(entity):
+        out = []
+        for si in entity.settings:
+            out.append(si)
+        return out
+
+    @staticmethod
+    def expand_to_list(entity):
+        out = []
+        if entity.expand:
+            for ei in entity.expand:
+                out_i = None
+                if isinstance(ei, Entity):
+                    out_i = ei.type(
+                        [Filter.FILTER(Query.filter_to_str(ei))]
+                        + Query.settings_to_list(ei)
+                        + [Qactions.EXPAND(Query.expand_to_list(ei))]
+                        + [Qactions.SELECT(Query.selection_to_list(ei))]
+                    )
+                else:
+                    out_i = ei
+                out.append(out_i)
+
+        return list(out)
+
+    def get_with_retry(self):
+        """
+        This method retries to fetch data from the specified path according to the retry parameters
+        :param path: the path which should be opened
+        """
+        return get_with_retry(self.build())
+
+    def build(self):
+        out_list = [
+            Filter.FILTER(Query.filter_to_str(self.root_entity)),
+            Query.settings_to_list(self.root_entity),
+            Qactions.SELECT(Query.selection_to_list(self.root_entity)),
+            Qactions.EXPAND(Query.expand_to_list(self.root_entity)),
         ]
-    )
-    return out_query.get_query() + "&" + additional_query
+        out_list = list(filter(None, out_list))
+        out = f"{self.base_url.strip('/')}/{self.root_entity()}"
+        if out_list:
+            out += "?"
+            out += "&".join(out_list)
+
+        return out
 
 
-def get_request(query: str) -> Tuple[int, dict]:
-    request = Query(Entity.Thing).entity_id(0).get_with_retry(query)
+def build_query_datastreams(entity_id: int) -> str:
+    obsprop = Entity(Entities.OBSERVEDPROPERTY)
+    obsprop.selection = [Properties.NAME, Properties.IOT_ID]
+
+    obs = Entity(Entities.OBSERVATIONS)
+    obs.settings = [Settings.COUNT("true"), Settings.TOP(0)]
+    obs.selection = [Properties.IOT_ID]
+
+    ds = Entity(Entities.DATASTREAMS)
+    ds.settings = [Settings.COUNT("true")]
+    ds.expand = [obsprop, obs]
+    ds.selection = [
+        Properties.NAME,
+        Properties.IOT_ID,
+        Properties.DESCRIPTION,
+        Properties.UNITOFMEASUREMENT,
+        Entities.OBSERVEDPROPERTY,
+    ]
+    thing = Entity(Entities.THINGS)
+    thing.id = entity_id
+    thing.selection = [Properties.NAME, Properties.IOT_ID, Entities.DATASTREAMS]
+    thing.expand = [ds]
+    query = Query(base_url=config.load_sta_url(), root_entity=thing)
+    query_http = query.build()
+
+    return query_http
+
+
+def get_request(query: Query | str) -> Tuple[int, dict]:
+    if isinstance(query, Query):
+        request = query.get_with_retry()
+    else:
+        request = get_with_retry(query)
     request_out = request.json()
     return request.status_code, request_out
-
-
-# not used
-def build_query_observations(
-    filter_conditions: str | None,
-    top_observations: int,
-    expand_feature_of_interest: bool = True,
-) -> Literal["str"]:
-    Q_filter = ""
-    if filter_conditions:
-        Q_filter = "&" + Filter.FILTER(filter_conditions)
-    Q_select = "&" + Qactions.SELECT(
-        [
-            Properties.IOT_ID,
-            Properties.RESULT,
-            Properties.PHENOMENONTIME,
-            Entities.FEATUREOFINTEREST,
-        ]
-    )
-    Q_exp = ""
-    if expand_feature_of_interest:
-        Q_exp = "&" + Qactions.EXPAND([Entities.FEATUREOFINTEREST])
-
-    Q_out = (
-        Query(Entity.Observation)
-        .limit(top_observations)
-        .select(Entities.FEATUREOFINTEREST)
-        .get_query()
-        + Q_filter
-        + Q_select
-        + Q_exp
-    )
-    return Q_out
 
 
 def get_observations_count_thing_query(
     entity_id: int,
     filter_condition: str = "",
     skip_n: int = 0,
-) -> Literal["str"]:
-    # https://dev-sensors.naturalsciences.be/sta/v1.1/Things(1)/Datastreams?$expand=Observations($count=True;$top=0)&$select=Observations/@iot.count
-    # expand_list = [
-    # Entities.OBSERVATIONS(
-    # [
-    # Filter.FILTER(filter_condition),
-    # Settings.COUNT("true"),
-    # Settings.TOP(0),
-    # ]
-    # )
-    # ]
-    Q = Qactions.EXPAND(
-        [
-            Entities.DATASTREAMS(
-                [
-                    Settings.SKIP(skip_n),
-                    Qactions.EXPAND(
-                        [
-                            Entities.OBSERVATIONS(
-                                [Filter.FILTER(filter_condition), Settings.COUNT(True)],
-                            )
-                        ]
-                    ),
-                    Qactions.SELECT(
-                        [
-                            "Observations/@iot.count",
-                        ]
-                    ),
-                    # Qactions.EXPAND(expand_list),
-                ]
-            )
-        ]
-    )
-    Q_out = (
-        Query(Entity.Thing)
-        .entity_id(entity_id)
-        .select(Entities.DATASTREAMS)
-        .get_query()
-        + "&"
-        + Q
-    )
-    return Q_out
+) -> Query:
+    observations = Entity(Entities.OBSERVATIONS)
+    observations.settings = [Settings.COUNT("true")]
+    observations.filter = filter_condition
+    datastreams = Entity(Entities.DATASTREAMS)
+    datastreams.settings = [Settings.SKIP(skip_n)]
+    datastreams.selection = [Properties.OBSERVATIONS_COUNT]
+    datastreams.expand = [observations]
+
+    thing = Entity(Entities.THINGS)
+    thing.id = entity_id
+    thing.expand = [datastreams]
+    thing.selection = [Entities.DATASTREAMS]
+    query = Query(base_url=config.load_sta_url(), root_entity=thing)
+    # query_http = query.build()
+
+    return query
 
 
 def get_results_n_datastreams_query(
@@ -153,78 +200,44 @@ def get_results_n_datastreams_query(
     top_observations: int | None = None,
     filter_condition: str = "",
     expand_feature_of_interest: bool = True,
-) -> Literal["str"]:
-    # TODO: cleanup!!
-    idx_slice: int = 3
-    if expand_feature_of_interest:
-        idx_slice = 4
-    expand_list = [
-        Entities.OBSERVATIONS(
-            [
-                Filter.FILTER(filter_condition),
-                Settings.TOP(top_observations),
-                Qactions.SELECT(
-                    [
-                        Properties.IOT_ID,
-                        Properties.RESULT,
-                        Properties.PHENOMENONTIME,
-                        Properties.QC_FLAG,
-                    ]
-                ),
-                Qactions.EXPAND(
-                    [
-                        Entities.FEATUREOFINTEREST(
-                            [
-                                Qactions.SELECT(
-                                    [Properties.COORDINATES, Properties.IOT_ID]
-                                )
-                            ]
-                        )
-                    ]
-                ),
-            ][:idx_slice]
-        ),
-        Entities.OBSERVEDPROPERTY(
-            [
-                Qactions.SELECT(
-                    [
-                        Properties.IOT_ID,
-                        Properties.NAME,
-                    ]
-                )
-            ]
-        ),
+) -> Query:
+    obs = Entity(Entities.OBSERVATIONS)
+    obs.filter = filter_condition
+    obs.settings = [Settings.TOP(top_observations)]
+    obs.selection = [
+        Properties.IOT_ID,
+        Properties.RESULT,
+        Properties.PHENOMENONTIME,
+        Properties.QC_FLAG,
     ]
-    Q = Qactions.EXPAND(
-        [
-            Entities.DATASTREAMS(
-                [
-                    Settings.TOP(n),
-                    Settings.SKIP(skip),
-                    Qactions.SELECT(
-                        [
-                            Properties.IOT_ID,
-                            Properties.UNITOFMEASUREMENT,
-                            Entities.OBSERVATIONS,
-                        ]
-                    ),
-                    Qactions.EXPAND(expand_list),
-                ]
-            )
-        ]
-    )
-    Q_out = (
-        Query(Entity.Thing)
-        .entity_id(entity_id)
-        .select(Entities.DATASTREAMS)
-        .get_query()
-        + "&"
-        + Q
-    )
-    return Q_out
+    foi = Entity(Entities.FEATUREOFINTEREST)
+    foi.selection = [Properties.COORDINATES, Properties.IOT_ID]
+    if expand_feature_of_interest:
+        obs.expand = [foi]
+
+    obsprop = Entity(Entities.OBSERVEDPROPERTY)
+    obsprop.selection = [Properties.IOT_ID, Properties.NAME]
+
+    ds = Entity(Entities.DATASTREAMS)
+    ds.settings = [Settings.TOP(n), Settings.SKIP(skip)]
+    ds.selection = [
+        Properties.IOT_ID,
+        Properties.UNITOFMEASUREMENT,
+        Entities.OBSERVATIONS,
+    ]
+    ds.expand = [obs, obsprop]
+
+    thing = Entity(Entities.THINGS)
+    thing.id = entity_id
+    thing.expand = [ds]
+    thing.selection = [Entities.DATASTREAMS]
+    query = Query(base_url=config.load_sta_url(), root_entity=thing)
+    # query_http = query.build()
+
+    return query
 
 
-def get_results_n_datastreams(Q):
+def get_results_n_datastreams(Q: Query | str):
     log.debug(f"Request {Q}")
     request = get_request(Q)
     # request = json.loads(Query(Entity.Thing).get_with_retry(complete_query).content)
@@ -233,25 +246,18 @@ def get_results_n_datastreams(Q):
 
 
 def get_nb_datastreams_of_thing(thing_id: int) -> int:
-    base_query = (
-        Query(Entity.Thing).entity_id(thing_id).select("Datastreams/@iot.count")
-    )
-    add_query_nb = Qactions.EXPAND(
-        [
-            Entities.DATASTREAMS(
-                [Settings.COUNT("true"), Qactions.SELECT([Properties.IOT_ID])]
-            )
-        ]
-    )
-    nb_datastreams = (
-        (
-            Query(Entity.Datastream).get_with_retry(
-                base_query.get_query() + "&" + add_query_nb
-            )
-        )
-        .json()
-        .get("Datastreams@iot.count")
-    )
+    thing = Entity(Entities.THINGS)
+    thing.id = thing_id
+    ds = Entity(Entities.DATASTREAMS)
+    ds.settings = [Settings.COUNT("true")]
+    ds.selection = [Properties.IOT_ID]
+    thing.expand = [ds]
+    thing.selection = [Entities.DATASTREAMS]
+    query = Query(base_url=config.load_sta_url(), root_entity=thing)
+    query_http = query.build()
+
+    nb_datastreams = (query.get_with_retry()).json().get("Datastreams@iot.count")
+
     return nb_datastreams
 
 
@@ -301,7 +307,7 @@ def get_total_observations_count(thing_id: int, filter_cfg: str) -> int:
 
 
 def get_query_response(
-    query: str, total_count: int | None = None, follow_obs_nextlinks: bool = True
+    query: Query, total_count: int | None = None, follow_obs_nextlinks: bool = True
 ) -> dict:
     status_code, response = 0, {}
 
@@ -389,62 +395,19 @@ def get_all_data(thing_id: int, filter_cfg: str):
     return df_out
 
 
-# NOT used, keep for later reference
-# def get_features_of_interest(filter_cfg, top_observations):
-#     filter_condition = filter_cfg_to_query(filter_cfg)
-#     base_query = Query(Entity.FeatureOfInterest).get_query()
-#     complete_query = (
-#         base_query
-#         + "?"
-#         + Qactions.SELECT(
-#             [Properties.IOT_ID, "feature/coordinates", Entities.OBSERVATIONS]
-#         )
-#         + "&"
-#         + Qactions.EXPAND(
-#             [
-#                 Entities.OBSERVATIONS(
-#                     [
-#                         Qactions.SELECT([Properties.IOT_ID]),
-#                         Settings.TOP(top_observations),
-#                     ]
-#                 )
-#             ]
-#         )
-#     )
-#     complete_query += "&" + Settings.TOP(top_observations)
-#     log.info("Start request features")
-#     log.debug(f"{complete_query}")
-#     request_features = json.loads(
-#         Query(Entity.FeatureOfInterest).get_with_retry(complete_query).content
-#     )
-#     log.info("End request features")
-#
-#     df_features = features_request_to_df(request_features)
-#     features_observations_dict = {
-#         fi.get(Properties.IOT_ID): [
-#             oi.get(Properties.IOT_ID) for oi in fi.get(Entities.OBSERVATIONS)
-#         ]
-#         for fi in request_features["value"]
-#     }
-#     # possible to write to pickle?
-#     # how to test if needed or not?
-#     return features_observations_dict
-
-
 def get_datetime_latest_observation():
-    query = (
-        Query(Entity.Observation).get_query()
-        + "?"
-        + Order.ORDERBY(Properties.PHENOMENONTIME, OrderOption.DESC)  # type: ignore
-        + "&"
-        + Settings.TOP(1)
-        + "&"
-        + Qactions.SELECT([Properties.PHENOMENONTIME])
-    )  # type:ignore
-    request = json.loads(Query(Entity.Observation).get_with_retry(query).content)
+    obs = Entity(Entities.OBSERVATIONS)
+    obs.settings = [
+        Order.ORDERBY(Properties.PHENOMENONTIME, OrderOption.DESC),
+        Settings.TOP(1),
+    ]
+    obs.selection = [Properties.PHENOMENONTIME]
+
+    query = Query(base_url=config.load_sta_url(), root_entity=obs)
+    request = query.get_with_retry().content
     # https://sensors.naturalsciences.be/sta/v1.1/OBSERVATIONS?$ORDERBY=phenomenonTime%20desc&$TOP=1&$SELECT=phenomenonTime
     latest_phenomenonTime = convert_to_datetime(
-        request["value"][0].get(Properties.PHENOMENONTIME)
+        json.loads(request)["value"][0].get(Properties.PHENOMENONTIME)
     )
     return latest_phenomenonTime
 
@@ -475,7 +438,7 @@ def patch_qc_flags(
 
     final_json = {"requests": df["patch_dict"].to_list()}
     log.info(f"Start batch patch query {url_entity}.")
-    response = post(
+    response = requests.post(
         headers={"Content-Type": "application/json"},
         url=url,
         data=json.dumps(final_json),
@@ -506,7 +469,7 @@ import io
 
 
 def download_as_bytes_with_progress(url: str) -> bytes:
-    resp = get(url, stream=True)
+    resp = requests.get(url, stream=True)
     total = int(resp.headers.get("content-length", 0))
     bio = io.BytesIO()
     with tqdm(
@@ -533,7 +496,79 @@ def get_elev_netcdf() -> None:
     if not local_file.exists():
         log.info("Downloading netCDF elevation file.")
         log.info(f"  file: {local_file}")
-        r = get(url_ETOPO, stream=True)
+        r = requests.get(url_ETOPO, stream=True)
         with open(local_file, "wb") as f:
             f.write(download_as_bytes_with_progress(url_ETOPO))
         log.info("Download completed.")
+
+
+def set_sta_url(sta_url):
+    if not isinstance(sta_url, str):
+        logging.critical("The provided url (" + str(sta_url) + ") is not valid")
+        return
+    if not sta_url.endswith("/"):
+        sta_url = sta_url + "/"
+    config.set(STA_URL=sta_url)
+    config.save()
+
+
+FILENAME = ".staconf.ini"
+
+
+class Config:
+    """
+    This class allows to store and load settings that are relevant for stapy
+    Therefore one does not need to pass this arguments each time stapy is used
+    """
+
+    def __init__(self, filename=None):
+        self.filename = filename
+        if filename is None:
+            self.filename = FILENAME
+        self.config = configparser.ConfigParser()
+        self.read()
+
+    def read(self):
+        self.config.read(self.filename)  # type: ignore
+
+    def save(self):
+        with open(self.filename, "w") as configfile:  # type: ignore
+            self.config.write(configfile)
+
+    def get(self, arg):
+        try:
+            return self.config["DEFAULT"][arg]
+        except KeyError:
+            return None
+
+    def set(self, **kwargs):
+        for k, v in kwargs.items():
+            self.config["DEFAULT"][k] = str(v)
+
+    def remove(self, arg):
+        try:
+            return self.config.remove_option("DEFAULT", arg)
+        except NoSectionError:  # type: ignore
+            return False
+
+    def load_sta_url(self):
+        sta_url = self.get("STA_URL")
+        if sta_url is None:
+            log.critical(
+                "The key (STA_URL) does not exist in the config file set the url first"
+            )
+            return ""
+        return sta_url
+
+    def load_authentication(self):
+        sta_usr = self.get("STA_USR")
+        sta_pwd = self.get("STA_PWD")
+        if sta_usr is None or sta_pwd is None:
+            log.debug("Sending the request without credentials")
+            return None
+        else:
+            log.debug("Sending the request without credentials")
+            return requests.auth.HTTPBasicAuth(sta_usr, sta_pwd)  # type: ignore
+
+
+config = Config()

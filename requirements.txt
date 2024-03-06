@@ -2,9 +2,6 @@ hydra-core
 pandas
 Pyarrow
 numpy
-scipy
-matplotlib
-stapy
 python-Levenshtein
 ipython
 strenum
@@ -15,6 +12,7 @@ netCDF4
 psycopg2
 shapely
 geopandas
+scipy
 
 pytest
 pytest-cov

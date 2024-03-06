@@ -9,6 +9,7 @@ DT="$3"
 DT_OVERLAP=$(("$4"))
 
 source ./env_hist
+source ./.env
 
 DT_INT=$(echo $DT | tr -dc '0-9')
 DT_INT=$(($DT_INT))
@@ -18,9 +19,6 @@ START_SECONDS=$(date -u --date="$START" +%s)
 END_SECONDS=$(date -u --date="$END" +%s)
 
 START_I=$START
-
-SENSORS_USER=$(keyctl print $(keyctl search $(keyctl get_persistent @u) user SENSORS_USER))
-SENSORS_PASS=$(keyctl print $(keyctl search $(keyctl get_persistent @u) user SENSORS_PASS))
 
 while [[ $(date -u --date="$START_I UTC" "+%s") < $END_SECONDS ]]
 do
@@ -34,13 +32,13 @@ do
     END_I=$(date -u --date="$START_I UTC +$((DT_INT))""$DT_UNIT" "+%Y-%m-%d %H:%M")
 
     docker run \
-        --rm -d --network=host --user "$(id -u):$(id -g)"\
+        -it --rm --network=host --user "$(id -u):$(id -g)"\
         --workdir /app \
         -v "$CONFIG_FOLDER":/app/conf \
         -v "$OUTPUT_FOLDER":/app/outputs \
         -e DEV_SENSORS_USER="$SENSORS_USER" \
         -e DEV_SENSORS_PASS="$SENSORS_PASS" \
-        rbinsbmdc/quality_assurance_tool:v0.3 \
+        rbinsbmdc/quality_assurance_tool:tmp \
         "time.start=$START_II" "time.end=$END_I"
 
     START_I=$END_I

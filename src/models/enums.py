@@ -1,10 +1,21 @@
-from strenum import StrEnum
+from __future__ import annotations
+
+import logging
+import time
+from functools import wraps
+
 from ordered_enum.ordered_enum import OrderedEnum
+from strenum import StrEnum
+
+log = logging.getLogger(__name__)
 
 
 class BaseQueryStrEnum(StrEnum):
     def __str__(self):
-        return f"${self.value}"
+        if self.value:
+            return f"${self.value}"
+        else:
+            return ""
 
 
 class Properties(StrEnum):
@@ -16,6 +27,15 @@ class Properties(StrEnum):
     PHENOMENONTIME = "phenomenonTime"
     RESULT = "result"
     QC_FLAG = "resultQuality"
+    OBSERVATIONS_COUNT = (
+        "Observations/@iot.count"  # can this be dynamic? base_entity/count?
+    )
+
+    def __str__(self):
+        return f"{self.value}"
+
+    def __repr__(self):
+        return f"{self.value}"
 
 
 class Settings(BaseQueryStrEnum):
@@ -37,6 +57,7 @@ class Entities(StrEnum):
     FEATUREOFINTEREST = "FeatureOfInterest"
     FEATURESOFINTEREST = "FeaturesOfInterest"
     SENSOR = "Sensor"
+    THINGS = "Things"
 
     def __call__(self, args: list[Properties] | list["Qactions"] | list[str]):
         out = f"{self}({';'.join(list(filter(None, args)))})"
@@ -45,22 +66,24 @@ class Entities(StrEnum):
     def __repr__(self):
         return f"{self.value}"
 
-    def __str__(self):
-        return f"{self.value}"
-
 
 class Qactions(BaseQueryStrEnum):
     EXPAND = "expand"
     SELECT = "select"
     ORDERBY = "orderby"
+    NONE = ""
 
     def __call__(
-        self, arg: Entities | Properties | list[Properties] | list[Entities] | list[str]
+        self,
+        arg: (
+            Entities | Properties | list[Properties] | list[Entities] | list[str] | None
+        ) = None,
     ):
         out = ""
-        if isinstance(arg, list):
+        if arg:
             str_arg = ",".join(arg)
             out = f"{str(self)}={str_arg}"
+        # change to None? for now this would result in error
         return out
 
 
@@ -97,6 +120,7 @@ class QualityFlags(OrderedEnum):
     Returns:
         _type_: _description_
     """
+
     NO_QUALITY_CONTROL = 0
     GOOD = 1
     PROBABLY_GOOD = 2
@@ -130,3 +154,46 @@ class Df(StrEnum):
     LAT = "lat"
     OBSERVED_PROPERTY_ID = "observed_property_id"
     FEATURE_ID = "feature_id"
+
+
+def retry(exception_to_check, tries=4, delay=3, backoff=2):
+    """Retry calling the decorated function using an exponential backoff.
+
+    http://www.saltycrane.com/blog/2009/11/trying-out-retry-decorator-python/
+    original from: http://wiki.python.org/moin/PythonDecoratorLibrary#Retry
+
+    :param exception_to_check: the exception to check. may be a tuple of
+        exceptions to check
+    :type exception_to_check: Exception or tuple
+    :param tries: number of times to try (not retry) before giving up
+    :type tries: int
+    :param delay: initial delay between retries in seconds
+    :type delay: int
+    :param backoff: backoff multiplier e.g. value of 2 will double the delay
+        each retry
+    :type backoff: int
+    """
+
+    def deco_retry(f):
+
+        @wraps(f)
+        def f_retry(*args, **kwargs):
+            mtries, mdelay = tries, delay
+            while mtries > 1:
+                try:
+                    return f(*args, **kwargs)
+                except exception_to_check as e:
+                    msg = "%s, Retrying in %d seconds..." % (str(e), mdelay)
+                    logging.info(msg)
+                    time.sleep(mdelay)
+                    mtries -= 1
+                    mdelay *= backoff
+            return f(*args, **kwargs)
+
+        return f_retry  # true decorator
+
+    return deco_retry
+
+
+
+

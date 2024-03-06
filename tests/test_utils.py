@@ -6,10 +6,13 @@ import numpy as np
 import pandas as pd
 import pandas.testing as pdt
 import pytest
-import stapy
+# import stapy
+from services.requests import config
 from geopy import Point as gp_point
 from hydra import compose, initialize
 from omegaconf import DictConfig
+import services.requests
+from services.requests import set_sta_url
 
 import utils.utils as u
 from models.constants import ISO_STR_FORMAT, ISO_STR_FORMAT2
@@ -25,7 +28,7 @@ from utils.utils import (combine_dicts, convert_to_datetime, find_nearest_idx,
 def cfg() -> DictConfig:
     with initialize(config_path="./conf", version_base="1.2"):
         conf = compose("conf_base.yaml")
-    stapy.set_sta_url(conf.data_api.base_url)
+    set_sta_url(conf.data_api.base_url)
 
     return conf
 
@@ -76,8 +79,8 @@ def mock_response(monkeypatch):
     def mock_get_sets(*args, **kwars):
         return MockResponse().get_data_sets()
 
-    monkeypatch.setattr(u.Query, "get_with_retry", mock_get)
-    monkeypatch.setattr(u.Query, "get_data_sets", mock_get_sets)
+    monkeypatch.setattr(services.requests.Query, "get_with_retry", mock_get)
+    # monkeypatch.setattr(u.Query, "get_data_sets", mock_get_sets)
 
 
 @pytest.fixture
@@ -85,7 +88,7 @@ def mock_response_full(monkeypatch):
     def mock_get(*args, **kwargs):
         return MockResponseFull()
 
-    monkeypatch.setattr(u.Query, "get_with_retry", mock_get)
+    monkeypatch.setattr(services.requests.Query, "get_with_retry", mock_get)
 
 
 @pytest.fixture
@@ -93,7 +96,7 @@ def mock_response_full_obs(monkeypatch):
     def mock_get(*args, **kwargs):
         return MockResponseFullObs()
 
-    monkeypatch.setattr(u.Query, "get_with_retry", mock_get)
+    monkeypatch.setattr(services.requests.Query, "get_with_retry", mock_get)
 
 
 @pytest.fixture
@@ -192,9 +195,9 @@ class TestUtils:
         )
         assert out == {"first": 1, "str": "testing", "second": 2, "float": 6.8}
 
-    def test_stapy_integration(self, cfg):
-        q = u.Query(u.Entity.Thing).entity_id(0)
-        assert q.get_query() == "http://testing.com/v1.1/Things(0)"
+    # def test_stapy_integration(self, cfg):
+        # q = u.Query(u.Entity.Thing).entity_id(0)
+        # assert q.get_query() == "http://testing.com/v1.1/Things(0)"
 
     def test_update_response(self):
         d = {
