@@ -6,7 +6,8 @@ import numpy as np
 import pandas as pd
 import pandas.testing as pdt
 import pytest
-import stapy
+# import stapy
+from models.enums import config, set_sta_url
 from geopy import Point as gp_point
 from hydra import compose, initialize
 from omegaconf import DictConfig
@@ -25,7 +26,7 @@ from utils.utils import (combine_dicts, convert_to_datetime, find_nearest_idx,
 def cfg() -> DictConfig:
     with initialize(config_path="./conf", version_base="1.2"):
         conf = compose("conf_base.yaml")
-    stapy.set_sta_url(conf.data_api.base_url)
+    set_sta_url(conf.data_api.base_url)
 
     return conf
 
@@ -77,7 +78,7 @@ def mock_response(monkeypatch):
         return MockResponse().get_data_sets()
 
     monkeypatch.setattr(u.Query, "get_with_retry", mock_get)
-    monkeypatch.setattr(u.Query, "get_data_sets", mock_get_sets)
+    # monkeypatch.setattr(u.Query, "get_data_sets", mock_get_sets)
 
 
 @pytest.fixture
@@ -192,9 +193,9 @@ class TestUtils:
         )
         assert out == {"first": 1, "str": "testing", "second": 2, "float": 6.8}
 
-    def test_stapy_integration(self, cfg):
-        q = u.Query(u.Entity.Thing).entity_id(0)
-        assert q.get_query() == "http://testing.com/v1.1/Things(0)"
+    # def test_stapy_integration(self, cfg):
+        # q = u.Query(u.Entity.Thing).entity_id(0)
+        # assert q.get_query() == "http://testing.com/v1.1/Things(0)"
 
     def test_update_response(self):
         d = {

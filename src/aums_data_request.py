@@ -1,17 +1,16 @@
-from copy import deepcopy
 from pathlib import Path
-from typing import List, Literal
+from typing import List
 
 import hydra
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import stapy
 from hydra.utils import get_original_cwd
 from omegaconf import OmegaConf
-from stapy import Entity, Query
 
-from models.enums import Df, Entities, Filter, Properties, Qactions, Settings
+from models.enums import Df, Entities, set_sta_url, config
+from models.enums import Entity, Query
+from models.enums import Properties
+from models.enums import Settings
 from services.config import filter_cfg_to_query
 from services.qc import QualityFlags
 from services.requests import get_query_response, response_datastreams_to_df
@@ -36,87 +35,41 @@ def get_results_specified_datastreams_query(
     top_observations: int | None = None,
     filter_condition_observations: str = "",
     filter_conditions_datastreams="",
-) -> Literal["str"]:
-    # TODO: cleanup!!
-    expand_list = [
-        Entities.OBSERVATIONS(
-            [
-                Filter.FILTER(filter_condition_observations),
-                Settings.COUNT("false"),
-                Settings.TOP(top_observations),
-                Qactions.SELECT(
-                    [
-                        Properties.IOT_ID,
-                        Properties.RESULT,
-                        Properties.PHENOMENONTIME,
-                        Properties.QC_FLAG,
-                    ]
-                ),
-                Qactions.EXPAND(
-                    [
-                        Entities.FEATUREOFINTEREST(
-                            [
-                                Qactions.SELECT(
-                                    [Properties.COORDINATES, Properties.IOT_ID]
-                                )
-                            ]
-                        )
-                    ]
-                ),
-            ]
-        ),
-        Entities.OBSERVEDPROPERTY(
-            [
-                Qactions.SELECT(
-                    [
-                        Properties.IOT_ID,
-                        Properties.NAME,
-                    ]
-                )
-            ]
-        ),
-        Entities.SENSOR(
-            [
-                Qactions.SELECT(
-                    [
-                        Properties.NAME,
-                        Properties.IOT_ID,
-                        Properties.DESCRIPTION,
-                    ]
-                )
-            ]
-        ),
+) -> Query:
+    foi = Entity(Entities.FEATUREOFINTEREST)
+    foi.selection = [Properties.COORDINATES, Properties.IOT_ID]
+    obs = Entity(Entities.OBSERVATIONS)
+    obs.expand = [foi]
+    obs.filter = filter_condition_observations
+    obs.settings = [Settings.TOP(top_observations), Settings.COUNT("false")]
+    obs.selection = [
+        Properties.IOT_ID,
+        Properties.RESULT,
+        Properties.PHENOMENONTIME,
+        Properties.QC_FLAG,
     ]
-    Q = Qactions.EXPAND(
-        [
-            Entities.DATASTREAMS(
-                [
-                    Filter.FILTER(filter_conditions_datastreams),
-                    Settings.TOP(n),
-                    Settings.SKIP(skip),
-                    Qactions.SELECT(
-                        [
-                            Properties.IOT_ID,
-                            Properties.NAME,
-                            Properties.DESCRIPTION,
-                            Properties.UNITOFMEASUREMENT,
-                            Entities.OBSERVATIONS,
-                        ]
-                    ),
-                    Qactions.EXPAND(expand_list),
-                ]
-            )
-        ]
-    )
-    Q_out = (
-        Query(Entity.Thing)
-        .entity_id(entity_id)
-        .select(Entities.DATASTREAMS)
-        .get_query()
-        + "&"
-        + Q
-    )
-    return Q_out
+    obsprop = Entity(Entities.OBSERVEDPROPERTY)
+    obsprop.selection = [Properties.IOT_ID, Properties.NAME]
+    sens = Entity(Entities.SENSOR)
+    sens.selection = [Properties.NAME, Properties.IOT_ID, Properties.DESCRIPTION]
+    ds = Entity(Entities.DATASTREAMS)
+    ds.filter = filter_conditions_datastreams
+    ds.settings = [Settings.TOP(n), Settings.SKIP(skip)]
+    ds.selection = [
+        Properties.IOT_ID,
+        Properties.NAME,
+        Properties.DESCRIPTION,
+        Properties.UNITOFMEASUREMENT,
+        Entities.OBSERVATIONS,
+    ]
+    ds.expand = [obs, obsprop, sens]
+    thing = Entity(Entities.THINGS)
+    thing.id = entity_id
+    thing.selection = [Entities.DATASTREAMS]
+    thing.expand = [ds]
+    query = Query(base_url=config.load_sta_url(), root_entity=thing)
+
+    return query
 
 
 def get_unique_value_series(series):
@@ -218,8 +171,8 @@ def get_agg_from_response(response: dict) -> pd.DataFrame:
     config_path="../conf", config_name="config_aums_request.yaml", version_base="1.2"
 )
 def main(cfg):
-    stapy.config.filename = Path(get_original_cwd()).joinpath("outputs/.stapy.ini")
-    stapy.set_sta_url(cfg.data_api.base_url)
+    config.filename = Path(get_original_cwd()).joinpath("outputs/.stapy.ini")
+    set_sta_url(cfg.data_api.base_url)
 
     filter_obs_cfg = filter_cfg_to_query(cfg.data_api.filter)
 

@@ -6,7 +6,6 @@ import numpy as np
 import pandas as pd
 import pandas.testing as pdt
 import pytest
-import stapy
 from geopy import Point as gp_point
 from hydra import compose, initialize
 from omegaconf import DictConfig

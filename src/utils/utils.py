@@ -11,7 +11,8 @@ import numpy as np
 from geopandas import GeoDataFrame, points_from_xy
 from geopy import distance as geopy_distance
 from pandas import DataFrame, Series
-from stapy import Entity, Query
+# from stapy import Entity, Query
+from models.enums import Query
 from tqdm import tqdm
 
 from models.constants import (ISO_STR_FORMAT, ISO_STR_FORMAT2, TQDM_BAR_FORMAT,

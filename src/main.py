@@ -9,12 +9,11 @@ from pathlib import Path
 import geopandas as gpd
 import hydra
 import pandas as pd
-import stapy
 from dotenv import load_dotenv
 from omegaconf import OmegaConf
 
 from models.constants import FEATURES_BODY_TEMPLATE
-from models.enums import Df, Entities, QualityFlags
+from models.enums import Df, Entities, QualityFlags, config, set_sta_url
 from services.config import QCconf, filter_cfg_to_query
 from services.df import intersect_df_region
 from services.qc import (QCFlagConfig, calc_gradient_results,
@@ -72,8 +71,8 @@ def main(cfg: QCconf):
     # setup
     log.info("Setup")
     t_df0 = time.time()
-    stapy.config.filename = Path("outputs/.stapy.ini")
-    stapy.set_sta_url(cfg.data_api.base_url)
+    config.filename = Path("outputs/.staconf.ini")
+    set_sta_url(cfg.data_api.base_url)
     url_batch = cfg.data_api.base_url + "/$batch"
 
     auth_tuple = (

@@ -6,6 +6,7 @@ from test_utils import (cfg, mock_response, mock_response_full,
                         mock_response_full_obs)
 
 from models.enums import Df, Entities
+from models.enums import Entity, Query
 from services.config import QCconf, filter_cfg_to_query
 from services.qc import CAT_TYPE
 from services.requests import (build_query_datastreams,
@@ -33,7 +34,7 @@ class TestServicesRequests:
             skip_n=2,
         )
         assert (
-            q == "http://testing.com/v1.1/Things(1)"
+            q.build() == "http://testing.com/v1.1/Things(1)"
             "?$select=Datastreams"
             "&$expand=Datastreams($skip=2;"
             "$expand=Observations($filter=phenomenonTime gt 2023-01-02;$count=true);"
@@ -52,7 +53,7 @@ class TestServicesRequests:
         )
 
     def test_get_request(self, mock_response):
-        status_code, response = get_request("random")
+        status_code, response = get_request(Query(base_url="test.be", root_entity=Entities.DATASTREAMS))
         assert (status_code, response) == (200, {"one": "two"})
 
     # @pytest.mark.skip(reason="What response to provide?")
@@ -60,13 +61,13 @@ class TestServicesRequests:
     #     out = u.inspect_datastreams_thing(0)
 
     def test_get_request_full(self, mock_response_full):
-        status_code, response = get_request("random")
+        status_code, response = get_request(Query(base_url="test.be", root_entity=Entities.DATASTREAMS))
         with open("./tests/resources/test_response_wF.json") as f:
             ref = json.load(f)
         assert (status_code, response) == (200, ref)
 
     def test_get_request_full_2(self, mock_response_full):
-        status_code, response = get_request("random")
+        status_code, response = get_request(Query(base_url="test.be", root_entity=Entities.DATASTREAMS))
         assert (
             Entities.FEATUREOFINTEREST
             in response[Entities.DATASTREAMS][1][Entities.OBSERVATIONS][0].keys()
@@ -74,7 +75,7 @@ class TestServicesRequests:
 
     @pytest.mark.skip()
     def test_get_request_full_3(self, mock_response_full):
-        status_code, response = get_request("random")
+        status_code, response = get_request(Query(base_url="test.be", root_entity=Entities.DATASTREAMS))
         assert 0
 
     def test_get_results_n_datastreams_query(self, cfg):
@@ -91,7 +92,7 @@ class TestServicesRequests:
         )
 
         assert (
-            out
+            out.build()
             == "http://testing.com/v1.1/Things(1)?$select=Datastreams&$expand=Datastreams("
             "$expand=Observations("
             "$filter=phenomenonTime gt 1002-01-01T00:00:00.000000Z and phenomenonTime lt 3003-01-01T00:00:00.000000Z;"
@@ -112,7 +113,7 @@ class TestServicesRequests:
         )
 
         assert (
-            out
+            out.build()
             == "http://testing.com/v1.1/Things(1)?$select=Datastreams&$expand=Datastreams("
             "$expand=Observations("
             "$filter=phenomenonTime gt 1002-01-01T00:00:00.000000Z and phenomenonTime lt 3003-01-01T00:00:00.000000Z;"
@@ -123,7 +124,7 @@ class TestServicesRequests:
 
     def test_get_results_n_datastreams(self, mock_response_full):
         nb_datastreams = len(
-            get_results_n_datastreams("random")[1][Entities.DATASTREAMS]
+            get_results_n_datastreams(Query(base_url="test.be", root_entity=Entities.DATASTREAMS))[1][Entities.DATASTREAMS]
         )
         assert nb_datastreams == 10
 

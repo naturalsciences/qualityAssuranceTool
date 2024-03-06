@@ -1,11 +1,17 @@
 from __future__ import annotations
 
-import enum
+import configparser
+import logging
+import time
 from dataclasses import dataclass, field
-from typing import Dict, List
+from functools import wraps
+from typing import List
 
+import requests
 from ordered_enum.ordered_enum import OrderedEnum
 from strenum import StrEnum
+
+log = logging.getLogger(__name__)
 
 
 class BaseQueryStrEnum(StrEnum):
@@ -154,6 +160,45 @@ class Df(StrEnum):
     FEATURE_ID = "feature_id"
 
 
+def retry(exception_to_check, tries=4, delay=3, backoff=2):
+    """Retry calling the decorated function using an exponential backoff.
+
+    http://www.saltycrane.com/blog/2009/11/trying-out-retry-decorator-python/
+    original from: http://wiki.python.org/moin/PythonDecoratorLibrary#Retry
+
+    :param exception_to_check: the exception to check. may be a tuple of
+        exceptions to check
+    :type exception_to_check: Exception or tuple
+    :param tries: number of times to try (not retry) before giving up
+    :type tries: int
+    :param delay: initial delay between retries in seconds
+    :type delay: int
+    :param backoff: backoff multiplier e.g. value of 2 will double the delay
+        each retry
+    :type backoff: int
+    """
+
+    def deco_retry(f):
+
+        @wraps(f)
+        def f_retry(*args, **kwargs):
+            mtries, mdelay = tries, delay
+            while mtries > 1:
+                try:
+                    return f(*args, **kwargs)
+                except exception_to_check as e:
+                    msg = "%s, Retrying in %d seconds..." % (str(e), mdelay)
+                    logging.info(msg)
+                    time.sleep(mdelay)
+                    mtries -= 1
+                    mdelay *= backoff
+            return f(*args, **kwargs)
+
+        return f_retry  # true decorator
+
+    return deco_retry
+
+
 class Query:
     def __init__(self, base_url: str, root_entity: Entities | Entity):
         self.base_url = base_url
@@ -202,6 +247,13 @@ class Query:
 
         return list(out)
 
+    def get_with_retry(self):
+        """
+        This method retries to fetch data from the specified path according to the retry parameters
+        :param path: the path which should be opened
+        """
+        return get_with_retry(self.build())
+
     def build(self):
         out_list = [
             Filter.FILTER(Query.filter_to_str(self.root_entity)),
@@ -248,3 +300,85 @@ class Entity:
     # @expand.setter
     # def expand(self, list_values):
     #     self.expand = list(list_values)
+
+
+FILENAME = ".staconf.ini"
+
+
+class Config:
+    """
+    This class allows to store and load settings that are relevant for stapy
+    Therefore one does not need to pass this arguments each time stapy is used
+    """
+
+    def __init__(self, filename=None):
+        self.filename = filename
+        if filename is None:
+            self.filename = FILENAME
+        self.config = configparser.ConfigParser()
+        self.read()
+
+    def read(self):
+        self.config.read(self.filename)  # type: ignore
+
+    def save(self):
+        with open(self.filename, "w") as configfile:  # type: ignore
+            self.config.write(configfile)
+
+    def get(self, arg):
+        try:
+            return self.config["DEFAULT"][arg]
+        except KeyError:
+            return None
+
+    def set(self, **kwargs):
+        for k, v in kwargs.items():
+            self.config["DEFAULT"][k] = str(v)
+
+    def remove(self, arg):
+        try:
+            return self.config.remove_option("DEFAULT", arg)
+        except NoSectionError:  # type: ignore
+            return False
+
+    def load_sta_url(self):
+        sta_url = self.get("STA_URL")
+        if sta_url is None:
+            log.critical(
+                "The key (STA_URL) does not exist in the config file set the url first"
+            )
+            return ""
+        return sta_url
+
+    def load_authentication(self):
+        sta_usr = self.get("STA_USR")
+        sta_pwd = self.get("STA_PWD")
+        if sta_usr is None or sta_pwd is None:
+            log.debug("Sending the request without credentials")
+            return None
+        else:
+            log.debug("Sending the request without credentials")
+            return requests.auth.HTTPBasicAuth(sta_usr, sta_pwd)  # type: ignore
+
+
+config = Config()
+
+
+def set_sta_url(sta_url):
+    if not isinstance(sta_url, str):
+        logging.critical("The provided url (" + str(sta_url) + ") is not valid")
+        return
+    if not sta_url.endswith("/"):
+        sta_url = sta_url + "/"
+    config.set(STA_URL=sta_url)
+    config.save()
+
+
+@retry(requests.HTTPError, tries=5, delay=1, backoff=2)
+def get_with_retry(query: str):
+    """
+    This method retries to fetch data from the specified path according to the retry parameters
+    :param path: the path which should be opened
+    """
+    auth = config.load_authentication()
+    return requests.get(query, auth=auth)

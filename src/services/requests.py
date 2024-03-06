@@ -2,18 +2,17 @@ import json
 import logging
 from collections import Counter
 from functools import partial
-from typing import List, Literal, Tuple
+from typing import List, Tuple
 
 import pandas as pd
 from requests import get, post
-from stapy import Entity, Query, config
 from tqdm import tqdm
 
 from models.constants import TQDM_BAR_FORMAT, TQDM_DESC_FORMAT
 from models.enums import Df, Entities
-from models.enums import Entity as Entity_m
-from models.enums import Filter, Order, OrderOption, Properties, Qactions
-from models.enums import Query as Query_m
+from models.enums import config, get_with_retry
+from models.enums import Entity, Query
+from models.enums import Order, OrderOption, Properties, Qactions
 from models.enums import Settings
 from services.df import df_type_conversions, response_single_datastream_to_df
 from utils.utils import (
@@ -28,17 +27,17 @@ log = logging.getLogger(__name__)
 
 
 def build_query_datastreams(entity_id: int) -> str:
-    obsprop = Entity_m(Entities.OBSERVEDPROPERTY)
+    obsprop = Entity(Entities.OBSERVEDPROPERTY)
     obsprop.selection = [
         Properties.NAME,
         Properties.IOT_ID
     ]
 
-    obs = Entity_m(Entities.OBSERVATIONS)
+    obs = Entity(Entities.OBSERVATIONS)
     obs.settings = [Settings.COUNT("true"), Settings.TOP(0)]
     obs.selection = [Properties.IOT_ID]
 
-    ds = Entity_m(Entities.DATASTREAMS)
+    ds = Entity(Entities.DATASTREAMS)
     ds.settings = [Settings.COUNT("true")]
     ds.expand = [obsprop, obs]
     ds.selection = [
@@ -48,7 +47,7 @@ def build_query_datastreams(entity_id: int) -> str:
         Properties.UNITOFMEASUREMENT,
         Entities.OBSERVEDPROPERTY,
     ]
-    thing = Entity_m(Entities.THINGS)
+    thing = Entity(Entities.THINGS)
     thing.id = entity_id
     thing.selection = [
         Properties.NAME,
@@ -56,14 +55,17 @@ def build_query_datastreams(entity_id: int) -> str:
         Entities.DATASTREAMS
     ]
     thing.expand = [ds]
-    query = Query_m(base_url=config.load_sta_url(), root_entity=thing)
+    query = Query(base_url=config.load_sta_url(), root_entity=thing)
     query_http = query.build()
 
     return query_http
 
 
-def get_request(query: str) -> Tuple[int, dict]:
-    request = Query(Entity.Thing).entity_id(0).get_with_retry(query)
+def get_request(query: Query | str) -> Tuple[int, dict]:
+    if isinstance(query, Query):
+        request = query.get_with_retry()
+    else:
+        request = get_with_retry(query)
     request_out = request.json()
     return request.status_code, request_out
 
@@ -72,23 +74,23 @@ def get_observations_count_thing_query(
     entity_id: int,
     filter_condition: str = "",
     skip_n: int = 0,
-) -> str:
-    observations = Entity_m(Entities.OBSERVATIONS)
+) -> Query:
+    observations = Entity(Entities.OBSERVATIONS)
     observations.settings = [Settings.COUNT("true")]
     observations.filter = filter_condition
-    datastreams = Entity_m(Entities.DATASTREAMS)
+    datastreams = Entity(Entities.DATASTREAMS)
     datastreams.settings = [Settings.SKIP(skip_n)]
     datastreams.selection = [Properties.OBSERVATIONS_COUNT]
     datastreams.expand = [observations]
 
-    thing = Entity_m(Entities.THINGS)
+    thing = Entity(Entities.THINGS)
     thing.id = entity_id
     thing.expand = [datastreams]
     thing.selection = [Entities.DATASTREAMS]
-    query = Query_m(base_url=config.load_sta_url(), root_entity=thing)
-    query_http = query.build()
+    query = Query(base_url=config.load_sta_url(), root_entity=thing)
+    # query_http = query.build()
 
-    return query_http
+    return query
 
 
 def get_results_n_datastreams_query(
@@ -98,8 +100,8 @@ def get_results_n_datastreams_query(
     top_observations: int | None = None,
     filter_condition: str = "",
     expand_feature_of_interest: bool = True,
-) -> str:
-    obs = Entity_m(Entities.OBSERVATIONS)
+) -> Query:
+    obs = Entity(Entities.OBSERVATIONS)
     obs.filter = filter_condition
     obs.settings = [Settings.TOP(top_observations)]
     obs.selection = [
@@ -108,15 +110,15 @@ def get_results_n_datastreams_query(
         Properties.PHENOMENONTIME,
         Properties.QC_FLAG,
     ]
-    foi = Entity_m(Entities.FEATUREOFINTEREST)
+    foi = Entity(Entities.FEATUREOFINTEREST)
     foi.selection = [Properties.COORDINATES, Properties.IOT_ID]
     if expand_feature_of_interest:
         obs.expand = [foi]
 
-    obsprop = Entity_m(Entities.OBSERVEDPROPERTY)
+    obsprop = Entity(Entities.OBSERVEDPROPERTY)
     obsprop.selection = [Properties.IOT_ID, Properties.NAME]
 
-    ds = Entity_m(Entities.DATASTREAMS)
+    ds = Entity(Entities.DATASTREAMS)
     ds.settings = [Settings.TOP(n), Settings.SKIP(skip)]
     ds.selection = [
         Properties.IOT_ID,
@@ -125,17 +127,17 @@ def get_results_n_datastreams_query(
     ]
     ds.expand = [obs, obsprop]
 
-    thing = Entity_m(Entities.THINGS)
+    thing = Entity(Entities.THINGS)
     thing.id = entity_id
     thing.expand = [ds]
     thing.selection = [Entities.DATASTREAMS]
-    query = Query_m(base_url=config.load_sta_url(), root_entity=thing)
-    query_http = query.build()
+    query = Query(base_url=config.load_sta_url(), root_entity=thing)
+    # query_http = query.build()
 
-    return query_http
+    return query
 
 
-def get_results_n_datastreams(Q):
+def get_results_n_datastreams(Q: Query | str):
     log.debug(f"Request {Q}")
     request = get_request(Q)
     # request = json.loads(Query(Entity.Thing).get_with_retry(complete_query).content)
@@ -144,21 +146,19 @@ def get_results_n_datastreams(Q):
 
 
 def get_nb_datastreams_of_thing(thing_id: int) -> int:
-    thing = Entity_m(Entities.THINGS)
+    thing = Entity(Entities.THINGS)
     thing.id = thing_id
-    ds = Entity_m(Entities.DATASTREAMS)
+    ds = Entity(Entities.DATASTREAMS)
     ds.settings = [Settings.COUNT("true")]
     ds.selection = [Properties.IOT_ID]
     thing.expand = [ds]
     thing.selection = [Entities.DATASTREAMS]
-    query = Query_m(base_url=config.load_sta_url(), root_entity=thing)
+    query = Query(base_url=config.load_sta_url(), root_entity=thing)
     query_http = query.build()
     
     nb_datastreams = (
         (
-            Query(Entity.Datastream).get_with_retry(
-                query_http
-            )
+            query.get_with_retry()
         )
         .json()
         .get("Datastreams@iot.count")
@@ -213,7 +213,7 @@ def get_total_observations_count(thing_id: int, filter_cfg: str) -> int:
 
 
 def get_query_response(
-    query: str, total_count: int | None = None, follow_obs_nextlinks: bool = True
+    query: Query, total_count: int | None = None, follow_obs_nextlinks: bool = True
 ) -> dict:
     status_code, response = 0, {}
 
@@ -302,19 +302,15 @@ def get_all_data(thing_id: int, filter_cfg: str):
 
 
 def get_datetime_latest_observation():
-    query = (
-        Query(Entity.Observation).get_query()
-        + "?"
-        + Order.ORDERBY(Properties.PHENOMENONTIME, OrderOption.DESC)  # type: ignore
-        + "&"
-        + Settings.TOP(1)
-        + "&"
-        + Qactions.SELECT([Properties.PHENOMENONTIME])
-    )  # type:ignore
-    request = json.loads(Query(Entity.Observation).get_with_retry(query).content)
+    obs = Entity(Entities.OBSERVATIONS)
+    obs.settings = [Order.ORDERBY(Properties.PHENOMENONTIME, OrderOption.DESC), Settings.TOP(1)]
+    obs.selection = [Properties.PHENOMENONTIME]
+
+    query = Query(base_url=config.load_sta_url(), root_entity=obs)
+    request = query.get_with_retry().content
     # https://sensors.naturalsciences.be/sta/v1.1/OBSERVATIONS?$ORDERBY=phenomenonTime%20desc&$TOP=1&$SELECT=phenomenonTime
     latest_phenomenonTime = convert_to_datetime(
-        request["value"][0].get(Properties.PHENOMENONTIME)
+        json.loads(request)["value"][0].get(Properties.PHENOMENONTIME)
     )
     return latest_phenomenonTime
 
