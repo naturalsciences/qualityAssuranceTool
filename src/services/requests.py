@@ -548,7 +548,7 @@ class Config:
     def remove(self, arg):
         try:
             return self.config.remove_option("DEFAULT", arg)
-        except NoSectionError:  # type: ignore
+        except configparser.NoSectionError:
             return False
 
     def load_sta_url(self):
