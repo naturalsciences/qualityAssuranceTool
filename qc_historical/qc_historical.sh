@@ -7,6 +7,7 @@ START="$1"
 END="$2"
 DT="$3"
 DT_OVERLAP=$(("$4"))
+IMAGE_TAG=${5-v0.5.1}
 
 source ./env_hist
 source ./.env
@@ -38,7 +39,7 @@ do
         -v "$OUTPUT_FOLDER":/app/outputs \
         -e DEV_SENSORS_USER="$SENSORS_USER" \
         -e DEV_SENSORS_PASS="$SENSORS_PASS" \
-        rbinsbmdc/quality_assurance_tool:tmp \
+        rbinsbmdc/quality_assurance_tool:$IMAGE_TAG \
         "time.start=$START_II" "time.end=$END_I"
 
     START_I=$END_I
