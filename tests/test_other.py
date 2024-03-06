@@ -2,7 +2,7 @@ import json
 
 import pandas as pd
 import pytest
-from aums_data_request import get_unique_value_series
+from aums_data_request import get_unique_value_series, time_conversions
 
 from models.enums import Df, Entities, Properties
 
@@ -49,3 +49,7 @@ class TestOther:
         series_in.iloc[[0]] = 0.
         with pytest.raises(AssertionError):
             out = get_unique_value_series(series_in)
+    
+    def test_time_conversions(self, df_fix):
+        df_out = time_conversions(df_fix)
+        assert f"{Df.TIME}_round" in df_out.columns
