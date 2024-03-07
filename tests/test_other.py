@@ -76,7 +76,8 @@ class TestOther:
                 [7751, 7769]
             ),
         )
-        assert Q.build() == "http://testing.com/v1.1/Things(1)?$select=Datastreams&$expand=Datastreams($filter=@iot.id eq 7751 or @iot.id eq 7769;$expand=Observations($filter=$filter=result gt 0.6 and phenomenonTime gt 2023-01-02;$count=false;$expand=FeatureOfInterest($select=feature/coordinates,@iot.id);$select=@iot.id,result,phenomenonTime,resultQuality),ObservedProperty($select=@iot.id,name),Sensor($select=name,@iot.id,description);$select=@iot.id,name,description,unitOfMeasurement/name,Observations)"
+        Q.base_url = ""
+        assert Q.build() == "/Things(1)?$select=Datastreams&$expand=Datastreams($filter=@iot.id eq 7751 or @iot.id eq 7769;$expand=Observations($filter=$filter=result gt 0.6 and phenomenonTime gt 2023-01-02;$count=false;$expand=FeatureOfInterest($select=feature/coordinates,@iot.id);$select=@iot.id,result,phenomenonTime,resultQuality),ObservedProperty($select=@iot.id,name),Sensor($select=name,@iot.id,description);$select=@iot.id,name,description,unitOfMeasurement/name,Observations)"
 
     def test_unique_values_series_float(self):
         idx_list = list(range(10))
