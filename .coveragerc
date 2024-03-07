@@ -1,4 +1,4 @@
 [run]
 omit =
     main.py
-    aums_data_request.py
+

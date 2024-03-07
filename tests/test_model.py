@@ -1,6 +1,7 @@
 import pytest
 
 from models.enums import (
+    BaseQueryStrEnum,
     Entities,
     Filter,
     Order,
@@ -36,6 +37,10 @@ class TestEnums:
     def test_order_call(self):
         out = Order.ORDERBY(Properties.PHENOMENONTIME, OrderOption.DESC)
         assert out == "$orderBy=phenomenonTime desc"
+
+    def test_properties_repr(self):
+        out = f"{Properties.DESCRIPTION.__repr__()}"
+        assert out == "description"
 
     def test_settings_call_argument(self):
         out = Settings.TOP(10)

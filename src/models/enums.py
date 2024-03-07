@@ -174,7 +174,7 @@ def retry(exception_to_check, tries=4, delay=3, backoff=2):
     :type backoff: int
     """
 
-    def deco_retry(f):
+    def deco_retry(f):  # pragma: no cover
 
         @wraps(f)
         def f_retry(*args, **kwargs):
@@ -193,7 +193,3 @@ def retry(exception_to_check, tries=4, delay=3, backoff=2):
         return f_retry  # true decorator
 
     return deco_retry
-
-
-
-

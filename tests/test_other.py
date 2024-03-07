@@ -1,11 +1,21 @@
 import json
 
 import pandas as pd
+import numpy as np
+import pandas.testing as pdt
 import pytest
 
-from aums_data_request import (get_agg_data_from_pivoted, get_flag_columns, get_unique_value_series, time_conversions,
-                               wrapper_pivot_df)
-from models.enums import Df, Entities, Properties
+from aums_data_request import (
+    datastream_id_in_list_filter_conditions,
+    get_agg_data_from_pivoted,
+    get_agg_from_response,
+    get_flag_columns,
+    get_results_specified_datastreams_query,
+    get_unique_value_series,
+    time_conversions,
+    wrapper_pivot_df,
+)
+from models.enums import Df, Entities, Properties, QualityFlags
 from services.requests import response_datastreams_to_df
 
 
@@ -20,6 +30,7 @@ def response_fix() -> dict:
 def df_fix(response_fix) -> pd.DataFrame:
     df_out = response_datastreams_to_df(response_fix)
     return df_out
+
 
 @pytest.fixture(scope="session")
 def df_pivoted_fix(df_fix) -> pd.DataFrame:
@@ -43,10 +54,30 @@ class TestOtherFixture:
             Df.OBSERVATION_TYPE,
             Df.UNITS,
         ]
-        assert df_pivoted_fix.index.names == [f"{Df.TIME}_round", "dt", Df.LAT, Df.LONG, Df.IOT_ID]
+        assert df_pivoted_fix.index.names == [
+            f"{Df.TIME}_round",
+            "dt",
+            Df.LAT,
+            Df.LONG,
+            Df.IOT_ID,
+        ]
 
 
 class TestOther:
+    def test_datastream_id_in_list_filter_conditions(self):
+        filter_ds_cfg = datastream_id_in_list_filter_conditions([7751, 7769])
+        assert filter_ds_cfg == "@iot.id eq 7751 or @iot.id eq 7769"
+
+    def test_get_results_specified_datastreams_query(self):
+        Q = get_results_specified_datastreams_query(
+            1,
+            filter_condition_observations="$filter=result gt 0.6 and phenomenonTime gt 2023-01-02",
+            filter_conditions_datastreams=datastream_id_in_list_filter_conditions(
+                [7751, 7769]
+            ),
+        )
+        assert Q.build() == "http://testing.com/v1.1/Things(1)?$select=Datastreams&$expand=Datastreams($filter=@iot.id eq 7751 or @iot.id eq 7769;$expand=Observations($filter=$filter=result gt 0.6 and phenomenonTime gt 2023-01-02;$count=false;$expand=FeatureOfInterest($select=feature/coordinates,@iot.id);$select=@iot.id,result,phenomenonTime,resultQuality),ObservedProperty($select=@iot.id,name),Sensor($select=name,@iot.id,description);$select=@iot.id,name,description,unitOfMeasurement/name,Observations)"
+
     def test_unique_values_series_float(self):
         idx_list = list(range(10))
         series_in = pd.Series(index=list(range(10)))
@@ -93,14 +124,69 @@ class TestOther:
         assert set(pivoted.index.names) == set(
             [f"{Df.TIME}_round", "dt", Df.LAT, Df.LONG, Df.IOT_ID]
         )
-        assert pivoted.index.get_level_values(f"{Df.TIME}_round").is_monotonic_increasing
+        assert pivoted.index.get_level_values(
+            f"{Df.TIME}_round"
+        ).is_monotonic_increasing
         assert ~pivoted.index.get_level_values(f"{Df.TIME}_round").has_duplicates
-    
+
     def test_get_flag_columns(self, df_pivoted_fix):
         cq = get_flag_columns(df_pivoted_fix)
-        assert len(cq) == df_pivoted_fix.shape[1]/2
+        assert len(cq) == df_pivoted_fix.shape[1] / 2
         assert len([cqi for cqi in cq.get_level_values(0) if Df.QC_FLAG == cqi])
 
+    # REFACTORING needed ... type conversion is hell
     def test_add_data_from_pivoted(self, df_pivoted_fix):
         cq = get_flag_columns(df_pivoted_fix)
         df_agg = get_agg_data_from_pivoted(df_pivoted_fix, flag_columns=cq)
+        arr_columns = [
+            df_agg.columns.get_level_values(i) for i in range(df_agg.columns.nlevels)
+        ]
+        arr_columns[0] = [str(i) for i in arr_columns[0]]  # type: ignore
+        df_agg.columns = pd.MultiIndex.from_arrays(
+            arr_columns, names=df_agg.columns.names
+        )
+        df_agg_ref = pd.read_csv(
+            "./tests/resources/df_agg.csv", header=list(range(6)), index_col=0
+        )
+        columns_df = pd.DataFrame(df_agg_ref.columns.to_list())
+        for i in range(5):
+            columns_df.loc[columns_df[i + 1].str.startswith("Unnamed"), i + 1] = ""
+        df_agg_ref.columns = pd.MultiIndex.from_tuples(
+            columns_df.to_records(index=False).tolist(), names=df_agg_ref.columns.names
+        )
+        df_agg_ref = df_agg_ref.astype(dtype=df_agg.dtypes.to_dict())
+        df_agg_ref.index = df_agg_ref.index.astype("datetime64[ns]")
+
+        df_agg[get_flag_columns(df_agg, level=1)] = (
+            df_agg[get_flag_columns(df_agg, level=1)].astype(str).astype(float)
+        )
+
+        pdt.assert_frame_equal(df_agg, df_agg_ref, rtol=0.01, check_dtype=False)
+
+    def test_agg_from_response(self, response_fix):
+        df_agg = get_agg_from_response(response_fix)
+
+        arr_columns = [
+            df_agg.columns.get_level_values(i) for i in range(df_agg.columns.nlevels)
+        ]
+        arr_columns[0] = [str(i) for i in arr_columns[0]]  # type: ignore
+        df_agg.columns = pd.MultiIndex.from_arrays(
+            arr_columns, names=df_agg.columns.names
+        )
+        df_agg_ref = pd.read_csv(
+            "./tests/resources/df_agg.csv", header=list(range(6)), index_col=0
+        )
+        columns_df = pd.DataFrame(df_agg_ref.columns.to_list())
+        for i in range(5):
+            columns_df.loc[columns_df[i + 1].str.startswith("Unnamed"), i + 1] = ""
+        df_agg_ref.columns = pd.MultiIndex.from_tuples(
+            columns_df.to_records(index=False).tolist(), names=df_agg_ref.columns.names
+        )
+        df_agg_ref = df_agg_ref.astype(dtype=df_agg.dtypes.to_dict())
+        df_agg_ref.index = df_agg_ref.index.astype("datetime64[ns]")
+
+        df_agg[get_flag_columns(df_agg, level=1)] = (
+            df_agg[get_flag_columns(df_agg, level=1)].astype(str).astype(float)
+        )
+
+        pdt.assert_frame_equal(df_agg, df_agg_ref, rtol=0.01, check_dtype=False)

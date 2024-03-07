@@ -10,8 +10,14 @@ from omegaconf import OmegaConf
 from models.enums import Df, Entities, Properties, Settings
 from services.config import filter_cfg_to_query
 from services.qc import QualityFlags
-from services.requests import (Entity, Query, config, get_query_response,
-                               response_datastreams_to_df, set_sta_url)
+from services.requests import (
+    Entity,
+    Query,
+    config,
+    get_query_response,
+    response_datastreams_to_df,
+    set_sta_url,
+)
 from utils.utils import get_date_from_string
 
 OmegaConf.register_new_resolver("datetime_to_date", get_date_from_string, replace=True)
@@ -102,8 +108,8 @@ def wrapper_pivot_df(df: pd.DataFrame) -> pd.DataFrame:
     return pivoted
 
 
-def get_flag_columns(df: pd.DataFrame) -> pd.Index:
-    cq = df.columns[df.columns.get_level_values(0).isin([Df.QC_FLAG])]
+def get_flag_columns(df: pd.DataFrame, level: int = 0) -> pd.Index:
+    cq = df.columns[df.columns.get_level_values(level).isin([Df.QC_FLAG])]
     return cq
 
 
@@ -169,7 +175,7 @@ def get_agg_from_response(response: dict) -> pd.DataFrame:
 @hydra.main(
     config_path="../conf", config_name="config_aums_request.yaml", version_base="1.2"
 )
-def main(cfg):
+def main(cfg): # pragma: no cover
     config.filename = Path(get_original_cwd()).joinpath("outputs/.stapy.ini")
     set_sta_url(cfg.data_api.base_url)
 
