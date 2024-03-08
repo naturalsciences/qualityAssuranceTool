@@ -16,11 +16,6 @@ FMT="+%Y-%m-%d %H:%M"
 END_I=$(date -u "$FMT")
 START_I=$(date -u --date="$END_I UTC -$((DT_INT+OVERLAP))$DT_UNIT" "$FMT")
 
-echo $DT_INT
-echo $DT_UNIT
-echo $START_I
-echo $END_I
-
 docker run \
         -d --rm --network=host --user "$(id -u):$(id -g)"\
         --workdir /app \
