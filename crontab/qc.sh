@@ -3,6 +3,7 @@
 PATH=$PATH:/usr/bin
 
 ROOT_DIR=$1
+mkdir -p $ROOT_DIR/outputs
 source $ROOT_DIR/crontab/env_qc_settings
 source $ROOT_DIR/crontab/.env_sta
 cd $ROOT_DIR
@@ -16,8 +17,8 @@ FMT="+%Y-%m-%d %H:%M"
 END_I=$(date -u "$FMT")
 START_I=$(date -u --date="$END_I UTC -$((DT_INT+OVERLAP))$DT_UNIT" "$FMT")
 
-echo $CONFIG_FOLDER
-echo $OUTPUT_FOLDER
+TIMESTAMP_NOW=$(date --date now "$FMT")
+echo -n "["$TIMESTAMP_NOW"] - "
 docker run \
         -d --rm --network=host --user "$(id -u):$(id -g)"\
         --workdir /app \
