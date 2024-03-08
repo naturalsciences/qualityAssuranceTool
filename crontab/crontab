@@ -1,4 +1,4 @@
 ROOT_DIR=/docker/quality_assurance_tool
-ENV_FILE=crontab/env_docker
+ENV_FILE=crontab/env_qc_settings
 
 */10 * * * * BASH_ENV=$ROOT_DIR/$ENV_FILE echo -n "["$(date "+%Y-%m-%d %H:%M")"] "& mkdir -p $ROOT_DIR/outputs&$ROOT_DIR/crontab/qc.sh $ROOT_DIR >> $ROOT_DIR/cron_out 2>&1
