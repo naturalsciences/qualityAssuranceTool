@@ -1,4 +1,4 @@
 ROOT_DIR=/docker/quality_assurance_tool
 ENV_FILE=crontab/env_docker
 
-*/10 * * * * BASH_ENV=$ROOT_DIR/$ENV_FILE $ROOT_DIR/crontab/qc.sh $ROOT_DIR >> $ROOT_DIR/outputs/cron_out 2>&1
+*/10 * * * * BASH_ENV=$ROOT_DIR/$ENV_FILE mkdir -p $ROOT_DIR/outputs;$ROOT_DIR/crontab/qc.sh $ROOT_DIR >> $ROOT_DIR/cron_out 2>&1
