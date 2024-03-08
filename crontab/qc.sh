@@ -16,6 +16,8 @@ FMT="+%Y-%m-%d %H:%M"
 END_I=$(date -u "$FMT")
 START_I=$(date -u --date="$END_I UTC -$((DT_INT+OVERLAP))$DT_UNIT" "$FMT")
 
+echo $CONFIG_FOLDER
+echo $OUTPUT_FOLDER
 docker run \
         -d --rm --network=host --user "$(id -u):$(id -g)"\
         --workdir /app \
@@ -24,4 +26,4 @@ docker run \
         -e DEV_SENSORS_USER="$SENSORS_USER" \
         -e DEV_SENSORS_PASS="$SENSORS_PASS" \
         rbinsbmdc/quality_assurance_tool:$IMAGE_TAG \
-        "time.start=$START_II" "time.end=$END_I"
+        "time.start=$START_I" "time.end=$END_I"
