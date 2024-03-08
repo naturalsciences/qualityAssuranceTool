@@ -1,5 +1,5 @@
 DT="10 minutes"
-OVERLAP="5"
+OVERLAP="50"
 CONFIG_FOLDER=conf
 OUTPUT_FOLDER=outputs
 IMAGE_TAG=v0.5.2
