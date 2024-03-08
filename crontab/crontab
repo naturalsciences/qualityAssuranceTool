@@ -1,5 +1,6 @@
 ROOT_DIR=/docker/quality_assurance_tool
+ENV_FILE=crontab/env_docker
 # ROOT_DIR=/home/nvadmin/Documents/ODANext/qc_through_sensorthings
-ENV_FILE=crontab/env_docker_historical 
+# ENV_FILE=crontab/env_docker_historical 
 
-*/3 * * * * BASH_ENV=$ROOT_DIR/$ENV_FILE $ROOT_DIR/crontab/run_docker_historical.sh $ROOT_DIR >> $ROOT_DIR/outputs/cron_out 2>&1
+*/10 * * * * BASH_ENV=$ROOT_DIR/$ENV_FILE $ROOT_DIR/crontab/run_docker.sh $ROOT_DIR >> $ROOT_DIR/outputs/cron_out 2>&1
