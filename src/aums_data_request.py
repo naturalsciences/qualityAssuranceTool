@@ -8,9 +8,9 @@ from hydra.utils import get_original_cwd
 from omegaconf import OmegaConf
 
 from models.enums import Df, Entities, Properties, Settings
-from services.config import filter_cfg_to_query
-from services.qc import QualityFlags
-from services.requests import (
+from services.qualityassurancetool.config import filter_cfg_to_query
+from services.qualityassurancetool.qc import QualityFlags
+from services.pandasta.requests import (
     Entity,
     Query,
     config,

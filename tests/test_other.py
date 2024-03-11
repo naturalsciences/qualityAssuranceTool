@@ -16,7 +16,7 @@ from aums_data_request import (
     wrapper_pivot_df,
 )
 from models.enums import Df, Entities, Properties, QualityFlags
-from services.requests import response_datastreams_to_df
+from services.pandasta.requests import response_datastreams_to_df
 
 
 @pytest.fixture(scope="session")

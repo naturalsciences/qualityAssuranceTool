@@ -9,10 +9,10 @@ import numpy as np
 import pandas as pd
 from pandas.api.types import CategoricalDtype
 from tqdm import tqdm
+import xarray as xr
 
 from models.constants import TQDM_BAR_FORMAT, TQDM_DESC_FORMAT
 from models.enums import Df, QualityFlags
-from services.regions_query import get_depth_from_etop
 from utils.utils import (get_acceleration_series, get_distance_geopy_series,
                          get_velocity_series, merge_json_str)
 
@@ -406,6 +406,18 @@ def get_bool_exceed_max_acceleration(
     # bool_out = df_tmp.set_index("idx_")["bool_acceleration"]
     # return bool_out
     return bool_acceleration.loc[~acceleration_series.isnull()]
+
+
+def get_depth_from_etop(
+    lat: pd.Series,
+    lon: pd.Series
+):
+    datasetx = xr.open_dataset("./resources/ETOPO_2022_v1_60s_N90W180_bed.nc")
+
+    coords_dataarray = xr.DataArray(list(zip(lat, lon)), dims=["points", "coords"], name="coords")
+    z_values = datasetx["z"].sel(lat=coords_dataarray[:, 0], lon=coords_dataarray[:, 1], method="nearest").values
+
+    return z_values
 
 
 def get_bool_depth_below_threshold(df: pd.DataFrame, threshold: float) -> pd.Series:

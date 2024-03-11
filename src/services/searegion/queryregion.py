@@ -1,20 +1,13 @@
 import logging
 import time
 from typing import Sequence
-import pandas as pd
-import numpy as np
 
 import psycopg2
 import psycopg2.extensions
-from pydap.model import BaseType, GridType
 from shapely import Point, distance, intersects, set_srid
 from shapely.wkt import loads
-from utils.utils import find_nearest_idx
-# pydap.lib.CACHE = "/tmp/cache-pydap/" # doesn't seem to work
 
-from services.config import DbCredentials
-import netCDF4 as nc
-import xarray as xr
+from services.qualityassurancetool.config import DbCredentials
 
 # from services.df import seavox_to_df
 
@@ -112,15 +105,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-def get_depth_from_etop(
-    lat: pd.Series,
-    lon: pd.Series
-):
-    datasetx = xr.open_dataset("./resources/ETOPO_2022_v1_60s_N90W180_bed.nc")
-
-    coords_dataarray = xr.DataArray(list(zip(lat, lon)), dims=["points", "coords"], name="coords")
-    z_values = datasetx["z"].sel(lat=coords_dataarray[:, 0], lon=coords_dataarray[:, 1], method="nearest").values
-
-    return z_values

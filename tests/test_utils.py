@@ -7,12 +7,12 @@ import pandas as pd
 import pandas.testing as pdt
 import pytest
 # import stapy
-from services.requests import config
+from services.pandasta.requests import config
 from geopy import Point as gp_point
 from hydra import compose, initialize
 from omegaconf import DictConfig
-import services.requests
-from services.requests import set_sta_url
+import services.pandasta.requests
+from services.pandasta.requests import set_sta_url
 
 import utils.utils as u
 from models.constants import ISO_STR_FORMAT, ISO_STR_FORMAT2
@@ -79,7 +79,7 @@ def mock_response(monkeypatch):
     def mock_get_sets(*args, **kwars):
         return MockResponse().get_data_sets()
 
-    monkeypatch.setattr(services.requests.Query, "get_with_retry", mock_get)
+    monkeypatch.setattr(services.pandasta.requests.Query, "get_with_retry", mock_get)
     # monkeypatch.setattr(u.Query, "get_data_sets", mock_get_sets)
 
 
@@ -88,7 +88,7 @@ def mock_response_full(monkeypatch):
     def mock_get(*args, **kwargs):
         return MockResponseFull()
 
-    monkeypatch.setattr(services.requests.Query, "get_with_retry", mock_get)
+    monkeypatch.setattr(services.pandasta.requests.Query, "get_with_retry", mock_get)
 
 
 @pytest.fixture
@@ -96,7 +96,7 @@ def mock_response_full_obs(monkeypatch):
     def mock_get(*args, **kwargs):
         return MockResponseFullObs()
 
-    monkeypatch.setattr(services.requests.Query, "get_with_retry", mock_get)
+    monkeypatch.setattr(services.pandasta.requests.Query, "get_with_retry", mock_get)
 
 
 @pytest.fixture

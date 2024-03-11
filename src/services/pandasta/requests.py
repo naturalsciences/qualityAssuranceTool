@@ -16,7 +16,7 @@ from models.constants import TQDM_BAR_FORMAT, TQDM_DESC_FORMAT
 from models.enums import Df, Entities, Filter, log, retry
 from models.enums import Order, OrderOption, Properties, Qactions
 from models.enums import Settings
-from services.df import df_type_conversions, response_single_datastream_to_df
+from services.pandasta.df import df_type_conversions, response_single_datastream_to_df
 from utils.utils import (
     convert_to_datetime,
     get_absolute_path_to_base,

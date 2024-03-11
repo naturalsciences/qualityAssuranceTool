@@ -10,7 +10,7 @@ from models.enums import (
     Qactions,
     Settings,
 )
-from services.requests import Entity, Query
+from services.pandasta.requests import Entity, Query
 
 
 class TestEnums:

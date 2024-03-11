@@ -8,10 +8,10 @@ from test_utils import (cfg, mock_response, mock_response_full,
                         mock_response_full_obs)
 
 from models.enums import Df, Entities, Properties, QualityFlags
-from services.requests import Entity
-from services.df import response_obs_to_df, response_single_datastream_to_df
-from services.qc import CAT_TYPE
-from services.requests import (Query, get_request, get_results_n_datastreams,
+from services.pandasta.requests import Entity
+from services.pandasta.df import response_obs_to_df, response_single_datastream_to_df
+from services.qualityassurancetool.qc import CAT_TYPE
+from services.pandasta.requests import (Query, get_request, get_results_n_datastreams,
                                response_datastreams_to_df)
 
 
