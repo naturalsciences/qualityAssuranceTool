@@ -6,6 +6,7 @@ from omegaconf import MISSING
 
 from models.constants import ISO_STR_FORMAT
 from models.enums import Properties
+from services.searegion.queryregion import DbCredentials
 
 log = logging.getLogger(__name__)
 
@@ -57,15 +58,6 @@ class QcDependentEntry:
 class QcEntry:
     range: Range
     gradient: Range
-
-
-@dataclass
-class DbCredentials:
-    database: str
-    user: str
-    host: str
-    port: int
-    passphrase: str
 
 
 @dataclass

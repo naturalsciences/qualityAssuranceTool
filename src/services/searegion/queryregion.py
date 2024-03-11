@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import logging
 import time
 from typing import Sequence
@@ -7,7 +8,14 @@ import psycopg2.extensions
 from shapely import Point, distance, intersects, set_srid
 from shapely.wkt import loads
 
-from services.qualityassurancetool.config import DbCredentials
+@dataclass
+class DbCredentials:
+    database: str
+    user: str
+    host: str
+    port: int
+    passphrase: str
+
 
 # from services.df import seavox_to_df
 
