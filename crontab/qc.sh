@@ -7,6 +7,8 @@ ROOT_DIR=$1
 mkdir -p $ROOT_DIR/outputs
 source $ROOT_DIR/crontab/env_qc_settings
 source $ROOT_DIR/crontab/.env_sta
+source $ROOT_DIR/crontab/timestamp_parsing.sh
+
 cd $ROOT_DIR
 
 DT_INT=$(echo $DT | tr -dc '0-9')
@@ -15,7 +17,7 @@ DT_UNIT=$(printf '%s\n' "${DT//[[:digit:]]/}")
 
 FMT="+%Y-%m-%d %H:%M"
 
-END_I=$(date -u "$FMT")
+# END_I=$(date -u "$FMT")
 START_I=$(date -u --date="$END_I UTC -$((DT_INT+OVERLAP))$DT_UNIT" "$FMT")
 
 TIMESTAMP_NOW=$(date --date now "$FMT")
