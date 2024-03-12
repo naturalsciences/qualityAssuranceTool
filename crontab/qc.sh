@@ -3,6 +3,7 @@
 PATH=$PATH:/usr/bin
 
 ROOT_DIR=$1
+
 mkdir -p $ROOT_DIR/outputs
 source $ROOT_DIR/crontab/env_qc_settings
 source $ROOT_DIR/crontab/.env_sta
