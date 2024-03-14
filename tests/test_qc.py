@@ -140,6 +140,7 @@ def df_outliers() -> pd.DataFrame:
     df = pd.read_csv("./tests/resources/df_outliers.csv", header=0, index_col=0)
     df.columns = [Df(ci) for ci in df.columns]
     df[Df.QC_FLAG] = df[Df.QC_FLAG].apply(QualityFlags).astype(CAT_TYPE)  # type: ignore
+    df[Df.TIME] = pd.to_datetime(df[Df.TIME])
     return df
 
 
@@ -596,7 +597,7 @@ def test_qc_outlier(df_outliers):
     df = calc_zscore_results(df_outliers, groupby=Df.DATASTREAM_ID)
     df[["qc_zscore_min", "qc_zscore_max"]] = [-3.5, 3.5]
     bool_zscore = get_bool_out_of_range(df=df, qc_on=Df.ZSCORE, qc_type="zscore")
-    assert bool_zscore.sum() == 7
+    assert bool_zscore.sum() == 6
 
 
 @pytest.mark.parametrize("n", tuple(range(len(base_list_region))))
