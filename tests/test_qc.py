@@ -10,17 +10,16 @@ import pandas as pd
 import pandas.testing as pdt
 import pytest
 from geopy import Point as gp_point
+from scipy import stats  # TEMP
 
-from services.pandasta.df import Df
-from services.pandasta.df import df_type_conversions
+from services.pandasta.df import Df, df_type_conversions
+from services.qualityassurancetool.qc import (
+    calc_gradient_results, calc_zscore_results,
+    get_bool_exceed_max_acceleration, get_bool_exceed_max_velocity,
+    get_bool_land_region, get_bool_null_region, get_bool_out_of_range,
+    get_bool_spacial_outlier_compared_to_median, get_qc_flag_from_bool,
+    qc_dependent_quantity_base, qc_dependent_quantity_secondary)
 from services.qualityassurancetool.qualityflags import CAT_TYPE, QualityFlags
-from services.qualityassurancetool.qc import (calc_gradient_results,
-                         get_bool_exceed_max_acceleration,
-                         get_bool_exceed_max_velocity, get_bool_land_region,
-                         get_bool_null_region, get_bool_out_of_range,
-                         get_bool_spacial_outlier_compared_to_median,
-                         get_qc_flag_from_bool, qc_dependent_quantity_base,
-                         qc_dependent_quantity_secondary)
 from services.searegion.queryregion import build_points_query
 
 
@@ -134,6 +133,14 @@ def df_velocity_acceleration() -> gpd.GeoDataFrame:
     df_t = df_t.drop(columns=["Time (s)", "Distance (m)", "Heading (degrees)"])
     df_t = gpd.GeoDataFrame(df_t, geometry=gpd.points_from_xy(df_t[Df.LONG], df_t[Df.LAT], crs="EPSG:4326"))  # type: ignore
     return df_t
+
+
+@pytest.fixture
+def df_outliers() -> pd.DataFrame:
+    df = pd.read_csv("./tests/resources/df_outliers.csv", header=0, index_col=0)
+    df.columns = [Df(ci) for ci in df.columns]
+    df[Df.QC_FLAG] = df[Df.QC_FLAG].apply(QualityFlags).astype(CAT_TYPE)  # type: ignore
+    return df
 
 
 MULTIPL_FACTOR: int = 2
@@ -583,6 +590,13 @@ def test_qc_range(df_testing):
         dtype=bool,
     )
     pdt.assert_series_equal(bool_ref, bool_range, check_names=False)
+
+
+def test_qc_outlier(df_outliers):
+    df = calc_zscore_results(df_outliers, groupby=Df.DATASTREAM_ID)
+    df[["qc_zscore_min", "qc_zscore_max"]] = [-3.5, 3.5]
+    bool_zscore = get_bool_out_of_range(df=df, qc_on=Df.ZSCORE, qc_type="zscore")
+    assert bool_zscore.sum() == 7
 
 
 @pytest.mark.parametrize("n", tuple(range(len(base_list_region))))

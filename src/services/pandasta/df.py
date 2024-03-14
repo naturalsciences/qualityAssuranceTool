@@ -31,6 +31,9 @@ class Df(StrEnum):
     LAT = "lat"
     OBSERVED_PROPERTY_ID = "observed_property_id"
     FEATURE_ID = "feature_id"
+    DESCRIPTION = Properties.DESCRIPTION
+    SENSOR = Entities.SENSOR
+    ZSCORE= "zscore"
 
 
 # not used, keep for future reference

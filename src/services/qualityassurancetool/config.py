@@ -58,6 +58,7 @@ class QcDependentEntry:
 class QcEntry:
     range: Range
     gradient: Range
+    zscore: Range
 
 
 @dataclass
@@ -111,6 +112,7 @@ class QCconf:
     location: LocationConfig
     QC_dependent: list[QcDependentEntry]
     QC: dict[str, QcEntry]
+    QC_global: dict[str, QcEntry] = field(default_factory=dict)
 
 
 def filter_cfg_to_query(filter_cfg: FilterEntry) -> str:

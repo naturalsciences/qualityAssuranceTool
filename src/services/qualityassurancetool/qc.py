@@ -8,13 +8,14 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 import xarray as xr
+from scipy import stats
 from tqdm import tqdm
 
-from utils.constants import TQDM_BAR_FORMAT, TQDM_DESC_FORMAT
-from services.pandasta.df import Df, get_acceleration_series, get_velocity_series
+from services.pandasta.df import (Df, get_acceleration_series,
+                                  get_velocity_series)
 from services.qualityassurancetool.qualityflags import CAT_TYPE, QualityFlags
-from utils.utils import (get_distance_geopy_series,
-                         merge_json_str)
+from utils.constants import TQDM_BAR_FORMAT, TQDM_DESC_FORMAT
+from utils.utils import get_distance_geopy_series, merge_json_str
 
 log = logging.getLogger(__name__)
 
@@ -97,6 +98,21 @@ def calc_gradient_results(df: pd.DataFrame, groupby: Df) -> pd.DataFrame:
     )  # casted to string to avoid type error
     df_out = df.join(df_tmp[Df.GRADIENT])
     return df_out
+
+    
+def calc_zscore_results(df: pd.DataFrame, groupby: Df) -> pd.DataFrame:
+    def mod_z(col: pd.Series, thresh: float=3.5) -> pd.Series:
+        med_col = col.median()
+        med_abs_dev = np.abs(col - med_col).median() # type: ignore
+        mod_z = 0.6745 * ((col - med_col) / med_abs_dev)
+        # return np.abs(mod_z)
+        return mod_z
+    def _calc_zscore_results(df, groupby):
+        group = df.groupby(by=groupby, group_keys=False)
+        z = group[[Df.RESULT]].apply(stats.zscore)
+        return z
+    df[Df.ZSCORE] = _calc_zscore_results(df, groupby=[Df.DATASTREAM_ID])
+    return df
 
 
 def dependent_quantity_merge_asof(
@@ -455,6 +471,7 @@ class QCFlagConfig:
     flag_on_false: QualityFlags | None = None
     flag_on_nan: QualityFlags | None = None
     bool_series: pd.Series = field(default_factory=pd.Series)
+    series_out: pd.Series = field(default_factory=pd.Series)
 
     def execute(self, df: pd.DataFrame | gpd.GeoDataFrame):
         self.bool_series = self.bool_function(df)
@@ -470,7 +487,8 @@ class QCFlagConfig:
             )
         ).astype(CAT_TYPE)
         log.info(f"Execution {self.label} qc result: {self.bool_series.sum()} True")
-        return series_out
+        self.series_out = series_out # type: ignore
+        return self.series_out
 
 
 def update_flag_history_series(flag_history_series, flag_config: QCFlagConfig):

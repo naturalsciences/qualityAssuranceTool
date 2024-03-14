@@ -12,7 +12,7 @@ import pandas as pd
 from dotenv import load_dotenv
 from omegaconf import OmegaConf
 
-from services.qualityassurancetool.qc import FEATURES_BODY_TEMPLATE
+from services.qualityassurancetool.qc import FEATURES_BODY_TEMPLATE, calc_zscore_results
 from services.pandasta.sta import Entities
 from services.pandasta.df import Df, get_dt_velocity_and_acceleration_series
 from services.qualityassurancetool.qualityflags import QualityFlags
@@ -106,7 +106,15 @@ def main(cfg: QCconf):
             qc_type
         ).apply(pd.Series)
 
+    # qc_df_global = pd.DataFrame.from_dict(cfg.QC_global, orient="index")
+    # for qc_type in qc_df_global.keys():
+    #     qc_df_global[[f"qc_{'_'.join([qc_type, i])}" for i in ["min", "max"]]] = qc_df_global.pop(
+    #         qc_type
+    #     ).apply(pd.Series)
+    # qc_df[["qc_zscore_min", "qc_zscore_max"]] = cfg.QC_global["global"].zscore
+
     df_all = calc_gradient_results(df_all, Df.DATASTREAM_ID)
+    df_all = calc_zscore_results(df_all, Df.DATASTREAM_ID)
 
     t_df1 = time.time()
     t_qc0 = time.time()
@@ -319,6 +327,20 @@ def main(cfg: QCconf):
     df_all[Df.QC_FLAG] = qc_flag_config_gradient.execute(df_all)
 
     history_series = update_flag_history_series(history_series, qc_flag_config_gradient)
+
+    qc_flag_config_zscore = QCFlagConfig(
+        label="zscore",
+        bool_function=partial(
+            get_bool_out_of_range, qc_on=Df.ZSCORE, qc_type="zscore"
+        ),
+        bool_merge_function=max,
+        flag_on_true=QualityFlags.BAD,
+        flag_on_false=QualityFlags.PROBABLY_GOOD,
+        flag_on_nan=QualityFlags.NO_QUALITY_CONTROL,
+    )
+    df_all[Df.QC_FLAG] = qc_flag_config_zscore.execute(df_all)
+
+    history_series = update_flag_history_series(history_series, qc_flag_config_zscore)
 
     t_ranges1 = time.time()
 
