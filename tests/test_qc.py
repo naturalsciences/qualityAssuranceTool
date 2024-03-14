@@ -11,9 +11,10 @@ import pandas.testing as pdt
 import pytest
 from geopy import Point as gp_point
 
-from models.enums import Df, QualityFlags
+from services.pandasta.df import Df
 from services.pandasta.df import df_type_conversions
-from services.qualityassurancetool.qc import (CAT_TYPE, calc_gradient_results,
+from services.qualityassurancetool.qualityflags import CAT_TYPE, QualityFlags
+from services.qualityassurancetool.qc import (calc_gradient_results,
                          get_bool_exceed_max_acceleration,
                          get_bool_exceed_max_velocity, get_bool_land_region,
                          get_bool_null_region, get_bool_out_of_range,

@@ -1,31 +1,66 @@
 from __future__ import annotations
-from dataclasses import dataclass, field
+
 import configparser
 import json
 import logging
+import time
 from collections import Counter
-from functools import partial
+from dataclasses import dataclass, field
+from functools import partial, wraps
 from typing import List, Tuple
-
 
 import pandas as pd
 import requests
 from tqdm import tqdm
 
-from models.constants import TQDM_BAR_FORMAT, TQDM_DESC_FORMAT
-from models.enums import Df, Entities, Filter, log, retry
-from models.enums import Order, OrderOption, Properties, Qactions
-from models.enums import Settings
-from services.pandasta.df import df_type_conversions, response_single_datastream_to_df
-from utils.utils import (
-    convert_to_datetime,
-    get_absolute_path_to_base,
-    log,
-    series_to_patch_dict,
-    update_response,
-)
+from utils.constants import TQDM_BAR_FORMAT, TQDM_DESC_FORMAT
+from services.pandasta.sta import (Entities, Filter, Order, OrderOption, Properties,
+                          Qactions, Settings, log)
+from services.pandasta.df import (Df, df_type_conversions,
+                                  response_single_datastream_to_df, series_to_patch_dict)
+from utils.utils import (convert_to_datetime, get_absolute_path_to_base, log,
+                         update_response)
 
 log = logging.getLogger(__name__)
+
+
+def retry(exception_to_check, tries=4, delay=3, backoff=2):
+    """Retry calling the decorated function using an exponential backoff.
+
+    http://www.saltycrane.com/blog/2009/11/trying-out-retry-decorator-python/
+    original from: http://wiki.python.org/moin/PythonDecoratorLibrary#Retry
+
+    :param exception_to_check: the exception to check. may be a tuple of
+        exceptions to check
+    :type exception_to_check: Exception or tuple
+    :param tries: number of times to try (not retry) before giving up
+    :type tries: int
+    :param delay: initial delay between retries in seconds
+    :type delay: int
+    :param backoff: backoff multiplier e.g. value of 2 will double the delay
+        each retry
+    :type backoff: int
+    """
+
+    def deco_retry(f):  # pragma: no cover
+
+        @wraps(f)
+        def f_retry(*args, **kwargs):
+            mtries, mdelay = tries, delay
+            while mtries > 1:
+                try:
+                    return f(*args, **kwargs)
+                except exception_to_check as e:
+                    msg = "%s, Retrying in %d seconds..." % (str(e), mdelay)
+                    logging.info(msg)
+                    time.sleep(mdelay)
+                    mtries -= 1
+                    mdelay *= backoff
+            return f(*args, **kwargs)
+
+        return f_retry  # true decorator
+
+    return deco_retry
 
 
 @retry(requests.HTTPError, tries=5, delay=1, backoff=2)

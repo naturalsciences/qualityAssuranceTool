@@ -1,6 +1,6 @@
 import pytest
 
-from models.enums import (
+from services.pandasta.sta import (
     BaseQueryStrEnum,
     Entities,
     Filter,

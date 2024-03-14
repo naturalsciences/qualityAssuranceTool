@@ -15,8 +15,10 @@ from aums_data_request import (
     time_conversions,
     wrapper_pivot_df,
 )
-from models.enums import Df, Entities, Properties, QualityFlags
+from services.pandasta.sta import Entities, Properties
+from services.pandasta.df import Df
 from services.pandasta.requests import response_datastreams_to_df
+from services.qualityassurancetool.qualityflags import QualityFlags
 
 
 @pytest.fixture(scope="session")

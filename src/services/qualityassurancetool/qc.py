@@ -7,18 +7,16 @@ from typing import Callable
 import geopandas as gpd
 import numpy as np
 import pandas as pd
-from pandas.api.types import CategoricalDtype
-from tqdm import tqdm
 import xarray as xr
+from tqdm import tqdm
 
-from models.constants import TQDM_BAR_FORMAT, TQDM_DESC_FORMAT
-from models.enums import Df, QualityFlags
-from utils.utils import (get_acceleration_series, get_distance_geopy_series,
-                         get_velocity_series, merge_json_str)
+from utils.constants import TQDM_BAR_FORMAT, TQDM_DESC_FORMAT
+from services.pandasta.df import Df, get_acceleration_series, get_velocity_series
+from services.qualityassurancetool.qualityflags import CAT_TYPE, QualityFlags
+from utils.utils import (get_distance_geopy_series,
+                         merge_json_str)
 
 log = logging.getLogger(__name__)
-
-CAT_TYPE = CategoricalDtype(list(QualityFlags), ordered=True)
 
 
 # not used, kept as reference
@@ -282,8 +280,12 @@ def get_bool_spacial_outlier_compared_to_median(
     df_time_sorted["dt"] = (df_time_sorted[Df.TIME] - df_time_sorted[Df.TIME].min()).dt.total_seconds()  # type: ignore
 
     bool_series_lat_eq_long = df_time_sorted[Df.LAT] == df_time_sorted[Df.LONG]
-    bool_series_lat_or_long_zero = (df_time_sorted[Df.LAT] == 0) | (df_time_sorted[Df.LONG] == 0)
-    entries_excluded_from_calculations = bool_series_lat_eq_long | bool_series_lat_or_long_zero
+    bool_series_lat_or_long_zero = (df_time_sorted[Df.LAT] == 0) | (
+        df_time_sorted[Df.LONG] == 0
+    )
+    entries_excluded_from_calculations = (
+        bool_series_lat_eq_long | bool_series_lat_or_long_zero
+    )
 
     log.debug(
         f"{bool_series_lat_eq_long.value_counts(dropna=False)=} (excluded from median calculations)"
@@ -298,7 +300,9 @@ def get_bool_spacial_outlier_compared_to_median(
     )
     log.debug("Start rolling median calculations.")
     rolling_median = (
-        df_time_sorted.loc[~entries_excluded_from_calculations, [Df.TIME, Df.LONG, Df.LAT]]
+        df_time_sorted.loc[
+            ~entries_excluded_from_calculations, [Df.TIME, Df.LONG, Df.LAT]
+        ]
         .sort_values(Df.TIME)
         .rolling(time_window, on=Df.TIME, center=True)
         .progress_apply(np.median)  # type: ignore
@@ -316,7 +320,7 @@ def get_bool_spacial_outlier_compared_to_median(
         .sort_values(Df.TIME)
         .rolling(time_window, on=Df.TIME, center=True)
         .progress_apply(delta)
-    )
+    ) # type: ignore
 
     rolling_median = rolling_median.reindex(index=rolling_time.index, fill_value=None)
     rolling_median.loc[entries_excluded_from_calculations, Df.TIME] = rolling_time.loc[
@@ -408,14 +412,17 @@ def get_bool_exceed_max_acceleration(
     return bool_acceleration.loc[~acceleration_series.isnull()]
 
 
-def get_depth_from_etop(
-    lat: pd.Series,
-    lon: pd.Series
-):
+def get_depth_from_etop(lat: pd.Series, lon: pd.Series):
     datasetx = xr.open_dataset("./resources/ETOPO_2022_v1_60s_N90W180_bed.nc")
 
-    coords_dataarray = xr.DataArray(list(zip(lat, lon)), dims=["points", "coords"], name="coords")
-    z_values = datasetx["z"].sel(lat=coords_dataarray[:, 0], lon=coords_dataarray[:, 1], method="nearest").values
+    coords_dataarray = xr.DataArray(
+        list(zip(lat, lon)), dims=["points", "coords"], name="coords"
+    )
+    z_values = (
+        datasetx["z"]
+        .sel(lat=coords_dataarray[:, 0], lon=coords_dataarray[:, 1], method="nearest")
+        .values
+    )
 
     return z_values
 
@@ -476,3 +483,6 @@ def update_flag_history_series(flag_history_series, flag_config: QCFlagConfig):
         flag_history_series, merge_json_str, fill_value=json.dumps({})
     )
     return history_series
+
+
+FEATURES_BODY_TEMPLATE = '{"properties": {"resultQuality": "{value}"}}'

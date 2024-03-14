@@ -7,6 +7,7 @@ import pandas as pd
 import pandas.testing as pdt
 import pytest
 # import stapy
+from services.pandasta.df import Df, get_acceleration_series, get_dt_velocity_and_acceleration_series, get_velocity_series, series_to_patch_dict
 from services.pandasta.requests import config
 from geopy import Point as gp_point
 from hydra import compose, initialize
@@ -14,14 +15,12 @@ from omegaconf import DictConfig
 import services.pandasta.requests
 from services.pandasta.requests import set_sta_url
 
+from services.qualityassurancetool.qualityflags import QualityFlags
 import utils.utils as u
-from models.constants import ISO_STR_FORMAT, ISO_STR_FORMAT2
-from models.enums import Df, Entities, QualityFlags
-from utils.utils import (combine_dicts, convert_to_datetime, find_nearest_idx,
-                         get_absolute_path_to_base, get_acceleration_series,
-                         get_date_from_string, get_distance_geopy_series,
-                         get_dt_velocity_and_acceleration_series,
-                         get_velocity_series, series_to_patch_dict)
+from utils.utils import ISO_STR_FORMAT2
+from services.pandasta.sta import Entities
+from utils.utils import (ISO_STR_FORMAT, combine_dicts, convert_to_datetime, find_nearest_idx,
+                         get_absolute_path_to_base, get_date_from_string, get_distance_geopy_series)
 
 
 @pytest.fixture(scope="session")

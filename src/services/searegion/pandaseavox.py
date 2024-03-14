@@ -1,7 +1,7 @@
 import numpy as np
 from shapely.wkt import loads
 from copy import deepcopy
-from models.enums import Df
+from services.pandasta.df import Df
 
 
 import pandas as pd

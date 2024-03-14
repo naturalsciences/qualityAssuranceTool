@@ -7,9 +7,10 @@ import pandas as pd
 from hydra.utils import get_original_cwd
 from omegaconf import OmegaConf
 
-from models.enums import Df, Entities, Properties, Settings
+from services.pandasta.sta import Entities, Properties, Settings
+from services.pandasta.df import Df
 from services.qualityassurancetool.config import filter_cfg_to_query
-from services.qualityassurancetool.qc import QualityFlags
+from services.qualityassurancetool.qualityflags import QualityFlags
 from services.pandasta.requests import (
     Entity,
     Query,

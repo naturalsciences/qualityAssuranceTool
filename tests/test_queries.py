@@ -5,7 +5,8 @@ import pytest
 from test_utils import (cfg, mock_response, mock_response_full,
                         mock_response_full_obs)
 
-from models.enums import Df, Entities
+from services.pandasta.sta import Entities
+from services.pandasta.df import Df
 from services.qualityassurancetool.config import QCconf, filter_cfg_to_query
 from services.pandasta.requests import (Query, build_query_datastreams,
                                get_nb_datastreams_of_thing,

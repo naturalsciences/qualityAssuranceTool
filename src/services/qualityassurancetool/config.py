@@ -4,8 +4,8 @@ from datetime import datetime
 from typing import Optional, Tuple
 from omegaconf import MISSING
 
-from models.constants import ISO_STR_FORMAT
-from models.enums import Properties
+from utils.utils import ISO_STR_FORMAT
+from services.pandasta.sta import Properties
 from services.searegion.queryregion import DbCredentials
 
 log = logging.getLogger(__name__)
