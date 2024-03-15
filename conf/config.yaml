@@ -2,6 +2,8 @@ time:
   format: "%Y-%m-%d %H:%M"
   start: "2024-03-12 09:00"
   end: "2024-04-12 12:00"
+  # start: "2023-04-12 09:00"
+  # end: "2023-11-12 12:00"
   date:
     format: "%Y-%m-%d"
 hydra:
@@ -92,6 +94,9 @@ QC:
     range:
       - -2.
       - 30.
+    zscore: # extreme value
+      - -25.
+      - 25.
   salinity:
     range:
       - 29.
@@ -120,6 +125,9 @@ QC:
     range:
       - -20.
       - 40.
+    zscore:
+      - -25.
+      - 25.
   chlorophyll concentration:
     range:
       - 0.
