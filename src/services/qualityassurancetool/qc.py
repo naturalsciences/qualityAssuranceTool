@@ -102,15 +102,20 @@ def calc_gradient_results(df: pd.DataFrame, groupby: Df) -> pd.DataFrame:
     
 def calc_zscore_results(df: pd.DataFrame, groupby: Df) -> pd.DataFrame:
     def mod_z(col: pd.Series) -> pd.Series:
+        # transformed, _ = stats.yeojohnson(col.values)
+        # col[col.columns[0]] = transformed.ravel()
         med_col = col.median()
+        med_abs_dev = np.median(np.abs(col - med_col)) 
         med_abs_dev = np.abs(col - med_col).median() # type: ignore
         mod_z = 0.6745 * ((col - med_col) / med_abs_dev)
         # return np.abs(mod_z)
         return mod_z
     def _calc_zscore_results(df, groupby):
-        group = df[[Df.TIME, Df.RESULT, groupby]].groupby(by=groupby, group_keys=False)
-        z = group[[Df.TIME, Df.RESULT]].rolling("1h", on=Df.TIME, center=True).apply(stats.zscore)
-        # z = group[[Df.RESULT]].apply(mod_z)
+        group = df.groupby(by=groupby, group_keys=False)
+        # group = df[[Df.TIME, Df.RESULT, groupby]].groupby(by=groupby, group_keys=False)
+        # z = group[[Df.TIME, Df.RESULT]].rolling("1h", on=Df.TIME, center=True).apply(stats.zscore)
+        z = group[[Df.RESULT]].apply(mod_z)
+        # z = group[[Df.RESULT]].apply(stats.zscore)
         return z
     df[Df.ZSCORE] = _calc_zscore_results(df, groupby=[Df.DATASTREAM_ID])
     # roll_median = df.loc[:, [Df.RESULT, Df.DATASTREAM_ID, Df.TIME]].sort_values(Df.TIME).rolling("1h", on=Df.TIME, center=True).median()
