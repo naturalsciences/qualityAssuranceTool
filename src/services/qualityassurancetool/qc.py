@@ -101,20 +101,26 @@ def calc_gradient_results(df: pd.DataFrame, groupby: Df) -> pd.DataFrame:
 
     
 def calc_zscore_results(df: pd.DataFrame, groupby: Df) -> pd.DataFrame:
-    def mod_z(col: pd.Series) -> pd.Series:
+    def mod_z(df_: pd.DataFrame) -> pd.Series:
         # transformed, _ = stats.yeojohnson(col.values)
         # col[col.columns[0]] = transformed.ravel()
-        med_col = col.median()
-        med_abs_dev = np.median(np.abs(col - med_col)) 
-        med_abs_dev = np.abs(col - med_col).median() # type: ignore
-        mod_z = 0.6745 * ((col - med_col) / med_abs_dev)
+        roll = df_.sort_values(Df.TIME).rolling("60min", on=Df.TIME, center=True)
+        col = df_[Df.RESULT]
+        df_["median"] = roll[Df.RESULT].median()
+        df_["abs_dev"] = (df_[Df.RESULT] - df_["median"]).abs()
+        # med_abs_dev = np.median(np.abs(col - med_col)) 
+        # med_abs_dev = np.abs(roll[Df.RESULT] - med_col).median() # type: ignore
+        roll = df_.sort_values(Df.TIME).rolling("60min", on=Df.TIME, center=True)
+        df_["med_abs_dev"] = roll["abs_dev"].median()
+        mod_z = 0.6745 * ((col - df_["median"]) / df_["med_abs_dev"])
+        mod_z.loc[df_["med_abs_dev"] == 0] = ((col - df_["median"]) / (1.253314*roll["abs_dev"].mean()))
         # return np.abs(mod_z)
         return mod_z
     def _calc_zscore_results(df, groupby):
         group = df.groupby(by=groupby, group_keys=False)
         # group = df[[Df.TIME, Df.RESULT, groupby]].groupby(by=groupby, group_keys=False)
         # z = group[[Df.TIME, Df.RESULT]].rolling("1h", on=Df.TIME, center=True).apply(stats.zscore)
-        z = group[[Df.RESULT]].apply(mod_z)
+        z = group.apply(mod_z)
         # z = group[[Df.RESULT]].apply(stats.zscore)
         return z
     df[Df.ZSCORE] = _calc_zscore_results(df, groupby=[Df.DATASTREAM_ID])

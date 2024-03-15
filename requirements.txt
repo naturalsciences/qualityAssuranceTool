@@ -5,7 +5,6 @@ numpy
 python-Levenshtein
 ipython
 strenum
-frost_sta_client
 datetime
 geopy
 netCDF4
