@@ -19,7 +19,7 @@ from services.pandasta.requests import (
     response_datastreams_to_df,
     set_sta_url,
 )
-from main import get_date_from_string
+from services.qualityassurancetool.config import get_date_from_string
 
 OmegaConf.register_new_resolver("datetime_to_date", get_date_from_string, replace=True)
 

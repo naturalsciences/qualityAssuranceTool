@@ -131,7 +131,10 @@ def filter_cfg_to_query(filter_cfg: FilterEntry) -> str:
     return filter_condition
 
 
-# def get_start_flagged_blocks(df: pd.DataFrame | gpd.GeoDataFrame, bool_series: pd.Series) -> list:
-#     index_diff = df.loc[bool_series].index.astype(int).diff() # type: ignore
-#     out = list(df.loc[bool_series].index.where(index_diff>1).dropna().astype(int).unique())
-#     return out
+def get_date_from_string(
+    str_in: str, str_format_in: str = "%Y-%m-%d %H:%M", str_format_out: str = "%Y%m%d"
+) -> str:
+    date_out = datetime.strptime(str(str_in), str_format_in)
+    return date_out.strftime(str_format_out)
+
+
