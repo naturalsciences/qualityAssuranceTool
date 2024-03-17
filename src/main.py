@@ -391,7 +391,11 @@ def main(cfg: QCconf):
         getattr(cfg.data_api, "auth", {}).get("passphrase", None),
     )
     auth_in = [None, auth_tuple][all(auth_tuple)]
+    log_waiting_status = True
     while counter_flag_outliers.is_alive():
+        if log_waiting_status:
+            log.info("Waiting spacial outlier flag patching.")
+            log_waiting_status = False
         time.sleep(5)
     counter = patch_qc_flags(
         df_all.reset_index(),
