@@ -19,7 +19,7 @@ from services.pandasta.requests import (
     response_datastreams_to_df,
     set_sta_url,
 )
-from utils.utils import get_date_from_string
+from main import get_date_from_string
 
 OmegaConf.register_new_resolver("datetime_to_date", get_date_from_string, replace=True)
 
@@ -199,3 +199,11 @@ def main(cfg): # pragma: no cover
 
 if __name__ == "__main__":
     main()
+
+
+def find_nearest_idx(array, value):
+    # array = np.asarray(array)
+    if isinstance(array, list):
+        array = np.array(array)
+    idx = (np.abs(array - value)).argmin()
+    return idx
