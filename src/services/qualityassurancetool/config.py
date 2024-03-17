@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Optional, Tuple
 from omegaconf import MISSING
 
-from services.pandasta.requests import ISO_STR_FORMAT
+from services.pandasta.logging_constants import ISO_STR_FORMAT
 from services.pandasta.sta import Properties
 from services.searegion.queryregion import DbCredentials
 

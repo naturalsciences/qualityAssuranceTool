@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+from datetime import datetime
 import logging
 
 from strenum import StrEnum
+
+from services.pandasta.logging_constants import ISO_STR_FORMAT, ISO_STR_FORMAT2
+# from services.pandasta.requests import log
 
 log = logging.getLogger(__name__)
 
@@ -105,3 +109,58 @@ class Order(BaseQueryStrEnum):
     def __call__(self, property: Properties, option: OrderOption) -> str:
         out: str = f"{str(self)}={property} {option}"
         return out
+
+
+# not used, keep as reference
+# def extend_summary_with_result_inspection(summary_dict: dict[str, list]):
+#     log.debug(f"Start extending summary.")
+#     summary_out = copy.deepcopy(summary_dict)
+#     nb_streams = len(summary_out.get(Entities.DATASTREAMS, []))
+#     for i, dsi in enumerate(summary_dict.get(Entities.DATASTREAMS, [])):
+#         log.debug(f"Start extending datastream {i+1}/{nb_streams}.")
+#         iot_id_list = summary_dict.get(Entities.DATASTREAMS, []).get(dsi).get(Properties.iot_id)  # type: ignore
+#         results = np.empty(0)
+#         for iot_id_i in iot_id_list:
+#             results_ = (
+#                 Query(Entity.Datastream)
+#                 .entity_id(iot_id_i)
+#                 .sub_entity(Entity.Observation)
+#                 .select(Properties.RESULT)
+#                 .get_data_sets()
+#             )
+#             results = np.concatenate([results, results_])
+#         min = np.min(results)
+#         max = np.max(results)
+#         mean = np.mean(results)
+#         median = np.median(results)
+#         nb = np.shape(results)[0]
+# 
+#         extended_sumary = {
+#             "min": min,
+#             "max": max,
+#             "mean": mean,
+#             "median": median,
+#             "nb": nb,
+#         }
+#         summary_out.get(Entities.DATASTREAMS).get(dsi)[Properties.RESULT] = extended_sumary  # type: ignore
+#     return summary_out
+
+
+# def get_date_from_string(
+#     str_in: str, str_format_in: str = "%Y-%m-%d %H:%M", str_format_out: str = "%Y%m%d"
+# ) -> str:
+#     date_out = datetime.strptime(str(str_in), str_format_in)
+#     return date_out.strftime(str_format_out)
+
+
+def convert_to_datetime(value: str) -> datetime:
+    try:
+        d_out = datetime.strptime(value, ISO_STR_FORMAT)
+        return d_out
+    except ValueError as e:
+        try:
+            d_out = datetime.strptime(value, ISO_STR_FORMAT2)
+            return d_out
+        except Exception as e:
+            log.exception(e)
+            raise e

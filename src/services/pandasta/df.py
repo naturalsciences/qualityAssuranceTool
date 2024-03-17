@@ -12,12 +12,11 @@ from pandas import DataFrame, Series
 from strenum import StrEnum
 from tqdm import tqdm
 
-from services.pandasta.requests import convert_to_datetime
+from services.pandasta.sta import convert_to_datetime
 from services.pandasta.sta import Entities, Properties
 from services.qualityassurancetool.qualityflags import CAT_TYPE, QualityFlags
 from services.pandasta.logging_constants import TQDM_DESC_FORMAT
 from services.pandasta.logging_constants import TQDM_BAR_FORMAT
-from utils.utils import log
 
 log = logging.getLogger(__name__)
 
@@ -264,7 +263,7 @@ def get_distance_projection_series(df: DataFrame) -> Series:
 def get_distance_geopy_series(
     df: GeoDataFrame, column1: str = "geometry", column2: str = "None"
 ) -> Series:
-    df_copy = copy.deepcopy(df)
+    df_copy = deepcopy(df)
 
     def get_distance_geopy_i(row_i, column1=column1, column2=column2):
         point1 = row_i[column1]
@@ -279,7 +278,7 @@ def get_distance_geopy_series(
 
     if column2 == "None":
         column2 = "geometry_shifted"
-        shifted_geometry_values = copy.deepcopy(df["geometry"].shift(-1)).values  # type: ignore
+        shifted_geometry_values = deepcopy(df["geometry"].shift(-1)).values  # type: ignore
         df_copy[column2] = shifted_geometry_values
     log.info("Start distance calculations.")
     tqdm.pandas(
