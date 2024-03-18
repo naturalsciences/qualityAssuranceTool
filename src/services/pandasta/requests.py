@@ -3,6 +3,7 @@ from __future__ import annotations
 import configparser
 import json
 import logging
+from pathlib import Path
 import time
 from collections import Counter
 from dataclasses import dataclass, field
@@ -13,13 +14,12 @@ import pandas as pd
 import requests
 from tqdm import tqdm
 
-from utils.constants import TQDM_BAR_FORMAT, TQDM_DESC_FORMAT
+from services.pandasta.logging_constants import TQDM_DESC_FORMAT
+from services.pandasta.logging_constants import TQDM_BAR_FORMAT
 from services.pandasta.sta import (Entities, Filter, Order, OrderOption, Properties,
-                          Qactions, Settings, log)
+                          Qactions, Settings, convert_to_datetime, log)
 from services.pandasta.df import (Df, df_type_conversions,
                                   response_single_datastream_to_df, series_to_patch_dict)
-from utils.utils import (convert_to_datetime, get_absolute_path_to_base, log,
-                         update_response)
 
 log = logging.getLogger(__name__)
 
@@ -341,6 +341,21 @@ def get_total_observations_count(thing_id: int, filter_cfg: str) -> int:
     return total_observations_count
 
 
+def update_response(
+    d: dict[str, int | float | str | list], u: dict[str, str | list]
+) -> dict[str, int | float | str | list]:
+    common_keys = set(d.keys()).intersection(u.keys())
+
+    assert all([type(d[k]) == type(u[k]) for k in common_keys])
+
+    for k, v in u.items():
+        if isinstance(v, list) and k in d.keys():
+            d[k] = sum([d[k], v], [])
+        else:
+            d[k] = v
+    return d
+
+
 def get_query_response(
     query: Query, total_count: int | None = None, follow_obs_nextlinks: bool = True
 ) -> dict:
@@ -519,6 +534,13 @@ def download_as_bytes_with_progress(url: str) -> bytes:
             bar.update(len(chunk))
             bio.write(chunk)
     return bio.getvalue()
+
+
+def get_absolute_path_to_base():
+    current_file = Path(__file__)
+    idx_src = current_file.parts.index("src")
+    out = current_file.parents[len(current_file.parts) - idx_src - 1]
+    return out
 
 
 def get_elev_netcdf() -> None:

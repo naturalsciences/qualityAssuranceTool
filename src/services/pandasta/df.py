@@ -1,17 +1,22 @@
+from functools import partial
 import json
 import logging
 from copy import deepcopy
 from typing import List, Tuple
 
+from geopy import distance as geopy_distance
 import numpy as np
 import pandas as pd
 from geopandas import GeoDataFrame, points_from_xy
 from pandas import DataFrame, Series
 from strenum import StrEnum
+from tqdm import tqdm
 
+from services.pandasta.sta import convert_to_datetime
 from services.pandasta.sta import Entities, Properties
 from services.qualityassurancetool.qualityflags import CAT_TYPE, QualityFlags
-from utils.utils import convert_to_datetime, get_distance_geopy_series, log
+from services.pandasta.logging_constants import TQDM_DESC_FORMAT
+from services.pandasta.logging_constants import TQDM_BAR_FORMAT
 
 log = logging.getLogger(__name__)
 
@@ -253,6 +258,38 @@ def get_distance_projection_series(df: DataFrame) -> Series:
         geodf.to_crs("EPSG:4087").distance(geodf.to_crs("EPSG:4087").shift(-1)).abs()  # type: ignore
     )
     return distance
+
+
+def get_distance_geopy_series(
+    df: GeoDataFrame, column1: str = "geometry", column2: str = "None"
+) -> Series:
+    df_copy = deepcopy(df)
+
+    def get_distance_geopy_i(row_i, column1=column1, column2=column2):
+        point1 = row_i[column1]
+        point2 = row_i[column2]
+        if not point2:
+            return None
+        lat1: float = point1.y
+        lon1: float = point1.x
+        lat2: float = point2.y
+        lon2: float = point2.x
+        return geopy_distance.distance((lat1, lon1), (lat2, lon2)).meters
+
+    if column2 == "None":
+        column2 = "geometry_shifted"
+        shifted_geometry_values = deepcopy(df["geometry"].shift(-1)).values  # type: ignore
+        df_copy[column2] = shifted_geometry_values
+    log.info("Start distance calculations.")
+    tqdm.pandas(
+        total=df.shape[0],
+        bar_format=TQDM_BAR_FORMAT,
+        desc=TQDM_DESC_FORMAT.format("Calculate distance"),
+    )
+    distances_series = df_copy.progress_apply(  # type: ignore
+        partial(get_distance_geopy_i, column1=column1, column2=column2), axis=1
+    )
+    return distances_series  # type: ignore
 
 
 def get_velocity_series(

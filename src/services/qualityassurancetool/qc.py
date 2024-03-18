@@ -2,6 +2,7 @@ import json
 import logging
 from copy import deepcopy
 from dataclasses import dataclass, field
+import operator
 from typing import Callable
 
 import geopandas as gpd
@@ -11,11 +12,11 @@ import xarray as xr
 from scipy import stats
 from tqdm import tqdm
 
-from services.pandasta.df import (Df, get_acceleration_series,
+from services.pandasta.df import (Df, get_acceleration_series, get_distance_geopy_series,
                                   get_velocity_series)
 from services.qualityassurancetool.qualityflags import CAT_TYPE, QualityFlags
-from utils.constants import TQDM_BAR_FORMAT, TQDM_DESC_FORMAT
-from utils.utils import get_distance_geopy_series, merge_json_str
+from services.pandasta.logging_constants import TQDM_DESC_FORMAT
+from services.pandasta.logging_constants import TQDM_BAR_FORMAT
 
 log = logging.getLogger(__name__)
 
@@ -514,6 +515,20 @@ class QCFlagConfig:
         log.info(f"Execution {self.label} qc result: {self.bool_series.sum()} True")
         self.series_out = series_out # type: ignore
         return self.series_out
+
+
+def combine_dicts(a, b, op=operator.add):
+    return a | b | dict([(k, op(a[k], b[k])) for k in set(b) & set(a)])
+
+
+def merge_json_str(jsonstr1: str, jsonstr2: str) -> str:
+    d1 = json.loads(jsonstr1)
+    d2 = json.loads(jsonstr2)
+    # d_out = {key: value for (key, value) in (d1.items() + d2.items())}
+    d_out = combine_dicts(d1, d2)
+
+    jsonstr_out = json.dumps(d_out)
+    return jsonstr_out
 
 
 def update_flag_history_series(flag_history_series, flag_config: QCFlagConfig):

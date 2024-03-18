@@ -7,6 +7,7 @@ import pytest
 
 from aums_data_request import (
     datastream_id_in_list_filter_conditions,
+    find_nearest_idx,
     get_agg_data_from_pivoted,
     get_agg_from_response,
     get_flag_columns,
@@ -193,3 +194,17 @@ class TestOther:
         )
 
         pdt.assert_frame_equal(df_agg, df_agg_ref, rtol=0.01, check_dtype=False)
+
+    @pytest.mark.parametrize(
+        "array_in, value_in, idx_ref",
+        [
+            (np.array([1, 2, 3, 4, 5]), 2.3, 1),
+            ([1, 2, 3, 4, 5], 2.3, 1),
+            ([1, 2, 3, 4, 5], 2.6, 2),
+            ([1, 2, 3, 4, 5], 5, 4),
+            ([1, 5, 3, 4, 5], 5, 1),
+        ],
+    )
+    def test_find_nearest(self, array_in, value_in, idx_ref):
+        out = find_nearest_idx(array_in, value_in)
+        assert out == idx_ref

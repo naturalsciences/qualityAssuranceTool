@@ -1,3 +1,4 @@
+from datetime import datetime
 import logging
 import os
 import sys
@@ -28,11 +29,17 @@ from services.qualityassurancetool.qc import (QCFlagConfig, calc_gradient_result
                          qc_dependent_quantity_secondary,
                          update_flag_history_series)
 from services.pandasta.requests import get_all_data, get_elev_netcdf, patch_qc_flags, set_sta_url, config
-from utils.utils import (get_date_from_string)
 
 log = logging.getLogger(__name__)
 
 load_dotenv()
+
+
+def get_date_from_string(
+    str_in: str, str_format_in: str = "%Y-%m-%d %H:%M", str_format_out: str = "%Y%m%d"
+) -> str:
+    date_out = datetime.strptime(str(str_in), str_format_in)
+    return date_out.strftime(str_format_out)
 
 OmegaConf.register_new_resolver("datetime_to_date", get_date_from_string, replace=True)
 
