@@ -45,4 +45,4 @@ TIMESTAMP_NOW=$(date --date now "$FMT")
 echo -n "["$TIMESTAMP_NOW"] - "
 echo "Start production "
 
-/usr/bin/bash env $ROOT_DIR/crontab/sta_raw_to_sta_prod_transfer\ 1.sh
+/usr/bin/env bash $ROOT_DIR/crontab/sta_raw_to_sta_prod_transfer\ 1.sh
