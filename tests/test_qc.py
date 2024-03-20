@@ -9,14 +9,14 @@ import pandas as pd
 import pandas.testing as pdt
 import pytest
 
-from services.pandasta.df import Df, df_type_conversions
+from services.pandasta.df import Df, QualityFlags, df_type_conversions
 from services.qualityassurancetool.qc import (
     calc_gradient_results, calc_zscore_results, combine_dicts,
     get_bool_exceed_max_acceleration, get_bool_exceed_max_velocity,
     get_bool_land_region, get_bool_null_region, get_bool_out_of_range,
     get_bool_spacial_outlier_compared_to_median, get_qc_flag_from_bool,
     qc_dependent_quantity_base, qc_dependent_quantity_secondary)
-from services.qualityassurancetool.qualityflags import CAT_TYPE, QualityFlags
+from services.pandasta.df import CAT_TYPE
 from services.searegion.queryregion import build_points_query
 
 from test_df import df_velocity_acceleration
@@ -400,12 +400,12 @@ def test_exceed_max_velocity_3(df_velocity_acceleration):
 )
 def test_exceed_max_acceleration(df_velocity_acceleration, idx0):
     bool_ref = get_bool_exceed_max_acceleration(
-        df_velocity_acceleration, max_acceleration=1e12
+        df=df_velocity_acceleration, max_acceleration=1e12
     )
     bool_ref.loc[[idx0 - 1, idx0]] = True
     df_velocity_acceleration.loc[idx0 + 1, Df.TIME] = df_velocity_acceleration.loc[idx0, Df.TIME] + pd.Timedelta(nanoseconds=1)  # type: ignore
     res = get_bool_exceed_max_acceleration(
-        df_velocity_acceleration, max_acceleration=25
+        df=df_velocity_acceleration, max_acceleration=25
     )
 
     pdt.assert_series_equal(res, bool_ref, check_names=False)

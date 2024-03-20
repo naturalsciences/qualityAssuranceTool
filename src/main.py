@@ -16,7 +16,7 @@ from omegaconf import OmegaConf
 from services.qualityassurancetool.qc import FEATURES_BODY_TEMPLATE, calc_zscore_results
 from services.pandasta.sta import Entities
 from services.pandasta.df import Df, get_dt_velocity_and_acceleration_series
-from services.qualityassurancetool.qualityflags import QualityFlags
+from services.pandasta.df import QualityFlags
 from services.qualityassurancetool.config import QCconf, filter_cfg_to_query
 from services.searegion.pandaseavox import intersect_df_region
 from services.qualityassurancetool.qc import (QCFlagConfig, calc_gradient_results,

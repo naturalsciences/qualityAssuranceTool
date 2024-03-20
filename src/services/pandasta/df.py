@@ -6,15 +6,16 @@ from typing import List, Tuple
 
 from geopy import distance as geopy_distance
 import numpy as np
+from ordered_enum.ordered_enum import OrderedEnum
 import pandas as pd
 from geopandas import GeoDataFrame, points_from_xy
 from pandas import DataFrame, Series
+from pandas.api.types import CategoricalDtype
 from strenum import StrEnum
 from tqdm import tqdm
 
 from services.pandasta.sta import convert_to_datetime
 from services.pandasta.sta import Entities, Properties
-from services.qualityassurancetool.qualityflags import CAT_TYPE, QualityFlags
 from services.pandasta.logging_constants import TQDM_DESC_FORMAT
 from services.pandasta.logging_constants import TQDM_BAR_FORMAT
 
@@ -73,6 +74,38 @@ def response_obs_to_df(response_obs: dict) -> pd.DataFrame:
     del df[str(Entities.FEATUREOFINTEREST)]
 
     return df
+
+
+class QualityFlags(OrderedEnum):
+    """
+    http://vocab.nerc.ac.uk/collection/L20/current/
+
+    Args:
+        OrderedEnum (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
+
+    NO_QUALITY_CONTROL = 0
+    GOOD = 1
+    PROBABLY_GOOD = 2
+    PROBABLY_BAD = 3
+    CHANGED = 5
+    BELOW_detection = 6
+    IN_EXCESS = 7
+    INTERPOLATED = 8
+    MISSING = 9
+    PHENOMENON_UNCERTAIN = "A"
+    NOMINAL = "B"
+    BELOW_LIMIT_OF_QUANTIFICATION = "Q"
+    BAD = 4
+
+    def __str__(self):
+        return f"{self.value}"
+
+
+CAT_TYPE = CategoricalDtype(list(QualityFlags), ordered=True)
 
 
 def response_single_datastream_to_df(response_datastream: dict) -> pd.DataFrame:

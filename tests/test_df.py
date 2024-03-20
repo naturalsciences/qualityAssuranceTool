@@ -11,7 +11,7 @@ from test_config import cfg
 from test_queries import (mock_response, mock_response_full,
                           mock_response_full_obs)
 
-from services.pandasta.df import (Df, get_acceleration_series,
+from services.pandasta.df import (Df, QualityFlags, get_acceleration_series,
                                   get_distance_geopy_series,
                                   get_dt_velocity_and_acceleration_series,
                                   get_velocity_series, response_obs_to_df,
@@ -21,7 +21,7 @@ from services.pandasta.requests import (Query, get_request,
                                         get_results_n_datastreams,
                                         response_datastreams_to_df)
 from services.pandasta.sta import Entities, Properties
-from services.qualityassurancetool.qualityflags import CAT_TYPE, QualityFlags
+from services.pandasta.df import CAT_TYPE
 
 
 @pytest.fixture

@@ -12,9 +12,9 @@ import xarray as xr
 from scipy import stats
 from tqdm import tqdm
 
-from services.pandasta.df import (Df, get_acceleration_series, get_distance_geopy_series,
+from services.pandasta.df import (Df, QualityFlags, get_acceleration_series, get_distance_geopy_series,
                                   get_velocity_series)
-from services.qualityassurancetool.qualityflags import CAT_TYPE, QualityFlags
+from services.pandasta.df import CAT_TYPE
 from services.pandasta.logging_constants import TQDM_DESC_FORMAT
 from services.pandasta.logging_constants import TQDM_BAR_FORMAT
 
