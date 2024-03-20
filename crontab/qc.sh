@@ -21,7 +21,8 @@ cd $ROOT_DIR
 QC_LOG=$ROOT_DIR/cron_out
 PATTERN_TIME_QC_LOG="\[\([0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\} [0-9]\{2\}:[0-9]\{2\}:[0-9]\{2\}\)\].*"
 GREP_OUT_QC=$(grep_last_occurrences "$QC_LOG" "$START_MESSAGE" "1")
-TIME_PREVIOUS_QC=$(parse_date "$GREP_OUT_QC" "$PATTERN_TIME_QC_LOG" )
+TIME_PREVIOUS_QC=$(parse_date "$GREP_OUT_QC" "$PATTERN_TIME_QC_LOG")
+TIME_PREVIOUS_QC=${TIME_PREVIOUS_QC:-$(get_date "now")}
 
 # get timestamps file transfers
 
