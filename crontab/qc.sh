@@ -28,21 +28,27 @@ TIME_PREVIOUS_QC=$(parse_date "$GREP_OUT_QC" "$PATTERN_TIME_QC_LOG" )
 DATA_TRANSFER_LOG=/home/RBINS.BE/bmdc/belgica_data_transfer/log.txt
 # TRANSFER_LOG=/home/nvds/Documents/RBINS/ODANext/qc_through_sensorthings/log_tmp.txt
 
+## get 10000 occurences of "QC "
 PATTERN_TIME_TRANSFER_LOG="\(^[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\} [0-9]\{2\}:[0-9]\{2\}:[0-9]\{2\}\).*"
 GREP_OUT_TRANSF="$(grep_last_occurrences "$TRANSFER_LOG" "QC " "10000")"
 
+## define pattern to get time until which transfer is ready
 PATTERN_TIME_QC_END=".*QC up to \([0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\} [0-9]\{2\}:[0-9]\{2\}:[0-9]\{2\}\).*"
 DT_INT=$(echo $DT | tr -dc '0-9')
 DT_INT=$(($DT_INT))
 DT_UNIT=$(printf '%s\n' "${DT//[[:digit:]]/}")
 
+# loop over extracted lines
 COUNTER=0
 while read -r LINE; do
+    # extract timestamp of log entry transfer
     TIME_I=$(parse_date "$LINE" "$PATTERN_TIME_TRANSFER_LOG")
+    # check for timestamps more recent than previous QC run
     if [[ "$TIME_I" > "$TIME_PREVIOUS_QC" ]]; then
         END_I=$(parse_date "$LINE" "$PATTERN_TIME_QC_END")
         START_I=$(get_date "$END_I UTC -$((DT_INT+OVERLAP))$DT_UNIT")
 
+        # start container to do QC
         CONTAINER_ID= $(docker run \
                 -d --rm --network=host --user "$(id -u):$(id -g)"\
                 --workdir /app \
@@ -57,6 +63,7 @@ while read -r LINE; do
         print_current_time
         echo "Status code $CONTAINER_ID: $STATUS_CODE_CONTAINER"
 
+        # variables needed for transfer script
         FMT_TRANSFER_SCRIPT="+%Y-%m-%d %H:%M:%S"
         startdate=$(date -u --date="$START_I UTC" "$FMT_TRANSFER_SCRIPT")
         enddate=$(date -u --date="$END_I UTC" "$FMT_TRANSFER_SCRIPT")
@@ -64,6 +71,7 @@ while read -r LINE; do
         print_current_time
         echo "Start production "
         
+        # run transfer script as other user
         sudo -i -u ndeville startdate="$startdate" enddate="$enddate"/usr/bin/env bash $ROOT_DIR/crontab/sta_raw_to_sta_prod_transfer\ 1.sh
         COUNTER=$((COUNTER+1))
     fi
