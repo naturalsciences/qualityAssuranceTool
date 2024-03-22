@@ -2,7 +2,8 @@
 
 PATH=$PATH:/usr/bin
 
-ROOT_DIR=/var/quality_assurance_tool
+ROOT_DIR=$1
+# ROOT_DIR=/var/quality_assurance_tool
 
 source $ROOT_DIR/crontab/functions.sh
 
@@ -26,12 +27,12 @@ TIME_PREVIOUS_QC=${TIME_PREVIOUS_QC:-$(get_date "now")}
 
 # get timestamps file transfers
 
+# DATA_TRANSFER_LOG=/home/nvds/Documents/RBINS/ODANext/qc_through_sensorthings/log_tmp.txt
 DATA_TRANSFER_LOG=/home/RBINS.BE/bmdc/belgica_data_transfer/log.txt
-# TRANSFER_LOG=/home/nvds/Documents/RBINS/ODANext/qc_through_sensorthings/log_tmp.txt
 
 ## get 10000 occurences of "QC "
 PATTERN_TIME_TRANSFER_LOG="\(^[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\} [0-9]\{2\}:[0-9]\{2\}:[0-9]\{2\}\).*"
-GREP_OUT_TRANSF="$(grep_last_occurrences "$TRANSFER_LOG" "QC " "10000")"
+GREP_OUT_TRANSF="$(grep_last_occurrences "$DATA_TRANSFER_LOG" "QC " "10000")"
 
 ## define pattern to get time until which transfer is ready
 PATTERN_TIME_QC_END=".*QC up to \([0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\} [0-9]\{2\}:[0-9]\{2\}:[0-9]\{2\}\).*"
@@ -50,7 +51,7 @@ while read -r LINE; do
         START_I=$(get_date "$END_I UTC -$((DT_INT+OVERLAP))$DT_UNIT")
 
         # start container to do QC
-        CONTAINER_ID= $(docker run \
+        CONTAINER_ID=$(docker run \
                 -d --rm --network=host --user "$(id -u):$(id -g)"\
                 --workdir /app \
                 -v "$CONFIG_FOLDER":/app/conf \
