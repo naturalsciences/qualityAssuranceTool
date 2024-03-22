@@ -2,7 +2,7 @@
 
 PATH=$PATH:/usr/bin
 
-ROOT_DIR=$1
+ROOT_DIR=/var/quality_assurance_tool
 
 source $ROOT_DIR/crontab/functions.sh
 
