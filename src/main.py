@@ -28,7 +28,7 @@ from services.qualityassurancetool.qc import (QCFlagConfig, calc_gradient_result
                          qc_dependent_quantity_base,
                          qc_dependent_quantity_secondary,
                          update_flag_history_series)
-from services.pandasta.requests import get_all_data, get_elev_netcdf, patch_qc_flags, set_sta_url, config
+from services.pandasta.sta_requests import get_all_data, get_elev_netcdf, patch_qc_flags, set_sta_url, config
 
 log = logging.getLogger(__name__)
 

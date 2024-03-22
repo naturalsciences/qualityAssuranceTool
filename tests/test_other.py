@@ -18,7 +18,7 @@ from aums_data_request import (
 )
 from services.pandasta.sta import Entities, Properties
 from services.pandasta.df import Df
-from services.pandasta.requests import response_datastreams_to_df
+from services.pandasta.sta_requests import response_datastreams_to_df
 from services.pandasta.df import QualityFlags
 
 

@@ -1,0 +1,86 @@
+{
+  "@iot.id": 7727,
+  "unitOfMeasurement": {
+    "name": "Degrees"
+  },
+  "Observations": [
+    {
+      "@iot.id": 826401281,
+      "result": 93.74,
+      "phenomenonTime": "2023-04-01T10:40:03Z",
+      "resultQuality": 2,
+      "FeatureOfInterest": {
+        "feature": {
+          "coordinates": [
+            8.264955,
+            54.13632
+          ]
+        },
+        "@iot.id": 29187376
+      }
+    },
+    {
+      "@iot.id": 826401417,
+      "result": 93.44,
+      "phenomenonTime": "2023-04-01T10:40:14Z",
+      "FeatureOfInterest": {
+        "feature": {
+          "coordinates": [
+            8.26548,
+            54.13630333
+          ]
+        },
+        "@iot.id": 29187359
+      }
+    },
+    {
+      "@iot.id": 826401553,
+      "result": 91.23,
+      "phenomenonTime": "2023-04-01T10:40:25Z",
+      "resultQuality": 2,
+      "FeatureOfInterest": {
+        "feature": {
+          "coordinates": [
+            8.26601333,
+            54.13628667
+          ]
+        },
+        "@iot.id": 29187385
+      }
+    },
+    {
+      "@iot.id": 826401668,
+      "result": 90.25,
+      "phenomenonTime": "2023-04-01T10:40:36Z",
+      "resultQuality": 2,
+      "FeatureOfInterest": {
+        "feature": {
+          "coordinates": [
+            8.26654333,
+            54.13627167
+          ]
+        },
+        "@iot.id": 29187448
+      }
+    },
+    {
+      "@iot.id": 826407429,
+      "result": 92.47,
+      "phenomenonTime": "2023-04-01T10:49:54Z",
+      "FeatureOfInterest": {
+        "feature": {
+          "coordinates": [
+            8.29352667,
+            54.13570167
+          ]
+        },
+        "@iot.id": 29187623
+      }
+    }
+  ],
+  "ObservedProperty": {
+    "@iot.id": 18,
+    "name": "heading"
+  },
+  "Observations@iot.navigationLink": "https://belgica11busta.rbins.be/FROST-Server/v1.1/Datastreams(7727)/Observations"
+}

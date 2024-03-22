@@ -10,4 +10,4 @@ from services.pandasta.sta import (
     Qactions,
     Settings,
 )
-from services.pandasta.requests import Entity, Query
+from services.pandasta.sta_requests import Entity, Query

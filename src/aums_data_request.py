@@ -11,7 +11,7 @@ from services.pandasta.sta import Entities, Properties, Settings
 from services.pandasta.df import Df
 from services.qualityassurancetool.config import filter_cfg_to_query
 from services.pandasta.df import QualityFlags
-from services.pandasta.requests import (
+from services.pandasta.sta_requests import (
     Entity,
     Query,
     config,

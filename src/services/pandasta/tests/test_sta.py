@@ -1,6 +1,6 @@
 import pytest
 
-from services.pandasta.requests import update_response
+from services.pandasta.sta_requests import update_response
 from services.pandasta.sta import (Entities, Filter, Order, OrderOption,
                                    Properties, Qactions, Settings,
                                    convert_to_datetime)

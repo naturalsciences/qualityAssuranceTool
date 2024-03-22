@@ -1,0 +1,279 @@
+{
+    "Datastreams@iot.count": 125,
+    "Datastreams": [
+        {
+            "@iot.id": 1,
+            "unitOfMeasurement": {
+                "name": "Degrees"
+            },
+            "Observations@iot.count": 0,
+            "Observations": [],
+            "ObservedProperty": {
+                "@iot.id": 1,
+                "name": "heading"
+            },
+            "Observations@iot.navigationLink": "http://localhost:8080/FROST-Server/v1.1/Datastreams(1)/Observations"
+        },
+        {
+            "@iot.id": 2,
+            "unitOfMeasurement": {
+                "name": "Knots (nautical miles per hour)"
+            },
+            "Observations@iot.count": 945,
+            "Observations": [
+                {
+                    "@iot.id": 1,
+                    "result": 0.22,
+                    "phenomenonTime": "2023-07-05T09:39:06Z",
+                    "resultQuality": 0,
+                    "FeatureOfInterest": {
+                        "feature": {
+                            "coordinates": [
+                                -17.41219,
+                                63.74107333
+                            ]
+                        }
+                    }
+                },
+                {
+                    "@iot.id": 2,
+                    "result": 0.25,
+                    "phenomenonTime": "2023-07-05T09:40:10Z",
+                    "resultQuality": 0,
+                    "FeatureOfInterest": {
+                        "feature": {
+                            "coordinates": [
+                                -17.41221667,
+                                63.74108
+                            ]
+                        }
+                    }
+                },
+                {
+                    "@iot.id": 3,
+                    "result": 0.32,
+                    "phenomenonTime": "2023-07-05T09:49:10Z",
+                    "resultQuality": 0,
+                    "FeatureOfInterest": {
+                        "feature": {
+                            "coordinates": [
+                                -17.41210667,
+                                63.74108833
+                            ]
+                        }
+                    }
+                },
+                {
+                    "@iot.id": 4,
+                    "result": 0.1,
+                    "phenomenonTime": "2023-07-05T09:50:04Z",
+                    "resultQuality": 0,
+                    "FeatureOfInterest": {
+                        "feature": {
+                            "coordinates": [
+                                -17.41207833,
+                                63.74108833
+                            ]
+                        }
+                    }
+                },
+                {
+                    "@iot.id": 5,
+                    "result": 0.2,
+                    "phenomenonTime": "2023-07-05T09:59:03Z",
+                    "resultQuality": 0,
+                    "FeatureOfInterest": {
+                        "feature": {
+                            "coordinates": [
+                                -17.41193,
+                                63.74108
+                            ]
+                        }
+                    }
+                },
+                {
+                    "@iot.id": 6,
+                    "result": 0.05,
+                    "phenomenonTime": "2023-07-05T10:00:09Z",
+                    "resultQuality": 0,
+                    "FeatureOfInterest": {
+                        "feature": {
+                            "coordinates": [
+                                -17.411925,
+                                63.74107333
+                            ]
+                        }
+                    }
+                },
+                {
+                    "@iot.id": 7,
+                    "result": 3.37,
+                    "phenomenonTime": "2023-07-05T10:09:09Z",
+                    "resultQuality": 0,
+                    "FeatureOfInterest": {
+                        "feature": {
+                            "coordinates": [
+                                -17.42088667,
+                                63.74100667
+                            ]
+                        }
+                    }
+                },
+                {
+                    "@iot.id": 8,
+                    "result": 2.69,
+                    "phenomenonTime": "2023-07-05T10:10:02Z",
+                    "resultQuality": 0,
+                    "FeatureOfInterest": {
+                        "feature": {
+                            "coordinates": [
+                                -17.42256,
+                                63.740975
+                            ]
+                        }
+                    }
+                },
+                {
+                    "@iot.id": 9,
+                    "result": 0.05,
+                    "phenomenonTime": "2023-07-05T10:19:03Z",
+                    "resultQuality": 0,
+                    "FeatureOfInterest": {
+                        "feature": {
+                            "coordinates": [
+                                -17.42518333,
+                                63.74073
+                            ]
+                        }
+                    }
+                },
+                {
+                    "@iot.id": 10,
+                    "result": 0.08,
+                    "phenomenonTime": "2023-07-05T10:20:09Z",
+                    "resultQuality": 0,
+                    "FeatureOfInterest": {
+                        "feature": {
+                            "coordinates": [
+                                -17.42517167,
+                                63.74073
+                            ]
+                        }
+                    }
+                }
+            ],
+            "Observations@iot.nextLink": "http://localhost:8080/FROST-Server/v1.1/Datastreams(2)/Observations?$top=10&$skip=10&$select=%40iot.id,result,phenomenonTime&$filter=%28%28phenomenonTime+gt+2020-07-10T12%3A00%3A00Z%29+and+%28phenomenonTime+lt+3003-01-01T00%3A00%3A00Z%29%29&$expand=FeatureOfInterest%28%24select%3Dfeature%2Fcoordinates%3B%24orderby%3D%40iot.id+asc%29&$orderby=%40iot.id+asc&$skipFilter=%28%40iot.id+gt+10%29",
+            "ObservedProperty": {
+                "@iot.id": 2,
+                "name": "ship speed"
+            },
+            "Observations@iot.navigationLink": "http://localhost:8080/FROST-Server/v1.1/Datastreams(2)/Observations"
+        },
+        {
+            "@iot.id": 3,
+            "unitOfMeasurement": {
+                "name": "Metres per second"
+            },
+            "Observations@iot.count": 0,
+            "Observations": [],
+            "ObservedProperty": {
+                "@iot.id": 3,
+                "name": "Sound velocity in the water body"
+            },
+            "Observations@iot.navigationLink": "http://localhost:8080/FROST-Server/v1.1/Datastreams(3)/Observations"
+        },
+        {
+            "@iot.id": 4,
+            "unitOfMeasurement": {
+                "name": "Degrees Celsius"
+            },
+            "Observations@iot.count": 0,
+            "Observations": [],
+            "ObservedProperty": {
+                "@iot.id": 4,
+                "name": "water temperature"
+            },
+            "Observations@iot.navigationLink": "http://localhost:8080/FROST-Server/v1.1/Datastreams(4)/Observations"
+        },
+        {
+            "@iot.id": 5,
+            "unitOfMeasurement": {
+                "name": "Decibars"
+            },
+            "Observations@iot.count": 0,
+            "Observations": [],
+            "ObservedProperty": {
+                "@iot.id": 5,
+                "name": "Pressure (measured variable) exerted by the water body plus atmosphere"
+            },
+            "Observations@iot.navigationLink": "http://localhost:8080/FROST-Server/v1.1/Datastreams(5)/Observations"
+        },
+        {
+            "@iot.id": 6,
+            "unitOfMeasurement": {
+                "name": "Metres per second"
+            },
+            "Observations@iot.count": 0,
+            "Observations": [],
+            "ObservedProperty": {
+                "@iot.id": 6,
+                "name": "Sound velocity in the water body"
+            },
+            "Observations@iot.navigationLink": "http://localhost:8080/FROST-Server/v1.1/Datastreams(6)/Observations"
+        },
+        {
+            "@iot.id": 7,
+            "unitOfMeasurement": {
+                "name": "Degrees Celsius"
+            },
+            "Observations@iot.count": 0,
+            "Observations": [],
+            "ObservedProperty": {
+                "@iot.id": 7,
+                "name": "water temperature"
+            },
+            "Observations@iot.navigationLink": "http://localhost:8080/FROST-Server/v1.1/Datastreams(7)/Observations"
+        },
+        {
+            "@iot.id": 8,
+            "unitOfMeasurement": {
+                "name": "Decibars"
+            },
+            "Observations@iot.count": 0,
+            "Observations": [],
+            "ObservedProperty": {
+                "@iot.id": 8,
+                "name": "Pressure (measured variable) exerted by the water body plus atmosphere"
+            },
+            "Observations@iot.navigationLink": "http://localhost:8080/FROST-Server/v1.1/Datastreams(8)/Observations"
+        },
+        {
+            "@iot.id": 9,
+            "unitOfMeasurement": {
+                "name": "Metres per second"
+            },
+            "Observations@iot.count": 0,
+            "Observations": [],
+            "ObservedProperty": {
+                "@iot.id": 9,
+                "name": "Sound velocity in the water body"
+            },
+            "Observations@iot.navigationLink": "http://localhost:8080/FROST-Server/v1.1/Datastreams(9)/Observations"
+        },
+        {
+            "@iot.id": 10,
+            "unitOfMeasurement": {
+                "name": "Degrees Celsius"
+            },
+            "Observations@iot.count": 0,
+            "Observations": [],
+            "ObservedProperty": {
+                "@iot.id": 10,
+                "name": "water temperature"
+            },
+            "Observations@iot.navigationLink": "http://localhost:8080/FROST-Server/v1.1/Datastreams(10)/Observations"
+        }
+    ],
+    "Datastreams@iot.nextLink": "http://localhost:8080/FROST-Server/v1.1/Things(1)/Datastreams?$top=10&$skip=10&$select=%40iot.id,unitOfMeasurement%2Fname,Observations&$expand=Observations%28%24top%3D10%3B%24skip%3D0%3B%24select%3D%40iot.id%2Cresult%2CphenomenonTime%3B%24filter%3D%28%28phenomenonTime+gt+2020-07-10T12%3A00%3A00Z%29+and+%28phenomenonTime+lt+3003-01-01T00%3A00%3A00Z%29%29%3B%24expand%3DFeatureOfInterest%28%24select%3Dfeature%2Fcoordinates%3B%24orderby%3D%40iot.id+asc%29%3B%24orderby%3D%40iot.id+asc%29,ObservedProperty%28%24select%3D%40iot.id%2Cname%3B%24orderby%3D%40iot.id+asc%29&$orderby=%40iot.id+asc&$skipFilter=%28%40iot.id+gt+10%29",
+    "Datastreams@iot.navigationLink": "http://localhost:8080/FROST-Server/v1.1/Things(1)/Datastreams"
+}
