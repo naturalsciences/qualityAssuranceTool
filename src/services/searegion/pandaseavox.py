@@ -1,14 +1,14 @@
 import numpy as np
 from shapely.wkt import loads
 from copy import deepcopy
-from services.pandasta.df import Df
+from pandasta.df import Df
 
 
 import pandas as pd
 
 
 from typing import Sequence
-from services.pandasta.df import df_type_conversions
+from pandasta.df import df_type_conversions
 
 from services.searegion.queryregion import build_points_query, build_query_points, connect
 

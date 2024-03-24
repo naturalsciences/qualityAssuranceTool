@@ -14,9 +14,9 @@ from dotenv import load_dotenv
 from omegaconf import OmegaConf
 
 from services.qualityassurancetool.qc import FEATURES_BODY_TEMPLATE, calc_zscore_results
-from services.pandasta.sta import Entities
-from services.pandasta.df import Df, get_dt_velocity_and_acceleration_series
-from services.pandasta.df import QualityFlags
+from pandasta.sta import Entities
+from pandasta.df import Df, get_dt_velocity_and_acceleration_series
+from pandasta.df import QualityFlags
 from services.qualityassurancetool.config import QCconf, filter_cfg_to_query
 from services.searegion.pandaseavox import intersect_df_region
 from services.qualityassurancetool.qc import (QCFlagConfig, calc_gradient_results,
@@ -28,7 +28,7 @@ from services.qualityassurancetool.qc import (QCFlagConfig, calc_gradient_result
                          qc_dependent_quantity_base,
                          qc_dependent_quantity_secondary,
                          update_flag_history_series)
-from services.pandasta.sta_requests import get_all_data, get_elev_netcdf, patch_qc_flags, set_sta_url, config
+from pandasta.sta_requests import get_all_data, get_elev_netcdf, patch_qc_flags, set_sta_url, config
 
 log = logging.getLogger(__name__)
 

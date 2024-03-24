@@ -1,4 +1,5 @@
 hydra-core
+omegaconf
 pandas
 Pyarrow
 numpy
@@ -22,3 +23,5 @@ xarray
 
 python-dotenv
 tqdm
+
+/home/nvds/Documents/RBINS/ODANext/pandasta

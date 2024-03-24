@@ -2,29 +2,20 @@ import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Optional, Tuple
-from omegaconf import MISSING
 
-from services.pandasta.logging_constants import ISO_STR_FORMAT
-from services.pandasta.sta import Properties
+from omegaconf import MISSING
+from pandasta.logging_constants import ISO_STR_FORMAT
+from pandasta.sta import (DbCredentials, FilterEntry, PhenomenonTimeFilter,
+                          Properties)
+
 from services.searegion.queryregion import DbCredentials
 
 log = logging.getLogger(__name__)
 
 
 @dataclass
-class PhenomenonTimeFilter:
-    format: str
-    range: Tuple[str, str]
-
-
-@dataclass
 class ThingConfig:
     id: int
-
-
-@dataclass
-class FilterEntry:
-    phenomenonTime: PhenomenonTimeFilter
 
 
 @dataclass

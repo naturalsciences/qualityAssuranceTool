@@ -4,22 +4,39 @@ from operator import add
 from typing import Sequence
 
 import geopandas as gpd
+import geopy.distance as gp_distance
 import numpy as np
 import pandas as pd
 import pandas.testing as pdt
 import pytest
+from geopy import Point as gp_point
+from pandasta.df import CAT_TYPE, Df, QualityFlags, df_type_conversions
 
-from services.pandasta.df import Df, QualityFlags, df_type_conversions
 from services.qualityassurancetool.qc import (
     calc_gradient_results, calc_zscore_results, combine_dicts,
     get_bool_exceed_max_acceleration, get_bool_exceed_max_velocity,
     get_bool_land_region, get_bool_null_region, get_bool_out_of_range,
     get_bool_spacial_outlier_compared_to_median, get_qc_flag_from_bool,
     qc_dependent_quantity_base, qc_dependent_quantity_secondary)
-from services.pandasta.df import CAT_TYPE
 from services.searegion.queryregion import build_points_query
 
-from test_df import df_velocity_acceleration
+
+@pytest.fixture
+def df_velocity_acceleration() -> gpd.GeoDataFrame:
+    df_t = pd.read_csv("./tests/resources/data_velocity_acc.csv", header=0)
+    df_t[Df.TIME] = pd.to_timedelta(df_t["Time (s)"], "s") + pd.Timestamp("now")
+
+    p0 = gp_point(longitude=3.1840709669760137, latitude=51.37115902107277)
+    for index, row_i in df_t.iterrows():
+        di = gp_distance.distance(meters=row_i["Distance (m)"])
+        pi = di.destination(point=p0, bearing=row_i["Heading (degrees)"])
+
+        df_t.loc[index, [Df.LONG, Df.LAT]] = pi.longitude, pi.latitude  # type: ignore
+        p0 = pi
+
+    df_t = df_t.drop(columns=["Time (s)", "Distance (m)", "Heading (degrees)"])
+    df_t = gpd.GeoDataFrame(df_t, geometry=gpd.points_from_xy(df_t[Df.LONG], df_t[Df.LAT], crs="EPSG:4326"))  # type: ignore
+    return df_t
 
 
 @pytest.fixture

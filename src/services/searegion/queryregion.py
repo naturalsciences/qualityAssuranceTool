@@ -5,16 +5,9 @@ from typing import Sequence
 
 import psycopg2
 import psycopg2.extensions
+from pandasta.sta import DbCredentials
 from shapely import Point, distance, intersects, set_srid
 from shapely.wkt import loads
-
-@dataclass
-class DbCredentials:
-    database: str
-    user: str
-    host: str
-    port: int
-    passphrase: str
 
 
 # from services.df import seavox_to_df

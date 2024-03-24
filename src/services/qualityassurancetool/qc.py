@@ -12,11 +12,11 @@ import xarray as xr
 from scipy import stats
 from tqdm import tqdm
 
-from services.pandasta.df import (Df, QualityFlags, get_acceleration_series, get_distance_geopy_series,
-                                  get_velocity_series)
-from services.pandasta.df import CAT_TYPE
-from services.pandasta.logging_constants import TQDM_DESC_FORMAT
-from services.pandasta.logging_constants import TQDM_BAR_FORMAT
+from pandasta.df import (Df, QualityFlags, get_acceleration_series, get_distance_geopy_series,
+                         get_velocity_series)
+from pandasta.df import CAT_TYPE
+from pandasta.logging_constants import TQDM_DESC_FORMAT
+from pandasta.logging_constants import TQDM_BAR_FORMAT
 
 log = logging.getLogger(__name__)
 
