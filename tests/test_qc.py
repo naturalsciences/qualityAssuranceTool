@@ -13,19 +13,11 @@ from geopy import Point as gp_point
 from pandasta.df import CAT_TYPE, Df, QualityFlags, df_type_conversions
 
 from services.qualityassurancetool.qc import (
-    calc_gradient_results,
-    calc_zscore_results,
-    combine_dicts,
-    get_bool_exceed_max_acceleration,
-    get_bool_exceed_max_velocity,
-    get_bool_land_region,
-    get_bool_null_region,
-    get_bool_out_of_range,
-    get_bool_spacial_outlier_compared_to_median,
-    get_qc_flag_from_bool,
-    qc_dependent_quantity_base,
-    qc_dependent_quantity_secondary,
-)
+    calc_gradient_results, calc_zscore_results, combine_dicts,
+    get_bool_exceed_max_acceleration, get_bool_exceed_max_velocity,
+    get_bool_land_region, get_bool_null_region, get_bool_out_of_range,
+    get_bool_spacial_outlier_compared_to_median, get_qc_flag_from_bool,
+    qc_dependent_quantity_base, qc_dependent_quantity_secondary)
 from services.searegion.queryregion import build_points_query
 
 
