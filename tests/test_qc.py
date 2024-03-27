@@ -11,11 +11,19 @@ import pytest
 
 from services.pandasta.df import Df, df_type_conversions
 from services.qualityassurancetool.qc import (
-    calc_gradient_results, calc_zscore_results, combine_dicts,
-    get_bool_exceed_max_acceleration, get_bool_exceed_max_velocity,
-    get_bool_land_region, get_bool_null_region, get_bool_out_of_range,
-    get_bool_spacial_outlier_compared_to_median, get_qc_flag_from_bool,
-    qc_dependent_quantity_base, qc_dependent_quantity_secondary)
+    calc_gradient_results,
+    calc_zscore_results,
+    combine_dicts,
+    get_bool_exceed_max_acceleration,
+    get_bool_exceed_max_velocity,
+    get_bool_land_region,
+    get_bool_null_region,
+    get_bool_out_of_range,
+    get_bool_spacial_outlier_compared_to_median,
+    get_qc_flag_from_bool,
+    qc_dependent_quantity_base,
+    qc_dependent_quantity_secondary,
+)
 from services.qualityassurancetool.qualityflags import CAT_TYPE, QualityFlags
 from services.searegion.queryregion import build_points_query
 
@@ -63,13 +71,20 @@ def df_testing() -> gpd.GeoDataFrame:
         QualityFlags.PROBABLY_BAD,
         QualityFlags.PROBABLY_BAD,
     ]
-    base_observation_type: list[str] = [
-        "salinity",
-        "Water flow in the scientific seawater circuit",
-        "seabed depth",
-        "random1",
-        "random2",
-    ]
+    ds_id_type_dict: dict[int, str] = {
+        0: "salinity",
+        1: "Water flow in the scientific seawater circuit",
+        2: "seabed depth",
+        3: "random1",
+        4: "random2",
+    }
+    # base_observation_type: list[str] = [
+    #     "salinity",
+    #     "Water flow in the scientific seawater circuit",
+    #     "seabed depth",
+    #     "random1",
+    #     "random2",
+    # ]
 
     datastream_id_series: "pd.Series[int]" = pd.Series(
         list(
@@ -90,15 +105,7 @@ def df_testing() -> gpd.GeoDataFrame:
                 index=datastream_id_series.index,
                 dtype=CAT_TYPE,
             ),  # type: ignore
-            Df.DATASTREAM_ID: pd.Series(
-                list(
-                    sum(  # to convert list of tuples to flat list
-                        zip(*([list(range(MULTIPL_FACTOR))] * len(base_list_region))),
-                        (),
-                    )
-                ),
-                dtype=int,
-            ),
+            Df.DATASTREAM_ID: datastream_id_series,
             Df.TIME: pd.Series(base_list_phenomenonTime * MULTIPL_FACTOR),
             Df.RESULT: pd.Series(
                 map(
@@ -108,9 +115,7 @@ def df_testing() -> gpd.GeoDataFrame:
                 ),  # type: ignore
                 dtype=float,
             ),  # type: ignore
-            Df.OBSERVATION_TYPE: pd.Series(
-                base_observation_type * MULTIPL_FACTOR, dtype="category"
-            ),
+            Df.OBSERVATION_TYPE: datastream_id_series.apply(lambda x: ds_id_type_dict[x]),
         }
     )
     return df_out
