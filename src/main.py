@@ -104,7 +104,9 @@ def main(cfg: QCconf):
     df_all = gpd.GeoDataFrame(df_all, geometry=gpd.points_from_xy(df_all[Df.LONG], df_all[Df.LAT]), crs=cfg.location.crs)  # type: ignore
     # get qc check df (try to find clearer name)
     qc_df = pd.DataFrame.from_dict(cfg.QC, orient="index")
-    qc_df.index.name = Df.OBSERVATION_TYPE
+    ## Is changing this suffusient to correctit?
+    # qc_df.index.name = Df.OBSERVATION_TYPE
+    qc_df.index.name = Df.DATASTREAM_ID
 
     ## setup needed columns. Should these be removed?
     t_ranges0 = time.time()
@@ -304,7 +306,7 @@ def main(cfg: QCconf):
 
     t_region1 = time.time()
 
-    df_all = df_all.merge(qc_df, on=Df.OBSERVATION_TYPE, how="left")
+    df_all = df_all.merge(qc_df, on=qc_df.index.name, how="left")
     df_all.set_index(Df.IOT_ID)
     if nb_observations != df_all.shape[0]:
         raise RuntimeError("Not all observations are included in the dataframe.")

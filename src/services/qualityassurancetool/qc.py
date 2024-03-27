@@ -37,6 +37,15 @@ def get_bool_out_of_range(
     qc_type_min = f"qc_{qc_type}_min"
     qc_type_max = f"qc_{qc_type}_max"
 
+    columns0 = list(df.columns)
+    nb_levels = df.columns.nlevels
+    for ci in [qc_type_max, qc_type_min]:
+        ci_i = ci
+        if nb_levels > 1:
+            ci_i =(ci,) + ("",)*(nb_levels-1)
+        if ci_i not in columns0:
+            columns0 += [ci_i]
+    df = df.reindex(columns=columns0)
     mask_max_not_null = ~df[qc_type_max].isnull()
     mask_min_not_null = ~df[qc_type_min].isnull()
     s_bool_out = (df.loc[mask_max_not_null, qc_on] > df.loc[mask_max_not_null, qc_type_max]) | (df.loc[mask_min_not_null, qc_on] < df.loc[mask_min_not_null, qc_type_min])  # type: ignore
