@@ -13,13 +13,13 @@ import pandas as pd
 from dotenv import load_dotenv
 from omegaconf import OmegaConf
 
-from services.qualityassurancetool.qc import FEATURES_BODY_TEMPLATE, calc_zscore_results
+from df_qc_tools.qc import FEATURES_BODY_TEMPLATE, calc_zscore_results
 from pandassta.sta import Entities
 from pandassta.df import Df, get_dt_velocity_and_acceleration_series
 from pandassta.df import QualityFlags
-from services.qualityassurancetool.config import QCconf, filter_cfg_to_query
+from df_qc_tools.config import QCconf, filter_cfg_to_query
 from searegion_detection.pandaseavox import intersect_df_region
-from services.qualityassurancetool.qc import (QCFlagConfig, calc_gradient_results,
+from df_qc_tools.qc import (QCFlagConfig, calc_gradient_results,
                          get_bool_depth_above_treshold,
                          get_bool_exceed_max_acceleration,
                          get_bool_exceed_max_velocity, get_bool_land_region,

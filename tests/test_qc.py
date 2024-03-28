@@ -13,7 +13,7 @@ from geopy import Point as gp_point
 from pandassta.df import CAT_TYPE, Df, QualityFlags, df_type_conversions
 from searegion_detection.queryregion import build_points_query
 
-from services.qualityassurancetool.qc import (
+from df_qc_tools.qc import (
     calc_gradient_results, calc_zscore_results, combine_dicts,
     get_bool_exceed_max_acceleration, get_bool_exceed_max_velocity,
     get_bool_land_region, get_bool_null_region, get_bool_out_of_range,

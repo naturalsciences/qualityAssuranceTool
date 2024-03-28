@@ -9,7 +9,7 @@ from omegaconf import OmegaConf
 
 from pandassta.sta import Entities, Properties, Settings
 from pandassta.df import Df
-from services.qualityassurancetool.config import filter_cfg_to_query
+from df_qc_tools.config import filter_cfg_to_query
 from pandassta.df import QualityFlags
 from pandassta.sta_requests import (
     Entity,
@@ -19,7 +19,7 @@ from pandassta.sta_requests import (
     response_datastreams_to_df,
     set_sta_url,
 )
-from services.qualityassurancetool.config import get_date_from_string
+from df_qc_tools.config import get_date_from_string
 
 OmegaConf.register_new_resolver("datetime_to_date", get_date_from_string, replace=True)
 

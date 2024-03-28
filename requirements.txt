@@ -26,3 +26,4 @@ tqdm
 
 pandassta
 searegion-detection
+df-qc-tools
