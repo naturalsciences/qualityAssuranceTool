@@ -25,3 +25,4 @@ python-dotenv
 tqdm
 
 pandassta
+searegion-detection

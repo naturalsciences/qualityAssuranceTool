@@ -8,7 +8,7 @@ from pandassta.logging_constants import ISO_STR_FORMAT
 from pandassta.sta import (DbCredentials, FilterEntry, PhenomenonTimeFilter,
                           Properties)
 
-from services.searegion.queryregion import DbCredentials
+from searegion_detection.pandaseavox import DbCredentials
 
 log = logging.getLogger(__name__)
 

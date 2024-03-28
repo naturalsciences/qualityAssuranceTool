@@ -18,7 +18,7 @@ from pandassta.sta import Entities
 from pandassta.df import Df, get_dt_velocity_and_acceleration_series
 from pandassta.df import QualityFlags
 from services.qualityassurancetool.config import QCconf, filter_cfg_to_query
-from services.searegion.pandaseavox import intersect_df_region
+from searegion_detection.pandaseavox import intersect_df_region
 from services.qualityassurancetool.qc import (QCFlagConfig, calc_gradient_results,
                          get_bool_depth_above_treshold,
                          get_bool_exceed_max_acceleration,

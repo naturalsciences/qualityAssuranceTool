@@ -11,6 +11,7 @@ import pandas.testing as pdt
 import pytest
 from geopy import Point as gp_point
 from pandassta.df import CAT_TYPE, Df, QualityFlags, df_type_conversions
+from searegion_detection.queryregion import build_points_query
 
 from services.qualityassurancetool.qc import (
     calc_gradient_results, calc_zscore_results, combine_dicts,
@@ -18,7 +19,6 @@ from services.qualityassurancetool.qc import (
     get_bool_land_region, get_bool_null_region, get_bool_out_of_range,
     get_bool_spacial_outlier_compared_to_median, get_qc_flag_from_bool,
     qc_dependent_quantity_base, qc_dependent_quantity_secondary)
-from services.searegion.queryregion import build_points_query
 
 
 @pytest.fixture

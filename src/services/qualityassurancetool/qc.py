@@ -130,7 +130,7 @@ def calc_zscore_results(df: pd.DataFrame, groupby: Df) -> pd.DataFrame:
         group = df.groupby(by=groupby, group_keys=False)
         # group = df[[Df.TIME, Df.RESULT, groupby]].groupby(by=groupby, group_keys=False)
         # z = group[[Df.TIME, Df.RESULT]].rolling("1h", on=Df.TIME, center=True).apply(stats.zscore)
-        z = group.apply(mod_z)
+        z = group[[Df.TIME, Df.RESULT]].apply(mod_z)
         # z = group[[Df.RESULT]].apply(stats.zscore)
         return z
     df[Df.ZSCORE] = _calc_zscore_results(df, groupby=[Df.DATASTREAM_ID])
