@@ -4,9 +4,9 @@ import numpy as np
 import pandas as pd
 import pandas.testing as pdt
 import pytest
-from pandasta.df import Df, QualityFlags
-from pandasta.sta import Entities, Properties
-from pandasta.sta_requests import response_datastreams_to_df
+from pandassta.df import Df, QualityFlags
+from pandassta.sta import Entities, Properties
+from pandassta.sta_requests import response_datastreams_to_df
 
 from aums_data_request import (datastream_id_in_list_filter_conditions,
                                find_nearest_idx, get_agg_data_from_pivoted,

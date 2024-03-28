@@ -5,7 +5,7 @@ from typing import Sequence
 
 import psycopg2
 import psycopg2.extensions
-from pandasta.sta import DbCredentials
+from pandassta.sta import DbCredentials
 from shapely import Point, distance, intersects, set_srid
 from shapely.wkt import loads
 

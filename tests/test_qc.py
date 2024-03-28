@@ -10,7 +10,7 @@ import pandas as pd
 import pandas.testing as pdt
 import pytest
 from geopy import Point as gp_point
-from pandasta.df import CAT_TYPE, Df, QualityFlags, df_type_conversions
+from pandassta.df import CAT_TYPE, Df, QualityFlags, df_type_conversions
 
 from services.qualityassurancetool.qc import (
     calc_gradient_results, calc_zscore_results, combine_dicts,
