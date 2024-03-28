@@ -1,16 +1,17 @@
-import numpy as np
-from shapely.wkt import loads
+import logging
 from copy import deepcopy
-from pandassta.df import Df
-
-
-import pandas as pd
-
-
 from typing import Sequence
-from pandassta.df import df_type_conversions
 
-from services.searegion.queryregion import build_points_query, build_query_points, connect
+import numpy as np
+import pandas as pd
+from pandassta.df import Df, df_type_conversions
+from shapely.wkt import loads
+
+from services.qualityassurancetool.config import DbCredentials
+from services.searegion.queryregion import (build_points_query,
+                                            build_query_points, connect)
+
+log = logging.getLogger(__name__)
 
 
 def seavox_to_df(response_seavox: Sequence[Sequence[str]]) -> pd.DataFrame:
@@ -20,7 +21,9 @@ def seavox_to_df(response_seavox: Sequence[Sequence[str]]) -> pd.DataFrame:
     return df
 
 
-def query_region_from_xy(db_credentials, coords):
+def query_region_from_xy(
+    db_credentials: DbCredentials, coords: Sequence[Sequence[float]]
+) -> list:
     points_q = build_points_query(coords)
     query = build_query_points(
         table="seavox_sea_areas",
@@ -36,7 +39,9 @@ def query_region_from_xy(db_credentials, coords):
     return res
 
 
-def query_all_nan_regions(db_credentials, df):
+def query_all_nan_regions(
+    db_credentials: DbCredentials, df: pd.DataFrame
+) -> pd.DataFrame:
     points_nan = df.loc[df[Df.REGION].isnull(), [Df.LONG, Df.LAT]].drop_duplicates()
     if not points_nan.empty:
         res = query_region_from_xy(db_credentials, points_nan.to_numpy().tolist())
@@ -50,7 +55,12 @@ def query_all_nan_regions(db_credentials, df):
     return df
 
 
-def intersect_df_region(db_credentials, df, max_queries, max_query_points):
+def intersect_df_region(
+    db_credentials: DbCredentials,
+    df: pd.DataFrame,
+    max_queries: int,
+    max_query_points: int,
+) -> pd.DataFrame:
     df_out = deepcopy(df)
     if Df.REGION not in df_out:
         df_out[Df.REGION] = None
@@ -60,7 +70,7 @@ def intersect_df_region(db_credentials, df, max_queries, max_query_points):
     si = df.sindex
 
     while True:
-        df.info(f"Find seavox region of next point.")
+        log.info(f"Find seavox region of next point.")
         point_i = (
             df_out.loc[df_out.Region.isnull(), [Df.LONG, Df.LAT]]
             .sample(1)
