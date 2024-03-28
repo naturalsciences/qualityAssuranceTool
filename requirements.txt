@@ -24,4 +24,4 @@ xarray
 python-dotenv
 tqdm
 
-/home/nvds/Documents/RBINS/ODANext/pandassta
+pandassta
