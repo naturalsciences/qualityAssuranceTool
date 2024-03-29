@@ -176,7 +176,7 @@ def get_agg_from_response(response: dict) -> pd.DataFrame:
 @hydra.main(
     config_path="../conf", config_name="config_aums_request.yaml", version_base="1.2"
 )
-def main(cfg): # pragma: no cover
+def main(cfg):  # pragma: no cover
     config.filename = Path(get_original_cwd()).joinpath("outputs/.stapy.ini")
     set_sta_url(cfg.data_api.base_url)
 

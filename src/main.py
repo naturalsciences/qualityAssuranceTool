@@ -1,34 +1,44 @@
-from datetime import datetime
 import logging
 import os
 import sys
 import threading
 import time
+from datetime import datetime
 from functools import partial
 from pathlib import Path
 
 import geopandas as gpd
 import hydra
 import pandas as pd
+from df_qc_tools.config import QCconf, filter_cfg_to_query
+from df_qc_tools.qc import (
+    FEATURES_BODY_TEMPLATE,
+    QCFlagConfig,
+    calc_gradient_results,
+    calc_zscore_results,
+    get_bool_depth_above_treshold,
+    get_bool_exceed_max_acceleration,
+    get_bool_exceed_max_velocity,
+    get_bool_land_region,
+    get_bool_null_region,
+    get_bool_out_of_range,
+    get_bool_spacial_outlier_compared_to_median,
+    qc_dependent_quantity_base,
+    qc_dependent_quantity_secondary,
+    update_flag_history_series,
+)
 from dotenv import load_dotenv
 from omegaconf import OmegaConf
-
-from df_qc_tools.qc import FEATURES_BODY_TEMPLATE, calc_zscore_results
+from pandassta.df import Df, QualityFlags, get_dt_velocity_and_acceleration_series
 from pandassta.sta import Entities
-from pandassta.df import Df, get_dt_velocity_and_acceleration_series
-from pandassta.df import QualityFlags
-from df_qc_tools.config import QCconf, filter_cfg_to_query
+from pandassta.sta_requests import (
+    config,
+    get_all_data,
+    get_elev_netcdf,
+    patch_qc_flags,
+    set_sta_url,
+)
 from searegion_detection.pandaseavox import intersect_df_region
-from df_qc_tools.qc import (QCFlagConfig, calc_gradient_results,
-                         get_bool_depth_above_treshold,
-                         get_bool_exceed_max_acceleration,
-                         get_bool_exceed_max_velocity, get_bool_land_region,
-                         get_bool_null_region, get_bool_out_of_range,
-                         get_bool_spacial_outlier_compared_to_median,
-                         qc_dependent_quantity_base,
-                         qc_dependent_quantity_secondary,
-                         update_flag_history_series)
-from pandassta.sta_requests import get_all_data, get_elev_netcdf, patch_qc_flags, set_sta_url, config
 
 log = logging.getLogger(__name__)
 
@@ -40,6 +50,7 @@ def get_date_from_string(
 ) -> str:
     date_out = datetime.strptime(str(str_in), str_format_in)
     return date_out.strftime(str_format_out)
+
 
 OmegaConf.register_new_resolver("datetime_to_date", get_date_from_string, replace=True)
 
@@ -339,9 +350,7 @@ def main(cfg: QCconf):
 
     qc_flag_config_zscore = QCFlagConfig(
         label="zscore",
-        bool_function=partial(
-            get_bool_out_of_range, qc_on=Df.ZSCORE, qc_type="zscore"
-        ),
+        bool_function=partial(get_bool_out_of_range, qc_on=Df.ZSCORE, qc_type="zscore"),
         bool_merge_function=max,
         flag_on_true=QualityFlags.BAD,
         flag_on_false=QualityFlags.PROBABLY_GOOD,

@@ -8,12 +8,17 @@ from pandassta.df import Df, QualityFlags
 from pandassta.sta import Entities, Properties
 from pandassta.sta_requests import response_datastreams_to_df
 
-from aums_data_request import (datastream_id_in_list_filter_conditions,
-                               find_nearest_idx, get_agg_data_from_pivoted,
-                               get_agg_from_response, get_flag_columns,
-                               get_results_specified_datastreams_query,
-                               get_unique_value_series, time_conversions,
-                               wrapper_pivot_df)
+from aums_data_request import (
+    datastream_id_in_list_filter_conditions,
+    find_nearest_idx,
+    get_agg_data_from_pivoted,
+    get_agg_from_response,
+    get_flag_columns,
+    get_results_specified_datastreams_query,
+    get_unique_value_series,
+    time_conversions,
+    wrapper_pivot_df,
+)
 
 
 @pytest.fixture(scope="session")
@@ -74,7 +79,10 @@ class TestOther:
             ),
         )
         Q.base_url = ""
-        assert Q.build() == "/Things(1)?$select=Datastreams&$expand=Datastreams($filter=@iot.id eq 7751 or @iot.id eq 7769;$expand=Observations($filter=$filter=result gt 0.6 and phenomenonTime gt 2023-01-02;$count=false;$expand=FeatureOfInterest($select=feature/coordinates,@iot.id);$select=@iot.id,result,phenomenonTime,resultQuality),ObservedProperty($select=@iot.id,name),Sensor($select=name,@iot.id,description);$select=@iot.id,name,description,unitOfMeasurement/name,Observations)"
+        assert (
+            Q.build()
+            == "/Things(1)?$select=Datastreams&$expand=Datastreams($filter=@iot.id eq 7751 or @iot.id eq 7769;$expand=Observations($filter=$filter=result gt 0.6 and phenomenonTime gt 2023-01-02;$count=false;$expand=FeatureOfInterest($select=feature/coordinates,@iot.id);$select=@iot.id,result,phenomenonTime,resultQuality),ObservedProperty($select=@iot.id,name),Sensor($select=name,@iot.id,description);$select=@iot.id,name,description,unitOfMeasurement/name,Observations)"
+        )
 
     def test_unique_values_series_float(self):
         idx_list = list(range(10))

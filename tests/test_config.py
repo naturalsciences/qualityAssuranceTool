@@ -3,8 +3,7 @@ from hydra import compose, initialize
 from omegaconf import DictConfig
 from pandassta.sta_requests import set_sta_url
 
-from df_qc_tools.config import (QCconf, filter_cfg_to_query,
-                                                  get_date_from_string)
+from df_qc_tools.config import QCconf, filter_cfg_to_query, get_date_from_string
 
 
 @pytest.fixture(scope="session")
