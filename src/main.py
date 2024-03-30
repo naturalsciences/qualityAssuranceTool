@@ -10,6 +10,7 @@ from pathlib import Path
 import geopandas as gpd
 import hydra
 import pandas as pd
+import aenum
 from df_qc_tools.config import QCconf, filter_cfg_to_query
 from df_qc_tools.qc import (
     FEATURES_BODY_TEMPLATE,
@@ -29,14 +30,21 @@ from df_qc_tools.qc import (
 )
 from dotenv import load_dotenv
 from omegaconf import OmegaConf
-from pandassta.df import Df, QualityFlags, get_dt_velocity_and_acceleration_series
-from pandassta.sta import Entities
+from pandassta.df import (
+    Df,
+    QualityFlags,
+    get_dt_velocity_and_acceleration_series,
+    df_type_conversions,
+)
+from pandassta.sta import Entities, Properties, Settings
 from pandassta.sta_requests import (
     config,
     get_all_data,
     get_elev_netcdf,
     patch_qc_flags,
     set_sta_url,
+    Entity,
+    Query,
 )
 from searegion_detection.pandaseavox import intersect_df_region
 
@@ -53,6 +61,75 @@ def get_date_from_string(
 
 
 OmegaConf.register_new_resolver("datetime_to_date", get_date_from_string, replace=True)
+
+
+def get_thing_ds_summary(thing_id: int) -> pd.DataFrame:
+    if not getattr(Properties, "INSTRDATAID", None):
+        Properties_ = aenum.extend_enum(
+            Properties, "INSTRDATAID", "properties/InstrDataItemID"
+        )
+    obsprop = Entity(Entities.OBSERVEDPROPERTY)
+    obsprop.selection = [Properties.NAME]
+
+    obs = Entity(Entities.OBSERVATIONS)
+    obs.settings = [Settings.COUNT("true"), Settings.TOP(0)]
+    obs.selection = [Properties.IOT_ID]
+
+    ds = Entity(Entities.DATASTREAMS)
+    ds.settings = [Settings.COUNT("true")]
+    ds.expand = [obsprop, obs]
+    ds.selection = [
+        Properties.NAME,
+        Properties.IOT_ID,
+        Properties.DESCRIPTION,
+        Properties.UNITOFMEASUREMENT,
+        Entities.OBSERVEDPROPERTY,
+        Properties.INSTRDATAID,  # type: ignore
+    ]
+    thing = Entity(Entities.THINGS)
+    thing.id = thing_id
+    thing.expand = [ds]
+    thing.selection = [Entities.DATASTREAMS]
+    query = Query(base_url=config.load_sta_url(), root_entity=thing)
+    query_http = query.build()
+
+    response = (query.get_with_retry()).json()
+    df = df_type_conversions(pd.DataFrame.from_dict(response[Entities.DATASTREAMS]))
+    df = df.join(pd.DataFrame(df.pop("properties").values.tolist()))
+    df_tmp = pd.DataFrame(df.pop(str(Entities.OBSERVEDPROPERTY)).values.tolist())
+    obs_name_column = df_tmp.columns[0]
+    # df = df.join(pd.DataFrame(df.pop(str(Entities.OBSERVEDPROPERTY)).values.tolist()), rsuffix=str(Entities.OBSERVEDPROPERTY))
+    df = df.join(df_tmp, rsuffix=str(Entities.OBSERVEDPROPERTY))
+
+    return df
+
+
+def write_datastreamid_yaml_template(thing_id, file: Path) -> None:
+    """
+    Function to write a yaml template to configure the ranges and other QC settings.
+
+    Args:
+        thing_id (_type_): _description_
+        file (Path): _description_
+
+    Returns:
+        _type_: _description_
+    """
+    df = get_thing_ds_summary(thing_id=thing_id)
+
+    def row_formatted(row):
+        out = (
+            ""
+            f"  {row[Properties.IOT_ID]}: # name: {row[Properties.NAME]}, type: {row['nameObservedProperty']}, unit: {row['unitOfMeasurement']['name']}, instrdataid: {row['InstrDataItemID']}\n"
+            f"    range:\n"
+            f"      -\n"
+            f"      -\n"
+        )
+        return out
+
+    out = df.apply(row_formatted, axis=1).sum()
+    with open(file, "w") as f:
+        f.writelines(out)
 
 
 @hydra.main(config_path="../conf", config_name="config.yaml", version_base="1.2")
@@ -105,6 +182,8 @@ def main(cfg: QCconf):
     filter_cfg = filter_cfg_to_query(cfg.data_api.filter)
 
     # get data in dataframe
+    # write_datastreamid_yaml_template(thing_id=thing_id, file=Path("/tmp/test.yaml"))
+
     df_all = get_all_data(thing_id=thing_id, filter_cfg=filter_cfg)
 
     if df_all.empty:
