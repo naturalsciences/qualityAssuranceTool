@@ -9,8 +9,8 @@ time:
   date:
     format: "%Y-%m-%d"
 hydra:
-  # verbose: True
-  verbose: __main__
+  verbose: True
+  # verbose: __main__
   run:
     dir: outputs/${datetime_to_date:${time.start}, ${time.format},${time.date.format}}_${datetime_to_date:${time.end}, ${time.format},${time.date.format}}
 data_api:
@@ -83,8 +83,8 @@ QC:
       - -1000000000
       - 1000000000
     zscore:
-      - -10
-      - 10
+      - -15
+      - 15
   7849: # conductivity
     range:
       - -1000000000
