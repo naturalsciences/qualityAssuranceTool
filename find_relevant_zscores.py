@@ -24,7 +24,7 @@ def get_date_from_string(
 df = csv_to_df("testing_dataset.csv")
 # df = csv_to_df("SUBSET.csv")
 df_subset = df.loc[df[Df.DATASTREAM_ID].isin([7770])]
-df_subset = calc_zscore_results(df_subset, Df.DATASTREAM_ID, rolling_time_window="10min")
+df_subset[Df.ZSCORE] = calc_zscore_results(df_subset, Df.DATASTREAM_ID, rolling_time_window="10min")[Df.ZSCORE]
 
 ui.input_slider("zscore_limit", "zscore_limit (abs)", 0, 200, 10)
 

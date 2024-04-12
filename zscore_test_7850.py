@@ -19,7 +19,7 @@ from copy import deepcopy
 df = csv_to_df("testing_dataset.csv").sort_values(Df.TIME)
 df = df.reset_index()
 filter_subset_7795 = df[Df.DATASTREAM_ID] == 7795
-filter_subset_7816 = df[Df.DATASTREAM_ID] == 7816
+filter_subset_7850 = df[Df.DATASTREAM_ID] == 7850
 
 filter_bad_7795 = (
         (
@@ -33,14 +33,12 @@ df.loc[(filter_subset_7795) & (filter_bad_7795), Df.QC_FLAG] = QualityFlags.PROB
 base_flags = qc_dependent_quantity_base(
     df,
     independent=7795,
-    dependent=7816,
+    dependent=7850,
     dt_tolerance="1.0s",
 )
 df = df.set_index(Df.IOT_ID)
 df.update({Df.QC_FLAG: base_flags})  # type: ignore
-df.loc[(filter_subset_7816) & (df[Df.RESULT]<=7.5), Df.QC_FLAG] = QualityFlags.PROBABLY_BAD
 df = df.reset_index()
-
 
 
 # df.loc[(df[Df.DATASTREAM_ID] == 7795) & (df[Df.RESULT] <= 0.75), Df.QC_FLAG] = (
@@ -49,14 +47,14 @@ df = df.reset_index()
 df = calc_zscore_results(df, Df.DATASTREAM_ID, rolling_time_window="60min")
 
 # df = df.loc[df[Df.DATASTREAM_ID] == 7770]
-# df = df.loc[df[Df.DATASTREAM_ID] == 7816]
-df = df.loc[df[Df.DATASTREAM_ID].isin([7816, 7795])]
+# df = df.loc[df[Df.DATASTREAM_ID] == 7850]
+df = df.loc[df[Df.DATASTREAM_ID].isin([7850, 7795])]
 # df = df.drop(df.loc[df[Df.RESULT] <= 10.].index)
 df = df.sort_values(Df.ZSCORE)
 df["RANGE"] = 0
 
-min_r2 = round(df.loc[df[Df.DATASTREAM_ID] == 7816, Df.RESULT].min(), 2)
-max_r2 = round(df.loc[df[Df.DATASTREAM_ID] == 7816, Df.RESULT].max(), 2)
+min_r2 = round(df.loc[df[Df.DATASTREAM_ID] == 7850, Df.RESULT].min(), 2)
+max_r2 = round(df.loc[df[Df.DATASTREAM_ID] == 7850, Df.RESULT].max(), 2)
 
 
 # SET CATEGORY RANGE
@@ -83,7 +81,7 @@ def plot():
     # ax.set_ylim([input.min(), input.max()])
     fig, ax = plt.subplots(1, 2)
     sns.scatterplot(
-        data=df.loc[(df[Df.DATASTREAM_ID] == 7816) & (df["RANGE"] == 0)],
+        data=df.loc[df[Df.DATASTREAM_ID] == 7850],
         x=Df.TIME,
         y=Df.RESULT,
         hue="RANGE",

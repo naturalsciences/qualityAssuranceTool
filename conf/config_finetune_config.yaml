@@ -49,22 +49,22 @@ location:
   max_dx_dt: 6.89 # check units
   max_ddx_dtdt: 0.15 # VERY high value, needs to be re-evaluated when shorted time intervals are available
 QC_dependent:
-  - independent: 69
-    dependent: 124 # list/array
+  - independent: 7795
+    dependent: 7849 # list/array
     dt_tolerance: 0.5s
     QC:
       range:
-        - 0.5
-        - 10.
+        - 0.6
+        - 1.4
 QC:
-  7847:
+  7847: # not in df
     range:
       - -1000000000
       - 1000000000
     zscore:
       - -100
       - 100
-  7768:
+  7768: # not in df
     range:
       - -1000000000
       - 1000000000
@@ -75,9 +75,9 @@ QC:
     range:
       - -1000000000
       - 1000000000
-    zscore:
-      - -100
-      - 100
+    zscore: # doesn't flag anything
+      - -15
+      - 15
   7770: # water temperature
     range:
       - -1000000000
@@ -89,17 +89,17 @@ QC:
     range:
       - -1000000000
       - 1000000000
-    zscore:
-      - -100
-      - 100
-  7846:
+    zscore: # is a spike that is probably wrong. first flagged 
+      - -15
+      - 15
+  7846: # not in df
     range:
       - -1000000000
       - 1000000000
     zscore:
       - -100
       - 100
-  7848:
+  7848: # not in df
     range:
       - -1000000000
       - 1000000000

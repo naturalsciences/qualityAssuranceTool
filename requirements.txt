@@ -17,4 +17,4 @@ pandassta>=0.0.3
 searegion-detection>=0.0.2
 # -e /home/nvds/Documents/RBINS/ODANext/df-qc-tools
 -e /home/nvadmin/Documents/ODANext/df-qc-tools
-df-qc-tools>=0.0.5
+df-qc-tools>=0.0.6
