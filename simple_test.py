@@ -1,6 +1,5 @@
 from pandas import CategoricalDtype
 import seaborn as sns
-from palmerpenguins import load_penguins
 from shiny import render
 from shiny.express import input, ui
 from df_qc_tools.qc import (QCFlagConfig, QualityFlags, calc_gradient_results,
@@ -8,13 +7,12 @@ from df_qc_tools.qc import (QCFlagConfig, QualityFlags, calc_gradient_results,
 from pandassta.df import Df, csv_to_df
 import matplotlib.pyplot as plt
 
-penguins = load_penguins()
 
 # df = csv_to_df("SUBSET.csv").sort_values(Df.TIME)
 df = csv_to_df("testing_dataset.csv").sort_values(Df.TIME)
 
-df = df.drop(df.loc[df[Df.RESULT]<=0.3].index)
-df = calc_zscore_results(df, Df.DATASTREAM_ID, rolling_time_window="60min")
+df.loc[(df[Df.DATASTREAM_ID] == 7795) & (df[Df.RESULT] <= 0.75), Df.QC_FLAG] = QualityFlags(3) 
+df = calc_zscore_results(df, Df.DATASTREAM_ID, rolling_time_window="600min")
 
 # df = df.loc[df[Df.DATASTREAM_ID] == 7770]
 # df = df.loc[df[Df.DATASTREAM_ID] == 7850]
