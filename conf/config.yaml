@@ -90,17 +90,23 @@ QC:
     range:
       - 3.
       - 6.
+    zscore:
+      - -15
+      - 15
   water temperature:
     range:
       - -2.
       - 30.
     zscore: # extreme value
-      - -25.
-      - 25.
+      - -15.
+      - 15.
   salinity:
     range:
       - 29.
       - 36.
+    zscore:
+      - -15
+      - 15
   Total biomass in water bodies:
     range:
       - 0.
