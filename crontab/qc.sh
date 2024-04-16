@@ -23,7 +23,9 @@ QC_LOG=$ROOT_DIR/cron_out
 PATTERN_TIME_QC_LOG="\[\([0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\} [0-9]\{2\}:[0-9]\{2\}:[0-9]\{2\}\)\].*"
 GREP_OUT_QC=$(grep_last_occurrences "$QC_LOG" "$START_MESSAGE" "1")
 TIME_PREVIOUS_QC=$(parse_date "$GREP_OUT_QC" "$PATTERN_TIME_QC_LOG")
-TIME_PREVIOUS_QC=${TIME_PREVIOUS_QC:-$(get_date "now")}
+echo $"TIME_PREVIOUS"
+TIME_PREVIOUS_QC=$(get_date $TIME_PREVIOUS_QC"-15minutes")
+TIME_PREVIOUS_QC=${TIME_PREVIOUS_QC:-$(get_date "now-10minutes")}
 
 # get timestamps file transfers
 
@@ -32,7 +34,7 @@ DATA_TRANSFER_LOG=/home/RBINS.BE/bmdc/belgica_data_transfer/log.txt
 
 ## get 10000 occurences of "QC "
 PATTERN_TIME_TRANSFER_LOG="\(^[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\} [0-9]\{2\}:[0-9]\{2\}:[0-9]\{2\}\).*"
-GREP_OUT_TRANSF="$(grep_last_occurrences "$DATA_TRANSFER_LOG" "QC " "10000")"
+GREP_OUT_TRANSF="$(grep_last_occurrences "$DATA_TRANSFER_LOG" "QC " "10")"
 
 ## define pattern to get time until which transfer is ready
 PATTERN_TIME_QC_END=".*QC up to \([0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\} [0-9]\{2\}:[0-9]\{2\}:[0-9]\{2\}\).*"
@@ -46,6 +48,8 @@ while read -r LINE; do
     # extract timestamp of log entry transfer
     TIME_I=$(parse_date "$LINE" "$PATTERN_TIME_TRANSFER_LOG")
     # check for timestamps more recent than previous QC run
+    echo -n "   "
+    echo "$TIME_I" vs "$TIME_PREVIOUS_QC"
     if [[ "$TIME_I" > "$TIME_PREVIOUS_QC" ]]; then
         END_I=$(parse_date "$LINE" "$PATTERN_TIME_QC_END")
         START_I=$(get_date "$END_I UTC -$((DT_INT+OVERLAP))$DT_UNIT")
