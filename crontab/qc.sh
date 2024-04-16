@@ -53,8 +53,10 @@ while read -r LINE; do
     TIME_I=$(parse_date "$LINE" "$PATTERN_TIME_TRANSFER_LOG")
     # check for timestamps more recent than previous QC run
     if [[ "$TIME_I" > "$TIME_PREVIOUS_QC" ]]; then
+        print_current_time
         END_I=$(parse_date "$LINE" "$PATTERN_TIME_QC_END")
         START_I=$(get_date "$END_I UTC -$((DT_INT+OVERLAP))$DT_UNIT")
+        echo "Starting docker container for range $START_I - $END_I"
 
         # start container to do QC
         CONTAINER_ID=$(docker run \
