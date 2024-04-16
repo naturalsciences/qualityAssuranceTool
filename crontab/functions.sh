@@ -13,7 +13,7 @@ print_current_time(){
 # transform the first (and only) argument to date in FMT format
 get_date(){
         local DATE=${1:-now}
-        local DATETIME_OUT=$(date --date="$DATE UTC" "$FMT")
+        local DATETIME_OUT=$(date --date="$DATE" "$FMT")
         echo $DATETIME_OUT
 }
 
