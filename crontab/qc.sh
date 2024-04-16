@@ -8,8 +8,6 @@ ROOT_DIR=$1
 source $ROOT_DIR/crontab/functions.sh
 
 START_MESSAGE="Start QC script."
-print_current_time
-echo $START_MESSAGE
 
 mkdir -p $ROOT_DIR/outputs
 source $ROOT_DIR/crontab/env_qc_settings
@@ -25,6 +23,10 @@ GREP_OUT_QC=$(grep_last_occurrences "$QC_LOG" "$START_MESSAGE" "1")
 TIME_PREVIOUS_QC=$(parse_date "$GREP_OUT_QC" "$PATTERN_TIME_QC_LOG")
 TIME_PREVIOUS_QC=${TIME_PREVIOUS_QC:-$(get_date "now")}
 TIME_PREVIOUS_QC=$(get_date $TIME_PREVIOUS_QC"-15minutes")
+
+print_current_time
+echo $START_MESSAGE
+
 
 # get timestamps file transfers
 
