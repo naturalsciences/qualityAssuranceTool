@@ -50,6 +50,7 @@ COUNTER=0
 while read -r LINE; do
     # extract timestamp of log entry transfer
     TIME_I=$(parse_date "$LINE" "$PATTERN_TIME_TRANSFER_LOG")
+    echo "TIME_I; ""$TIME_I"
     # check for timestamps more recent than previous QC run
     if [[ "$TIME_I" > "$TIME_PREVIOUS_QC" ]]; then
         print_current_time
