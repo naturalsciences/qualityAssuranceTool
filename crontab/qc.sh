@@ -22,7 +22,7 @@ PATTERN_TIME_QC_LOG="\[\([0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\} [0-9]\{2\}:[0-9]\{2\}:
 GREP_OUT_QC=$(grep_last_occurrences "$QC_LOG" "$START_MESSAGE" "1")
 TIME_PREVIOUS_QC=$(parse_date "$GREP_OUT_QC" "$PATTERN_TIME_QC_LOG")
 TIME_PREVIOUS_QC=${TIME_PREVIOUS_QC:-$(get_date "now")}
-TIME_PREVIOUS_QC=$(date -u -d "$TIME_PREVIOUS_QC UTC -10minutes" "$FMT")
+TIME_PREVIOUS_QC=$(date -u -d "$TIME_PREVIOUS_QC UTC -12minutes" "$FMT")
 
 print_current_time
 echo $START_MESSAGE
@@ -43,14 +43,15 @@ DT_INT=$(echo $DT | tr -dc '0-9')
 DT_INT=$(($DT_INT))
 DT_UNIT=$(printf '%s\n' "${DT//[[:digit:]]/}")
 
+echo -n "   "
+echo "Comparing with $TIME_PREVIOUS_QC"
+
 # loop over extracted lines
 COUNTER=0
 while read -r LINE; do
     # extract timestamp of log entry transfer
     TIME_I=$(parse_date "$LINE" "$PATTERN_TIME_TRANSFER_LOG")
     # check for timestamps more recent than previous QC run
-    echo -n "   "
-    echo "$TIME_I" vs "$TIME_PREVIOUS_QC"
     if [[ "$TIME_I" > "$TIME_PREVIOUS_QC" ]]; then
         END_I=$(parse_date "$LINE" "$PATTERN_TIME_QC_END")
         START_I=$(get_date "$END_I UTC -$((DT_INT+OVERLAP))$DT_UNIT")
