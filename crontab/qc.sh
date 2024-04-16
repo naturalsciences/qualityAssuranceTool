@@ -82,7 +82,7 @@ while read -r LINE; do
         echo "Start production "
         
         # run transfer script as other user
-        sudo -i -u ndeville startdate="$startdate" enddate="$enddate"/usr/bin/env bash $ROOT_DIR/crontab/sta_raw_to_sta_prod_transfer\ 1.sh
+        sudo -i -u ndeville startdate="$startdate" enddate="$enddate" /usr/bin/env bash $ROOT_DIR/crontab/sta_raw_to_sta_prod_transfer\ 1.sh
         COUNTER=$((COUNTER+1))
     fi
 done <<< "$GREP_OUT_TRANSF"
