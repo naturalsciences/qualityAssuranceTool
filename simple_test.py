@@ -60,7 +60,8 @@ max_r2 = round(df.loc[df[Df.DATASTREAM_ID] == 7816, Df.RESULT].max(), 2)
 
 
 # SET CATEGORY RANGE
-
+ui.page_opts(title="pH")
+ui.panel_title(title="pH", window_title="pH window")
 ui.input_slider("zscore_abs_limit", "absolute zscore limit", 1, 100, 20)
 ui.input_slider(
     "max", "max", round(min_r2 * 0.9, 2), round(max_r2 * 1.1, 2), round(max_r2 * 1.1, 2)
@@ -68,6 +69,7 @@ ui.input_slider(
 ui.input_slider(
     "min", "min", round(min_r2 * 0.9, 2), round(max_r2 * 1.1, 2), round(min_r2 * 0.9, 2)
 )
+ui.page_opts(title="pH")
 
 
 @render.plot(alt="Results plot with zscore filter indication")
@@ -83,7 +85,7 @@ def plot():
     # ax.set_ylim([input.min(), input.max()])
     fig, ax = plt.subplots(1, 2)
     sns.scatterplot(
-        data=df.loc[(df[Df.DATASTREAM_ID] == 7816) & (df["RANGE"] == 0)],
+        data=df.loc[(df[Df.DATASTREAM_ID] == 7816)],
         x=Df.TIME,
         y=Df.RESULT,
         hue="RANGE",
