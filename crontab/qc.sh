@@ -51,7 +51,6 @@ COUNTER=0
 while read -r LINE; do
     # extract timestamp of log entry transfer
     TIME_I=$(parse_date "$LINE" "$PATTERN_TIME_TRANSFER_LOG")
-    echo "TIME_I; ""$TIME_I"
     # check for timestamps more recent than previous QC run
     if [[ "$TIME_I" > "$TIME_PREVIOUS_QC" ]]; then
         print_current_time
@@ -59,31 +58,31 @@ while read -r LINE; do
         START_I=$(get_date "$END_I UTC -$((DT_INT+OVERLAP))$DT_UNIT")
         echo "Starting docker container for range $START_I - $END_I"
 
-        # # start container to do QC
-        # CONTAINER_ID=$(docker run \
-        #         -d --rm --network=host --user "$(id -u):$(id -g)"\
-        #         --workdir /app \
-        #         -v "$CONFIG_FOLDER":/app/conf \
-        #         -v "$OUTPUT_FOLDER":/app/outputs \
-        #         -e DEV_SENSORS_USER="$SENSORS_USER" \
-        #         -e DEV_SENSORS_PASS="$SENSORS_PASS" \
-        #         rbinsbmdc/quality_assurance_tool:$IMAGE_TAG \
-        #         "time.start=$START_I" "time.end=$END_I")
+        # start container to do QC
+        CONTAINER_ID=$(docker run \
+                -d --rm --network=host --user "$(id -u):$(id -g)"\
+                --workdir /app \
+                -v "$CONFIG_FOLDER":/app/conf \
+                -v "$OUTPUT_FOLDER":/app/outputs \
+                -e DEV_SENSORS_USER="$SENSORS_USER" \
+                -e DEV_SENSORS_PASS="$SENSORS_PASS" \
+                rbinsbmdc/quality_assurance_tool:$IMAGE_TAG \
+                "time.start=$START_I" "time.end=$END_I")
         
-        # STATUS_CODE_CONTAINER="$(docker container wait $CONTAINER_ID)"
-        # print_current_time
-        # echo "Status code $CONTAINER_ID: $STATUS_CODE_CONTAINER"
+        STATUS_CODE_CONTAINER="$(docker container wait $CONTAINER_ID)"
+        print_current_time
+        echo "Status code $CONTAINER_ID: $STATUS_CODE_CONTAINER"
 
-        # # variables needed for transfer script
-        # FMT_TRANSFER_SCRIPT="+%Y-%m-%d %H:%M:%S"
-        # startdate=$(date -u --date="$START_I UTC" "$FMT_TRANSFER_SCRIPT")
-        # enddate=$(date -u --date="$END_I UTC" "$FMT_TRANSFER_SCRIPT")
+        # variables needed for transfer script
+        FMT_TRANSFER_SCRIPT="+%Y-%m-%d %H:%M:%S"
+        startdate=$(date -u --date="$START_I UTC" "$FMT_TRANSFER_SCRIPT")
+        enddate=$(date -u --date="$END_I UTC" "$FMT_TRANSFER_SCRIPT")
         
-        # print_current_time
-        # echo "Start production "
+        print_current_time
+        echo "Start production "
         
-        # # run transfer script as other user
-        # sudo -i -u ndeville startdate="$startdate" enddate="$enddate"/usr/bin/env bash $ROOT_DIR/crontab/sta_raw_to_sta_prod_transfer\ 1.sh
+        # run transfer script as other user
+        sudo -i -u ndeville startdate="$startdate" enddate="$enddate"/usr/bin/env bash $ROOT_DIR/crontab/sta_raw_to_sta_prod_transfer\ 1.sh
         COUNTER=$((COUNTER+1))
     fi
 done <<< "$GREP_OUT_TRANSF"
