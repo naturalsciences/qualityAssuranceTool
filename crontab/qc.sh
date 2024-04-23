@@ -38,7 +38,8 @@ PATTERN_TIME_TRANSFER_LOG="\(^[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\} [0-9]\{2\}:[0-9]\
 GREP_OUT_TRANSF="$(grep_last_occurrences "$DATA_TRANSFER_LOG" "QC " "10")"
 
 ## define pattern to get time until which transfer is ready
-PATTERN_TIME_QC_END=".*QC up to \([0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\} [0-9]\{2\}:[0-9]\{2\}:[0-9]\{2\}\).*"
+PATTERN_TIME_QC_END=".*QC .* to \([0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\} [0-9]\{2\}:[0-9]\{2\}:[0-9]\{2\}\)\."
+PATTERN_TIME_QC_START=".*QC.* from \([0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\} [0-9]\{2\}:[0-9]\{2\}:[0-9]\{2\}\).*to.*"
 DT_INT=$(echo $DT | tr -dc '0-9')
 DT_INT=$(($DT_INT))
 DT_UNIT=$(printf '%s\n' "${DT//[[:digit:]]/}")
@@ -75,7 +76,8 @@ while read -r LINE; do
 
         # variables needed for transfer script
         FMT_TRANSFER_SCRIPT="+%Y-%m-%d %H:%M:%S"
-        startdate=$(date -u --date="$START_I UTC" "$FMT_TRANSFER_SCRIPT")
+        START_FROM_TRANSFER_LOG=$(parse_date "$LINE" "$PATTERN_TIME_QC_START")
+        startdate=$(date -u --date="$START_FROM_TRANSFER_LOG UTC" "$FMT_TRANSFER_SCRIPT")
         enddate=$(date -u --date="$END_I UTC" "$FMT_TRANSFER_SCRIPT")
         
         print_current_time
