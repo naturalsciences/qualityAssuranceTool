@@ -1,9 +1,9 @@
 time: 
-  format: "%Y-%m-%d %H:%M"
-  # start: "2024-03-12 09:00"
-  # end: "2024-04-12 12:00"
-  start: "2023-05-12 09:00"
-  end: "2023-07-12 12:00"
+  format: "%Y-%m-%d %H:%M:%S"
+  start: "2024-03-12 09:00:00"
+  end: "2024-04-12 12:00:00"
+  # start: "2023-04-12 09:00"
+  # end: "2023-11-12 12:00"
   date:
     format: "%Y-%m-%d"
 hydra:
@@ -14,10 +14,10 @@ hydra:
 data_api:
   # base_url: https://sensors.naturalsciences.be/sta/v1.1
   # base_url: http://localhost:8080/FROST-Server/v1.1
-  base_url: http://192.168.0.25:8080/FROST-Server/v1.1
+  # base_url: http://192.168.0.25:8080/FROST-Server/v1.1
   # base_url: http://frost-docker_frosty_net:8080/FROST-Server/v1.1
   # base_url: https://dev-sensors.naturalsciences.be/sta/v1.1
-  # base_url: https://belgica11busta.rbins.be/FROST-Server/v1.1
+  base_url: https://belgica11busta.rbins.be/FROST-Server/v1.1
   auth:
     username: ${oc.env:DEV_SENSORS_USER,""}
     passphrase: ${oc.env:DEV_SENSORS_PASS,""}
@@ -80,6 +80,7 @@ QC:
   #     - 115.
   2:
     range:
+<<<<<<< HEAD
       - 1000000000
       - 2000000000
   # ship speed:
@@ -168,6 +169,121 @@ QC:
   #   range:
   #     - 6.
   #     - 10.
+=======
+      - 0.
+      - 10000.
+    gradient:
+      - -1e5
+      - 1e5
+  bottom hardness:
+    range:
+      - -100
+      - 0
+  altitude above sea bed:
+    range:
+      - 0.
+      - 10000.
+  atmospheric pressure:
+    range:
+      - 870.
+      - 1084.8
+  Speed of wind {wind speed} in the atmosphere by in-situ anemometer:
+    range:
+      - 0.
+      - 115.
+  ship speed:
+    range:
+      - 0.
+      - 13.
+  downwelling irradiance in the atmosphere:
+    range:
+      - 0.
+      - 440.
+  conductivity:
+    range:
+      - 3.
+      - 6.
+    zscore:
+      - -15
+      - 15
+  water temperature:
+    range:
+      - -2.
+      - 30.
+    zscore: # extreme value
+      - -15.
+      - 15.
+  salinity:
+    range:
+      - 29.
+      - 36.
+    zscore:
+      - -15
+      - 15
+  Total biomass in water bodies:
+    range:
+      - 0.
+      - 3429904.
+  heading: # don't understand this. shouldn't this be -180 to 180?
+    range:
+      - 0.
+      - 360.
+  speed over ground:
+    range:
+      - 0.
+      - 10.
+  Pressure (measured variable) exerted by the water body plus atmosphere:
+    range:
+      - 3.
+      - 5.
+  Direction (towards) of wind relative to True North in the atmosphere by in-situ anemometer:
+    range:
+      - 0.
+      - 360.
+  atmospheric temperature:
+    range:
+      - -20.
+      - 40.
+    zscore:
+      - -25.
+      - 25.
+  chlorophyll concentration:
+    range:
+      - 0.
+      - 20.
+  Depth (spatial coordinate) relative to water surface in the water body by physical measurement:
+    range:
+      - 0.
+      - 1500.
+  Water flow in the scientific seawater circuit:
+    range:
+      - 0.
+      - 10.
+  sigma-t:
+    range:
+      - 3.
+      - 1030.
+  photosynthetically active radiation in the water column:
+    range:
+      - 0.5
+      - 700.
+  dissolved O₂ concentration:
+    range:
+      - 0.3 # seems too low? or is very deep?
+      - 352.
+  atmospheric humidity:
+    range:
+      - 25
+      - 100
+  suspended matter concentration:
+    range:
+      - 0. # most values are negative
+      - 6000.
+  pH:
+    range:
+      - 6.
+      - 10.
+>>>>>>> main
 
 ignored:
   Sound velocity in the water body: # strange values

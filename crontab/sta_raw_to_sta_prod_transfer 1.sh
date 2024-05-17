@@ -35,8 +35,6 @@ echo $(date +%Y-%m-%d' '%H:%M:%S) "Sub-sampling data and moving to production se
 #Starting data download from source database
 echo  $(date +%Y-%m-%d' '%H:%M:%S) 'Downloading data from sensorthings database between' $startdate 'and' $enddate
 psql -h $PGHOST -p 5432 -U $PGSTAUSER -d $PGDBSTA \
-        -c "\copy (select * from \"SENSORS\") to '$home/data/mdm5_raw_data/$temp_dir/sensors.csv' csv header;"  \
-        -c "\copy (select * from \"DATASTREAMS\") to '$home/data/mdm5_raw_data/$temp_dir/datastreams.csv' csv header;" \
 	-c "\copy (with ID as (select time_bucket('10 minutes', \"PHENOMENON_TIME_START\") as time10min, o.\"DATASTREAM_ID\", first(o.\"ID\", o.\"PHENOMENON_TIME_START\") filter(where o.\"RESULT_NUMBER\" is not null) as id from \"OBSERVATIONS\" o where o.\"PHENOMENON_TIME_START\" between '$startdate' and '$enddate' group by time10min, o.\"DATASTREAM_ID\") select * from \"FEATURES\" f where f.\"ID\" in (select o.\"FEATURE_ID\" from \"OBSERVATIONS\" o where o.\"ID\" in (select id from ID))) to '$home/data/mdm5_raw_data/$temp_dir/features.csv' csv header;" \
 	-c "\copy (with ID as (select o.\"FEATURE_ID\" as id from \"OBSERVATIONS\" o where o.\"MULTI_DATASTREAM_ID\" is not null and o.\"PHENOMENON_TIME_START\" between '$startdate' and '$enddate') select * from \"FEATURES\" f where f.\"ID\" in (select id from ID)) to '$home/data/mdm5_raw_data/$temp_dir/mds_features.csv' csv header;" \
 	-c "\copy (select hl.* from \"HIST_LOCATIONS\" hl where hl.\"TIME\" between '$startdate' and '$enddate') to '$home/data/mdm5_raw_data/$temp_dir/hist_locations.csv' csv header;" \
@@ -56,12 +54,6 @@ psql_exit_status=$?
 echo $(date +%Y-%m-%d' '%H:%M:%S) 'Importing data to target database.'
 
 psql -h $PGHOSTPROD -p 5432 -U $PGSTAUSER -d $PGDBSTAPROD \
- 	-c "CREATE TEMPORARY TABLE temp_sensors as (SELECT * FROM \"SENSORS\" LIMIT 0);" \
-    	-c "\copy temp_sensors (\"NAME\", \"DESCRIPTION\", \"PROPERTIES\", \"ENCODING_TYPE\", \"METADATA\", \"ID\") FROM '$home/data/mdm5_raw_data/$temp_dir/sensors.csv' csv header;" \
-	-c "INSERT INTO  \"SENSORS\" (\"NAME\", \"DESCRIPTION\", \"PROPERTIES\", \"ENCODING_TYPE\", \"METADATA\", \"ID\") SELECT \"NAME\", \"DESCRIPTION\", \"PROPERTIES\", \"ENCODING_TYPE\", \"METADATA\", \"ID\" from temp_sensors ON CONFLICT DO NOTHING;" \
-	-c "CREATE TEMPORARY TABLE temp_datastream as (SELECT * FROM \"DATASTREAMS\" LIMIT 0);" \
-	-c "\copy temp_datastream (\"NAME\", \"DESCRIPTION\", \"PROPERTIES\", \"OBSERVATION_TYPE\", \"PHENOMENON_TIME_START\", \"PHENOMENON_TIME_END\", \"RESULT_TIME_START\", \"RESULT_TIME_END\", \"OBSERVED_AREA\", \"SENSOR_ID\", \"OBS_PROPERTY_ID\", \"THING_ID\", \"UNIT_NAME\", \"UNIT_SYMBOL\", \"UNIT_DEFINITION\" , \"LAST_FOI_ID\", \"ID\") FROM '$home/data/mdm5_raw_data/$temp_dir/datastreams.csv' csv header;"\
-	-c "INSERT INTO \"DATASTREAMS\" (\"ID\", \"DESCRIPTION\", \"OBSERVATION_TYPE\", \"PHENOMENON_TIME_START\", \"PHENOMENON_TIME_END\", \"RESULT_START_TIME\", \"RESULT_TIME_END\", \"SENSOR_ID\", \"OBS_PROPERTY_ID\", \"THING_ID\", \"UNIT_NAME\", \"UNIT_SYMBOL\", \"UNIT_DEFINITION\", \"NAME\", \"OBSERVED_AREA\", \"PROPERTIES\", \"LAST_FOI_ID\") select \"ID\", \"DESCRIPTION\", \"OBSERVATION_TYPE\", \"PHENOMENON_TIME_START\", \"PHENOMENON_TIME_END\", \"RESULT_TIME_START\", \"RESULT_TIME_END\", \"SENSOR_ID\", \"OBS_PROPERTY_ID\", \"THING_ID\", \"UNIT_NAME\", \"UNIT_SYMBOL\", \"UNIT_DEFINITION\", \"NAME\", \"OBSERVED_AREA\", \"PROPERTIES\", \"LAST_FOI_ID\" from temp_datastream ON CONFLICT DO NOTHING;" \
 	-c "CREATE TEMPORARY TABLE temp_feature as (SELECT * FROM \"FEATURES\" LIMIT 0);" \
 	-c "\copy temp_feature (\"NAME\", \"DESCRIPTION\", \"PROPERTIES\", \"ENCODING_TYPE\", \"FEATURE\", \"GEOM\", \"ID\") FROM '$home/data/mdm5_raw_data/$temp_dir/features.csv' csv header;" \
         -c "\copy temp_feature (\"NAME\", \"DESCRIPTION\", \"PROPERTIES\", \"ENCODING_TYPE\", \"FEATURE\", \"GEOM\", \"ID\") FROM '$home/data/mdm5_raw_data/$temp_dir/mds_features.csv' csv header;" \
