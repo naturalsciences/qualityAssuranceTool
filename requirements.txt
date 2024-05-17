@@ -11,10 +11,6 @@ aenum==3.1.15
 seaborn
 shiny
 
-# -e /home/nvadmin/Documents/ODANext/pandassta
 pandassta>=0.0.3
-# -e /home/nvadmin/Documents/ODANext/searegion-detection
 searegion-detection>=0.0.2
-# -e /home/nvds/Documents/RBINS/ODANext/df-qc-tools
--e /home/nvadmin/Documents/ODANext/df-qc-tools
-df-qc-tools>=0.0.6
+df-qc-tools>=0.0.5
