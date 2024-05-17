@@ -7,7 +7,7 @@ START="$1"
 END="$2"
 DT="$3"
 DT_OVERLAP=$(("$4"))
-IMAGE_TAG=${5-v0.6.0}
+IMAGE_TAG=${5-v0.7.0}
 
 source ./env_hist
 source ./.env
