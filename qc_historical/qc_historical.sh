@@ -1,13 +1,42 @@
 #!/usr/bin/env bash
 
-# example usage
-# ./qc_historical.sh "2023-05-05 00:00" "2023-05-05 02:00" "10minutes" "1">> qc_historical.log 2>&1
+IMAGE_TAG="v0.7.0"
+CONFIG_NAME="config.yaml"
 
-START="$1"
-END="$2"
-DT="$3"
-DT_OVERLAP=$(("$4"))
-IMAGE_TAG=${5-v0.7.0}
+# Function to display usage
+usage() {
+    echo "Usage: $0 -s START -e END -d total_time_window -o time_window_overlap [-i IMAGE_TAG] [-c CONFIG_NAME]"
+    exit 1
+}
+
+# Parse arguments
+while getopts ":s:e:d:o:i:c:" opt; do
+    case $opt in
+        s) START="$OPTARG"
+        ;;
+        e) END="$OPTARG"
+        ;;
+        d) DT="$OPTARG"
+        ;;
+        o) DT_OVERLAP="$OPTARG"
+        ;;
+        i) IMAGE_TAG="$OPTARG"
+        ;;
+        c) CONFIG_NAME="$OPTARG"
+        ;;
+        \?) echo "Invalid option -$OPTARG" >&2
+            usage
+        ;;
+        :) echo "Option -$OPTARG requires an argument." >&2
+           usage
+        ;;
+    esac
+done
+
+# Check mandatory parameters
+if [ -z "$START" ] || [ -z "$END" ] || [ -z "$DT" ] || [ -z "$DT_OVERLAP" ]; then
+    usage
+fi
 
 source ./env_hist
 source ./.env
@@ -40,6 +69,7 @@ do
         -e DEV_SENSORS_USER="$SENSORS_USER" \
         -e DEV_SENSORS_PASS="$SENSORS_PASS" \
         rbinsbmdc/quality_assurance_tool:$IMAGE_TAG \
+        "--config-name" $CONFIG_NAME \
         "time.start=$START_II" "time.end=$END_I"
 
     START_I=$END_I
