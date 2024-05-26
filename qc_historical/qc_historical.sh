@@ -3,6 +3,8 @@
 IMAGE_TAG="v0.7.0"
 CONFIG_NAME="config.yaml"
 
+# 
+
 # Function to display usage
 usage() {
     echo "Usage: $0 -s START -e END -d total_time_window -o time_window_overlap [-i IMAGE_TAG] [-c CONFIG_NAME]"
@@ -16,9 +18,9 @@ while getopts ":s:e:d:o:i:c:" opt; do
         ;;
         e) END="$OPTARG"
         ;;
-        d) DT="$OPTARG"
+        d) TOTAL_TIME_WINDOW="$OPTARG"
         ;;
-        o) DT_OVERLAP="$OPTARG"
+        o) WINDOW_OVERLAP="$OPTARG"
         ;;
         i) IMAGE_TAG="$OPTARG"
         ;;
@@ -34,16 +36,16 @@ while getopts ":s:e:d:o:i:c:" opt; do
 done
 
 # Check mandatory parameters
-if [ -z "$START" ] || [ -z "$END" ] || [ -z "$DT" ] || [ -z "$DT_OVERLAP" ]; then
+if [ -z "$START" ] || [ -z "$END" ] || [ -z "$TOTAL_TIME_WINDOW" ] || [ -z "$WINDOW_OVERLAP" ]; then
     usage
 fi
 
 source ./env_hist
 source ./.env
 
-DT_INT=$(echo $DT | tr -dc '0-9')
-DT_INT=$(($DT_INT))
-DT_UNIT=$(printf '%s\n' "${DT//[[:digit:]]/}")
+TIME_WINDOW_INT=$(echo $TOTAL_TIME_WINDOW | tr -dc '0-9')
+TIME_WINDOW_INT=$(($TIME_WINDOW_INT))
+TIME_WINDOW_UNIT=$(printf '%s\n' "$TOTAL_TIME_WINDOW//[[:digit:]]/}")
 
 START_SECONDS=$(date -u --date="$START" +%s)
 END_SECONDS=$(date -u --date="$END" +%s)
@@ -57,9 +59,9 @@ do
     CONFIG_FOLDER=$CONFIG_FOLDER_HIST
     OUTPUT_FOLDER=$OUTPUT_FOLDER_HIST
 
-    START_II=$(date -u --date="$START_I UTC +""$((-DT_OVERLAP))""$DT_UNIT" "+%Y-%m-%d %H:%M")
+    START_II=$(date -u --date="$START_I UTC +""$((-WINDOW_OVERLAP))""$DT_UNIT" "+%Y-%m-%d %H:%M")
 
-    END_I=$(date -u --date="$START_I UTC +$((DT_INT))""$DT_UNIT" "+%Y-%m-%d %H:%M")
+    END_I=$(date -u --date="$START_I UTC" "+%Y-%m-%d %H:%M")
 
     docker run \
         -it --rm --network=host --user "$(id -u):$(id -g)"\

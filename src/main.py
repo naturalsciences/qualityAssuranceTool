@@ -132,7 +132,7 @@ def write_datastreamid_yaml_template(thing_id, file: Path) -> None:
         f.writelines(out)
 
 
-@hydra.main(config_path="../conf", config_name="config_finetune_config.yaml", version_base="1.2")
+@hydra.main(config_path="../conf", config_name="conf.yaml", version_base="1.2")
 def main(cfg: QCconf):
     log_extra = logging.getLogger(name="extra")
     log_extra.setLevel(logging.INFO)
