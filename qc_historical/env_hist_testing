@@ -1,0 +1,4 @@
+ROOT_DIR=$(pwd)/..
+CONFIG_FOLDER_HIST=$ROOT_DIR/conf
+OUTPUT_FOLDER_HIST=$ROOT_DIR/outputs
+BASE_URL=http://localhost:8080/FROST-Server/v1.1
