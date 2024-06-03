@@ -1,0 +1,72 @@
+time: 
+  format: "%Y-%m-%d %H:%M:%S"
+  # start: "2024-03-12 09:00:00"
+  # end: "2024-04-12 12:00:00"
+  start: "2023-06-01 00:00:00"
+  end: "2023-08-01 00:00:00"
+  date:
+    format: "%Y-%m-%d"
+hydra:
+  # verbose: True
+  verbose: __main__
+  run:
+    dir: outputs/${datetime_to_date:${time.start}, ${time.format},${time.date.format}}_${datetime_to_date:${time.end}, ${time.format},${time.date.format}}
+data_api:
+  # base_url: https://sensors.naturalsciences.be/sta/v1.1
+  base_url: http://localhost:8080/FROST-Server/v1.1
+  # base_url: http://192.168.0.25:8080/FROST-Server/v1.1
+  # base_url: http://frost-docker_frosty_net:8080/FROST-Server/v1.1
+  # base_url: https://dev-sensors.naturalsciences.be/sta/v1.1
+  # base_url: https://belgica11busta.rbins.be/FROST-Server/v1.1
+  auth:
+    username: ${oc.env:DEV_SENSORS_USER,""}
+    passphrase: ${oc.env:DEV_SENSORS_PASS,""}
+  things:
+    id: 1
+  filter:
+    phenomenonTime:
+      format: ${time.format}
+      range:
+        - ${time.start}
+        - ${time.end}
+reset:
+  overwrite_flags: False
+  observation_flags: False
+  feature_flags: False
+  exit: False
+location:
+  # connection:
+  #   database: seavox_areas
+  #   user: sevox
+  #   host: localhost
+  #   # port: 5432
+  #   port: 8901
+  #   passphrase: ChangeMe
+  crs: EPSG:4326 # not fully used
+  time_window: 10min
+  max_dx_dt: 6.89 # check units
+  max_ddx_dtdt: 0.15 # VERY high value, needs to be re-evaluated when shorted time intervals are available
+QC_dependent:
+  - independent: 69
+    dependent: 124 # list/array
+    dt_tolerance: 0.5s
+    QC:
+      range:
+        - 0.5
+        - 10.
+QC:
+  1:
+    range:
+      - 0
+      - 10000000
+    zscore:
+      - 0
+      - 0
+  2:
+    range:
+      - 0
+      - 10000000
+    zscore:
+      - 0
+      - 0
+
