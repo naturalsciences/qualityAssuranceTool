@@ -82,7 +82,7 @@ QC_dependent:
       range: 
         - -2
         - 30
-      gradient:
+      zscore:
         - -15
         - 15
   - independent: 7846 #Conductivity measured by the sensor ThermoFluor 1 (SBE21 #1)
@@ -92,7 +92,7 @@ QC_dependent:
       range: 
         - 0
         - 6
-      gradient:
+      zscore:
         - -15
         - 15
   - independent: 7770 #Water temperature SBE38 measured by the sensor ThermoFluor 2 before the SSW pump (SBE21 #2)
@@ -102,7 +102,7 @@ QC_dependent:
       range: 
         - -2
         - 30
-      gradient:
+      zscore:
         - -15
         - 15
   - independent: 7849 #Conductivity measured by the sensor ThermoFluor 2 (SBE21 #2)
@@ -112,7 +112,7 @@ QC_dependent:
       range: 
         - 0
         - 6
-      gradient:
+      zscore:
         - -15
         - 15
 QC:
@@ -128,21 +128,21 @@ QC:
     range: 
       - 5
       - 5000
-    gradient:
+    zscore:
       - -3
       - 3
   - independent: 7739 #Depth from surface measured by the sensor Depth Sounder (ESN200)
     range: 
       - 5
       - 5000
-    gradient:
+    zscore:
       - -3
       - 3
   - independent: 7741 #Depth measured by the sensor Depth Sounder (ESN200)
     range: 
       - 5
       - 5000
-    gradient:
+    zscore:
       - -3
       - 3
   - independent: 7743 #True heading measured by the sensor Speed Log (EML224)
@@ -189,56 +189,56 @@ QC:
     range: 
       - 5
       - 7000
-    gradient:
+    zscore:
       - -3
       - 3
   - independent: 7759 #38kHz - Depth measured by the sensor EK80
     range: 
       - 5
       - 2800
-    gradient:
+    zscore:
       - -3
       - 3
   - independent: 7763 #70kHz - Depth measured by the sensor EK80
     range: 
       - 5
       - 1100
-    gradient:
+    zscore:
       - -3
       - 3
   - independent: 7766 #120kHz - Depth measured by the sensor EK80
     range: 
       - 5
       - 850
-    gradient:
+    zscore:
       - -3
       - 3
   - independent: 7767 #Water temperature SBE21 measured by the sensor ThermoFluor 1 after the SSW pump (SBE21 #1)
     range: 
       - -2
       - 30
-    gradient:
+    zscore:
       - -15
       - 15
   - independent: 7769 #Water temperature SBE21 measured by the sensor ThermoFluor 2 after the SSW pump (SBE21 #2)
     range: 
       - -2
       - 30
-    gradient:
+    zscore:
       - -15
       - 15
   - independent: 7773 #200kHz - Depth measured by the sensor EK80
     range: 
       - 5
       - 550
-    gradient:
+    zscore:
       - -3
       - 3
   - independent: 7776 #333kHz - Depth measured by the sensor EK80
     range: 
       - 5
       - 500
-    gradient:
+    zscore:
       - -3
       - 3
   - independent: 7792 #SV chen millero measured by the sensor ThermoFluor 1 (SBE21 #1)
@@ -285,14 +285,14 @@ QC:
     range: 
       - -2
       - 30
-    gradient:
+    zscore:
       - -15
       - 15
   - independent: 7812 #Salinity SBE45 measured by the sensor SubCtech OceanPack AUMS
     range: 
       - 0
       - 40
-    gradient:
+    zscore:
       - -15
       - 15
   - independent: 7814 #O2 saturation measured by the sensor SubCtech OceanPack AUMS
@@ -303,7 +303,7 @@ QC:
     range: 
       - 2
       - 40
-    gradient:
+    zscore:
       - -15
       - 15
   - independent: 7848 #Density sigma-theta measured by the sensor ThermoFluor 1 (SBE21 #1)
@@ -314,7 +314,7 @@ QC:
     range: 
       - 2
       - 40
-    gradient:
+    zscore:
       - -15
       - 15
   - independent: 7851 #Density sigma-theta measured by the sensor ThermoFluor 2 (SBE21 #2)
