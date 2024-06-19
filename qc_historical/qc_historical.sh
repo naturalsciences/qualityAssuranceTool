@@ -79,8 +79,9 @@ do
 
     END_I=$(date -u --date="$START_I UTC + ""$TOTAL_TIME_WINDOW" "$DATE_TIME_FORMAT")
 
+        # --rm --network=host --user "$(id -u):$(id -g)"\
     docker run \
-        -it --rm --network=host --user "$(id -u):$(id -g)"\
+        --rm --network=host \ 
         --workdir /app \
         -v "$CONFIG_FOLDER":/app/conf \
         -v "$OUTPUT_FOLDER":/app/outputs \
