@@ -79,10 +79,8 @@ do
 
     END_I=$(date -u --date="$START_I UTC + ""$TOTAL_TIME_WINDOW" "$DATE_TIME_FORMAT")
 
-        # --rm --network=host --user "$(id -u):$(id -g)"\
     docker run \
-        --rm --network=host \ 
-        --workdir /app \
+        --rm --network=host --workdir /app \
         -v "$CONFIG_FOLDER":/app/conf \
         -v "$OUTPUT_FOLDER":/app/outputs \
         -e DEV_SENSORS_USER="$SENSORS_USER" \
