@@ -27,6 +27,11 @@ jobs:
       - name: Check out the repo
         uses: actions/checkout@v4
 
+      - name: Set up Node.js v20
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
       - name: Log in to Docker Hub
         uses: docker/login-action@f4ef78c080cd8ba55a85445d5b36e214a81df20a
         with:
