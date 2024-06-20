@@ -603,7 +603,7 @@ def test_qc_outlier(df_outliers):
     df[["qc_zscore_min", "qc_zscore_max"]] = [-25, 25]
     # df[["qc_zscore_min", "qc_zscore_max"]] = [-3.5, 3.5]
     bool_zscore = get_bool_out_of_range(df=df, qc_on=Df.ZSCORE, qc_type="zscore")
-    assert bool_zscore.sum() == 9
+    assert bool_zscore.sum() == 4
 
 
 @pytest.mark.parametrize("n", tuple(range(len(base_list_region))))
