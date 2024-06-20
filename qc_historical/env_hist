@@ -1,3 +1,4 @@
 ROOT_DIR=$(pwd)/..
 CONFIG_FOLDER_HIST=$ROOT_DIR/conf
 OUTPUT_FOLDER_HIST=$ROOT_DIR/outputs
+BASE_URL=https://belgica11busta.rbins.be/FROST-Server/v1.1/
