@@ -1,0 +1,38 @@
+# This workflow will install Python dependencies, run tests and lint with a single version of Python
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+
+name: Validate config yaml
+
+on:
+  push:
+    paths:
+      - "conf/**.yaml"
+      - "conf/**.yml"
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  run_validation:
+
+    runs-on: self-hosted
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install cerberus
+    - name: Export PYTHONPATH
+      run: |
+        echo "PYTHONPATH=${PYTHONPATH}:./:./src/" >> "$GITHUB_ENV"
+    - name: Validate config file
+      run: |
+        python yaml_schema.py
