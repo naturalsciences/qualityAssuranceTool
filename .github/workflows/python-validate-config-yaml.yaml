@@ -35,4 +35,4 @@ jobs:
         echo "PYTHONPATH=${PYTHONPATH}:./:./src/" >> "$GITHUB_ENV"
     - name: Validate config file
       run: |
-        python yaml_schema.py
+        python src/yaml_schema.py
