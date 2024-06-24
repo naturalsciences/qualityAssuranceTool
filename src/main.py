@@ -193,7 +193,9 @@ def main(cfg: QCconf):
     nb_observations = df_all.shape[0]
     df_all = gpd.GeoDataFrame(df_all, geometry=gpd.points_from_xy(df_all[Df.LONG], df_all[Df.LAT]), crs=cfg.location.crs)  # type: ignore
     # get qc check df (try to find clearer name)
-    qc_df = pd.DataFrame.from_dict(cfg.QC, orient="index")
+    qc_config_dict = {li.get("id"): li for li in cfg.QC} # type: ignore
+    qc_df = pd.DataFrame.from_dict(qc_config_dict, orient="index")
+    qc_df = qc_df.drop(columns="id")
     ## Is changing this suffusient to correctit?
     # qc_df.index.name = Df.OBSERVATION_TYPE
     qc_df.index.name = Df.DATASTREAM_ID

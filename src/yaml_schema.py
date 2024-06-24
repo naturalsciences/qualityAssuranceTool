@@ -1,6 +1,8 @@
+import argparse
+from pathlib import Path
+
 import yaml
 from cerberus import Validator
-from pathlib import Path
 
 schema = {
     "time": {
@@ -104,6 +106,7 @@ schema = {
                     "schema": {
                         "range": {"type": "list", "schema": {"type": "float"}},
                         "gradient": {"type": "list", "schema": {"type": "float"}},
+                        "zscore": {"type": "list", "schema": {"type": "float"}},
                     },
                 },
             },
@@ -114,9 +117,10 @@ schema = {
         "schema": {
             "type": "dict",
             "schema": {
-                "independent": {"type": "integer", "min": 1},
+                "id": {"type": "integer", "min": 1},
                 "range": {"type": "list", "schema": {"type": "float"}},
                 "gradient": {"type": "list", "schema": {"type": "float"}},
+                "zscore": {"type": "list", "schema": {"type": "float"}},
             },
         },
     },
@@ -124,16 +128,28 @@ schema = {
 
 
 def main():
-    with open("conf/config.yaml", "r") as f:
-        config_yaml = yaml.safe_load(f)
+    parser = argparse.ArgumentParser(
+        description="Script to validate yaml config (QualityAssuranceTool)"
+    )
 
-    v = Validator(schema) # type: ignore
-    # v.validate(config_yaml) # type: ignore
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--file", type=str, help="Yaml config file", default=None)
+    group.add_argument(
+        "--folder", type=str, help="Folder containing yaml file(s)", default="conf"
+    )
 
-    if v.validate(config_yaml): # type: ignore
+    args = parser.parse_args()
+
+    v = Validator(schema)  # type: ignore
+    for file_i in Path(args.folder).rglob("*.yaml"):
+        with open(file_i, "r") as f_i:
+            conf_yaml_i = yaml.safe_load(f_i)  # type: ignore
+        if v.validate(conf_yaml_i):  # type: ignore
+            pass
+        else:
+            raise IOError(f"{file_i} Config not valid: {v.errors}")  # type: ignore
+
         pass
-    else:
-        raise IOError(f"Config not valid: {v.errors}") # type: ignore
 
 
 if __name__ == "__main__":

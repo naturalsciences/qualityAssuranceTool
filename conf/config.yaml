@@ -2,8 +2,8 @@ time:
   format: "%Y-%m-%d %H:%M:%S"
   # start: "2024-03-12 09:00:00"
   # end: "2024-04-12 12:00:00"
-  start: "2024-03-19 12:29:00"
-  end: "2024-03-19 13:00:00"
+  start: "2024-03-19 12:31:00"
+  end: "2024-03-19 12:33:00"
   date:
     format: "%Y-%m-%d"
 hydra:
@@ -116,248 +116,248 @@ QC_dependent:
         - -15
         - 15
 QC:
-  - independent: 7727 #Telegram VTG measured by the sensor GPS 1 (R5 #1)
+  - id: 7727 #Telegram VTG measured by the sensor GPS 1 (R5 #1)
     range: 
       - 0
       - 360
-  - independent: 7728 #Telegram VTG measured by the sensor GPS 1 (R5 #1)
+  - id: 7728 #Telegram VTG measured by the sensor GPS 1 (R5 #1)
     range: 
       - -5
       - 18
-  - independent: 7738 #Depth from transducer measured by the sensor Depth Sounder (ESN200)
+  - id: 7738 #Depth from transducer measured by the sensor Depth Sounder (ESN200)
     range: 
       - 5
       - 5000
     zscore:
       - -3
       - 3
-  - independent: 7739 #Depth from surface measured by the sensor Depth Sounder (ESN200)
+  - id: 7739 #Depth from surface measured by the sensor Depth Sounder (ESN200)
     range: 
       - 5
       - 5000
     zscore:
       - -3
       - 3
-  - independent: 7741 #Depth measured by the sensor Depth Sounder (ESN200)
+  - id: 7741 #Depth measured by the sensor Depth Sounder (ESN200)
     range: 
       - 5
       - 5000
     zscore:
       - -3
       - 3
-  - independent: 7743 #True heading measured by the sensor Speed Log (EML224)
+  - id: 7743 #True heading measured by the sensor Speed Log (EML224)
     range: 
       - 0
       - 360
-  - independent: 7744 #Magnetic heading measured by the sensor Speed Log (EML224)
+  - id: 7744 #Magnetic heading measured by the sensor Speed Log (EML224)
     range: 
       - 0
       - 360
-  - independent: 7747 #Wind angle measured by the sensor WeatherStation (CR6 WS #1)
+  - id: 7747 #Wind angle measured by the sensor WeatherStation (CR6 WS #1)
     range: 
       - 0
       - 360
-  - independent: 7748 #Wind speed measured by the sensor WeatherStation (CR6 WS #1)
+  - id: 7748 #Wind speed measured by the sensor WeatherStation (CR6 WS #1)
     range: 
       - 0
       - 60
-  - independent: 7749 #Air temperature measured by the sensor WeatherStation (CR6 WS #1)
+  - id: 7749 #Air temperature measured by the sensor WeatherStation (CR6 WS #1)
     range: 
       - -20
       - 40
-  - independent: 7750 #Relative humidity measured by the sensor WeatherStation (CR6 WS #1)
+  - id: 7750 #Relative humidity measured by the sensor WeatherStation (CR6 WS #1)
     range: 
       - 0
       - 100
-  - independent: 7751 #True wind speed measured by the sensor WeatherStation (CR6 WS #1)
+  - id: 7751 #True wind speed measured by the sensor WeatherStation (CR6 WS #1)
     range: 
       - 0
       - 60
-  - independent: 7752 #True wind direction measured by the sensor WeatherStation (CR6 WS #1)
+  - id: 7752 #True wind direction measured by the sensor WeatherStation (CR6 WS #1)
     range: 
       - 0
       - 360
-  - independent: 7753 #Air pressure measured by the sensor WeatherStation (CR6 WS #1)
+  - id: 7753 #Air pressure measured by the sensor WeatherStation (CR6 WS #1)
     range: 
       - 800
       - 1084.8
-  - independent: 7754 #Solar radiation density measured by the sensor WeatherStation (CR6 WS #1)
+  - id: 7754 #Solar radiation density measured by the sensor WeatherStation (CR6 WS #1)
     range: 
       - 0
       - 1200
-  - independent: 7756 #18kHz - Depth measured by the sensor EK80
+  - id: 7756 #18kHz - Depth measured by the sensor EK80
     range: 
       - 5
       - 7000
     zscore:
       - -3
       - 3
-  - independent: 7759 #38kHz - Depth measured by the sensor EK80
+  - id: 7759 #38kHz - Depth measured by the sensor EK80
     range: 
       - 5
       - 2800
     zscore:
       - -3
       - 3
-  - independent: 7763 #70kHz - Depth measured by the sensor EK80
+  - id: 7763 #70kHz - Depth measured by the sensor EK80
     range: 
       - 5
       - 1100
     zscore:
       - -3
       - 3
-  - independent: 7766 #120kHz - Depth measured by the sensor EK80
+  - id: 7766 #120kHz - Depth measured by the sensor EK80
     range: 
       - 5
       - 850
     zscore:
       - -3
       - 3
-  - independent: 7767 #Water temperature SBE21 measured by the sensor ThermoFluor 1 after the SSW pump (SBE21 #1)
+  - id: 7767 #Water temperature SBE21 measured by the sensor ThermoFluor 1 after the SSW pump (SBE21 #1)
     range: 
       - -2
       - 30
     zscore:
       - -15
       - 15
-  - independent: 7769 #Water temperature SBE21 measured by the sensor ThermoFluor 2 after the SSW pump (SBE21 #2)
+  - id: 7769 #Water temperature SBE21 measured by the sensor ThermoFluor 2 after the SSW pump (SBE21 #2)
     range: 
       - -2
       - 30
     zscore:
       - -15
       - 15
-  - independent: 7773 #200kHz - Depth measured by the sensor EK80
+  - id: 7773 #200kHz - Depth measured by the sensor EK80
     range: 
       - 5
       - 550
     zscore:
       - -3
       - 3
-  - independent: 7776 #333kHz - Depth measured by the sensor EK80
+  - id: 7776 #333kHz - Depth measured by the sensor EK80
     range: 
       - 5
       - 500
     zscore:
       - -3
       - 3
-  - independent: 7792 #SV chen millero measured by the sensor ThermoFluor 1 (SBE21 #1)
+  - id: 7792 #SV chen millero measured by the sensor ThermoFluor 1 (SBE21 #1)
     range: 
       - 1400
       - 1600
-  - independent: 7794 #SV chen millero measured by the sensor ThermoFluor 2 (SBE21 #2)
+  - id: 7794 #SV chen millero measured by the sensor ThermoFluor 2 (SBE21 #2)
     range: 
       - 1400
       - 1600
-  - independent: 7800 #Wind angle measured by the sensor WeatherStation2 (CR6 WS #2)
+  - id: 7800 #Wind angle measured by the sensor WeatherStation2 (CR6 WS #2)
     range: 
       - 0
       - 360
-  - independent: 7801 #Wind speed measured by the sensor WeatherStation2 (CR6 WS #2)
+  - id: 7801 #Wind speed measured by the sensor WeatherStation2 (CR6 WS #2)
     range: 
       - 0
       - 60
-  - independent: 7802 #Air temperature measured by the sensor WeatherStation2 (CR6 WS #2)
+  - id: 7802 #Air temperature measured by the sensor WeatherStation2 (CR6 WS #2)
     range: 
       - -20
       - 40
-  - independent: 7803 #Relative humidity measured by the sensor WeatherStation2 (CR6 WS #2)
+  - id: 7803 #Relative humidity measured by the sensor WeatherStation2 (CR6 WS #2)
     range: 
       - 0
       - 100
-  - independent: 7804 #True wind speed measured by the sensor WeatherStation2 (CR6 WS #2)
+  - id: 7804 #True wind speed measured by the sensor WeatherStation2 (CR6 WS #2)
     range: 
       - 0
       - 60
-  - independent: 7805 #True wind direction measured by the sensor WeatherStation2 (CR6 WS #2)
+  - id: 7805 #True wind direction measured by the sensor WeatherStation2 (CR6 WS #2)
     range: 
       - 0
       - 360
-  - independent: 7806 #Air pressure measured by the sensor WeatherStation2 (CR6 WS #2)
+  - id: 7806 #Air pressure measured by the sensor WeatherStation2 (CR6 WS #2)
     range: 
       - 800
       - 1084.8
-  - independent: 7807 #Solar radiation density measured by the sensor WeatherStation2 (CR6 WS #2)
+  - id: 7807 #Solar radiation density measured by the sensor WeatherStation2 (CR6 WS #2)
     range: 
       - 0
       - 1200
-  - independent: 7810 #Temperature SBE45 measured by the sensor SubCtech OceanPack AUMS
+  - id: 7810 #Temperature SBE45 measured by the sensor SubCtech OceanPack AUMS
     range: 
       - -2
       - 30
     zscore:
       - -15
       - 15
-  - independent: 7812 #Salinity SBE45 measured by the sensor SubCtech OceanPack AUMS
+  - id: 7812 #Salinity SBE45 measured by the sensor SubCtech OceanPack AUMS
     range: 
       - 0
       - 40
     zscore:
       - -15
       - 15
-  - independent: 7814 #O2 saturation measured by the sensor SubCtech OceanPack AUMS
+  - id: 7814 #O2 saturation measured by the sensor SubCtech OceanPack AUMS
     range: 
       - 0
       - 100
-  - independent: 7847 #Salinity measured by the sensor ThermoFluor 1 (SBE21 #1)
+  - id: 7847 #Salinity measured by the sensor ThermoFluor 1 (SBE21 #1)
     range: 
       - 2
       - 40
     zscore:
       - -15
       - 15
-  - independent: 7848 #Density sigma-theta measured by the sensor ThermoFluor 1 (SBE21 #1)
+  - id: 7848 #Density sigma-theta measured by the sensor ThermoFluor 1 (SBE21 #1)
     range: 
       - 3
       - 30
-  - independent: 7850 #Salinity measured by the sensor ThermoFluor 2 (SBE21 #2)
+  - id: 7850 #Salinity measured by the sensor ThermoFluor 2 (SBE21 #2)
     range: 
       - 2
       - 40
     zscore:
       - -15
       - 15
-  - independent: 7851 #Density sigma-theta measured by the sensor ThermoFluor 2 (SBE21 #2)
+  - id: 7851 #Density sigma-theta measured by the sensor ThermoFluor 2 (SBE21 #2)
     range: 
       - 3
       - 30
-  - independent: 7852 #Telegram VTG measured by the sensor GPS 2 (R5 #2)
+  - id: 7852 #Telegram VTG measured by the sensor GPS 2 (R5 #2)
     range: 
       - 0
       - 360
-  - independent: 7853 #Telegram VTG measured by the sensor GPS 2 (R5 #2)
+  - id: 7853 #Telegram VTG measured by the sensor GPS 2 (R5 #2)
     range: 
       - -5
       - 18
-  - independent: 7854 #Telegram VTG measured by the sensor Seapath (380-R3)
+  - id: 7854 #Telegram VTG measured by the sensor Seapath (380-R3)
     range: 
       - 0
       - 360
-  - independent: 7855 #Telegram VTG measured by the sensor Seapath (380-R3)
+  - id: 7855 #Telegram VTG measured by the sensor Seapath (380-R3)
     range: 
       - -5
       - 18
-  - independent: 7856 #Telegram HDT measured by the sensor Seapath (380-R3)
+  - id: 7856 #Telegram HDT measured by the sensor Seapath (380-R3)
     range: 
       - 0
       - 360
-  - independent: 7859 #Telegram SXN23 measured by the sensor Seapath (380-R3)
+  - id: 7859 #Telegram SXN23 measured by the sensor Seapath (380-R3)
     range: 
       - 0
       - 360
-  - independent: 7861 #Telegram HDT measured by the sensor Gyro 2 (Navigat 200 #2)
+  - id: 7861 #Telegram HDT measured by the sensor Gyro 2 (Navigat 200 #2)
     range: 
       - 0
       - 360
-  - independent: 7865 #Heading measured by the sensor EM3000 MRU 1 (IMU-108 #1)
+  - id: 7865 #Heading measured by the sensor EM3000 MRU 1 (IMU-108 #1)
     range: 
       - 0
       - 360
-  - independent: 7869 #Heading measured by the sensor EM3000 MRU 1 (IMU-108 #2)
+  - id: 7869 #Heading measured by the sensor EM3000 MRU 1 (IMU-108 #2)
     range: 
       - 0
       - 360
-  - independent: 7870 #Telegram HDT measured by the sensor Gyro 1 (Navigat 200 #1)
+  - id: 7870 #Telegram HDT measured by the sensor Gyro 1 (Navigat 200 #1)
     range: 
       - 0
       - 360

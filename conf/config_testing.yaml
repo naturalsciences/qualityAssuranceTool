@@ -55,14 +55,14 @@ QC_dependent:
         - 0.5
         - 10.
 QC:
-  1:
+  - id: 1
     range:
       - 0
       - 10000000
     zscore:
       - 0
       - 0
-  2:
+  - id: 2
     range:
       - 0
       - 10000000
