@@ -181,13 +181,20 @@ Script and env file in order to QC data within a range in fixed, overlapping tim
 .Usage qc_historical.sh
 [source,bash]
 ----
-./qc_historical.sh START END WINDOW OVERLAP >> LOGFILE 2>&1
+./qc_historical.sh  -s START -e END -d total_time_window -o time_window_overlap [-i IMAGE_TAG ] [-c CONFIG_NAME ] [ -t ]
 ----
+
+-s:: start date time (+%Y-%m-%d %H:%M:%S)
+-e:: end date time
+-d:: total width of the time window (integer followed by unit, i.g. "60min")
+-o:: time window overlap; the time overlap (same units as the total width of the time windows above) with previous window
+-i:: tag of the docker image (see https://hub.docker.com/r/rbinsbmdc/quality_assurance_tool/tags[docker hub])
+-t:: flag (no argument) to turn on test-mode, appending the env source file names with the "_testing" (is hardcoded in script)
 
 .Example qc_historical.sh usage
 [source,bash]
 ----
-./qc_historical.sh "2023-05-05 00:00" "2023-05-05 02:00" "10minutes" "1" >> qc_historical.log 2>&1
+./qc_historical.sh -s "2023-05-24 09:30:00" -e "2023-05-24 10:30:00" -d "60min" -o "10" -i "tmp" -c "config.yaml" -t >> qc_historical_$(date "+%Y%m%d").log 2>&1
 ----
 
 
