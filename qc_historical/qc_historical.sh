@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-IMAGE_TAG="v0.7.0"
+IMAGE_TAG="v0.7.1"
 CONFIG_NAME="config.yaml"
 DATE_TIME_FORMAT="+%Y-%m-%d %H:%M:%S"
 
