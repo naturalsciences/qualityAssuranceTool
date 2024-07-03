@@ -6,6 +6,7 @@ import time
 from datetime import datetime
 from functools import partial
 from pathlib import Path
+from urllib.parse import urljoin
 
 import geopandas as gpd
 import hydra
@@ -169,7 +170,7 @@ def main(cfg: QCconf):
     t_df0 = time.time()
     config.filename = Path("outputs/.staconf.ini")
     set_sta_url(cfg.data_api.base_url)
-    url_batch = cfg.data_api.base_url + "/$batch"
+    url_batch = urljoin(cfg.data_api.base_url, "/$batch")
 
     auth_tuple = (
         getattr(cfg.data_api, "auth", {}).get("username", None),
