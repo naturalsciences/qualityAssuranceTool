@@ -170,7 +170,7 @@ def main(cfg: QCconf):
     t_df0 = time.time()
     config.filename = Path("outputs/.staconf.ini")
     set_sta_url(cfg.data_api.base_url)
-    url_batch = urljoin(cfg.data_api.base_url, "$batch")
+    url_batch = urljoin(cfg.data_api.base_url + "/", "$batch")
 
     auth_tuple = (
         getattr(cfg.data_api, "auth", {}).get("username", None),
