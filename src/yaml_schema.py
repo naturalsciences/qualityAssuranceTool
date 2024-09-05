@@ -65,6 +65,12 @@ schema = {
             "exit": {"type": "boolean"},
         },
     },
+    "other": {
+        "type": "dict",
+        "schema": {
+            "count_observations": {"type": "boolean"},
+        },
+    },
     "location": {
         "type": "dict",
         "schema": {

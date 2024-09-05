@@ -185,7 +185,7 @@ def main(cfg: QCconf):
     # get data in dataframe
     # write_datastreamid_yaml_template(thing_id=thing_id, file=Path("/tmp/test.yaml"))
 
-    df_all = get_all_data(thing_id=thing_id, filter_cfg=filter_cfg)
+    df_all = get_all_data(thing_id=thing_id, filter_cfg=filter_cfg, count_observations=cfg.other.count_observations)
 
     if df_all.empty:
         log.warning("Terminating script.")
