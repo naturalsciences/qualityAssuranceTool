@@ -3,7 +3,7 @@ time:
   # start: "2024-03-12 09:00:00"
   # end: "2024-04-12 12:00:00"
   start: "2024-03-19 12:31:00"
-  end: "2024-03-19 12:33:00"
+  end: "2024-03-19 12:31:30"
   date:
     format: "%Y-%m-%d"
 hydra:
@@ -16,8 +16,8 @@ data_api:
   # base_url: "http://localhost:8080/FROST-Server/v1.1/"
   # base_url: http://192.168.0.25:8080/FROST-Server/v1.1
   # base_url: http://frost-docker_frosty_net:8080/FROST-Server/v1.1
-  # base_url: https://dev-sensors.naturalsciences.be/sta/v1.1
-  base_url: "https://belgica11busta.rbins.be/FROST-Server/v1.1/"
+  base_url: https://dev-sensors.naturalsciences.be/sta/v1.1
+  # base_url: "https://belgica11busta.rbins.be/FROST-Server/v1.1/"
   auth:
     username: ${oc.env:DEV_SENSORS_USER,""}
     passphrase: ${oc.env:DEV_SENSORS_PASS,""}
@@ -30,10 +30,12 @@ data_api:
         - ${time.start}
         - ${time.end}
 reset:
-  overwrite_flags: False
-  observation_flags: False
-  feature_flags: False
-  exit: False
+  overwrite_flags: True
+  observation_flags: True
+  feature_flags: True
+  exit: True
+other:
+  count_observations: False
 location:
   # connection:
   #   database: seavox_areas
