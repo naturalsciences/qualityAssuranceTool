@@ -9,9 +9,9 @@ endif::[]
 [.clearfix]
 --
 [.left]
-image::https://github.com/naturalsciences/qualityAssuranceTool/actions/workflows/python-app.yml/badge.svg?branch=main[Pytest_badge]
+image::https://github.com/naturalsciences/qualityAssuranceTool/actions/workflows/python-app.yml/badge.svg?branch=main[Pytest_badge, link=https://github.com/naturalsciences/qualityAssuranceTool/actions]
 [.left]
-image::https://github.com/naturalsciences/qualityAssuranceTool/actions/workflows/docker-build-publish.yml/badge.svg[Docker build status]
+image::https://github.com/naturalsciences/qualityAssuranceTool/actions/workflows/docker-build-publish.yml/badge.svg[Docker build status, link=https://hub.docker.com/r/rbinsbmdc/quality_assurance_tool]
 --
 
 // this only works when using docker automated build?
