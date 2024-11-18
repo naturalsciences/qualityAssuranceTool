@@ -181,11 +181,19 @@ def main(cfg: QCconf):
     thing_id = cfg.data_api.things.id
 
     filter_cfg = filter_cfg_to_query(cfg.data_api.filter)
+    filter_cfg_datastreams = filter_cfg_to_query(
+        cfg.data_api.filter, level=Entities.DATASTREAMS
+    )
 
     # get data in dataframe
     # write_datastreamid_yaml_template(thing_id=thing_id, file=Path("/tmp/test.yaml"))
 
-    df_all = get_all_data(thing_id=thing_id, filter_cfg=filter_cfg, count_observations=cfg.other.count_observations)
+    df_all = get_all_data(
+        thing_id=thing_id,
+        filter_cfg=filter_cfg,
+        filter_cfg_datastreams=filter_cfg_datastreams,
+        count_observations=cfg.other.count_observations,
+    )
 
     if df_all.empty:
         log.warning("Terminating script.")
@@ -194,7 +202,7 @@ def main(cfg: QCconf):
     nb_observations = df_all.shape[0]
     df_all = gpd.GeoDataFrame(df_all, geometry=gpd.points_from_xy(df_all[Df.LONG], df_all[Df.LAT]), crs=cfg.location.crs)  # type: ignore
     # get qc check df (try to find clearer name)
-    qc_config_dict = {li.get("id"): li for li in cfg.QC} # type: ignore
+    qc_config_dict = {li.get("id"): li for li in cfg.QC}  # type: ignore
     qc_df = pd.DataFrame.from_dict(qc_config_dict, orient="index")
     qc_df = qc_df.drop(columns="id")
     ## Is changing this suffusient to correctit?
