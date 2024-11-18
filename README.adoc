@@ -6,13 +6,16 @@ ifndef::env-github[]
 :toc: left
 endif::[]
 
-[.clearfix]
---
-[.left]
-image::https://github.com/naturalsciences/qualityAssuranceTool/actions/workflows/python-app.yml/badge.svg?branch=main[Pytest_badge]
-[.left]
-image::https://github.com/naturalsciences/qualityAssuranceTool/actions/workflows/docker-build-publish.yml/badge.svg[Docker build status]
---
+++++
+<div style="text-align: center;">
+  <a href="https://github.com/naturalsciences/qualityAssuranceTool/actions">
+    <img src="https://github.com/naturalsciences/qualityAssuranceTool/actions/workflows/python-app.yml/badge.svg?branch=main" alt="Pytest_badge" style="display: inline-block; margin-right: 20px;">
+  </a>
+  <a href="https://hub.docker.com/r/rbinsbmdc/quality_assurance_tool">
+    <img src="https://github.com/naturalsciences/qualityAssuranceTool/actions/workflows/docker-build-publish.yml/badge.svg" alt="Docker build status" style="display: inline-block;">
+  </a>
+</div>
+++++
 
 // this only works when using docker automated build?
 // image::https://img.shields.io/docker/automated/rbinsbmdc/quality_assurance_tool[docker_badge]
