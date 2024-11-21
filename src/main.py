@@ -34,6 +34,7 @@ from omegaconf import OmegaConf
 from pandassta.df import (
     Df,
     QualityFlags,
+    CAT_TYPE,
     get_dt_velocity_and_acceleration_series,
     df_type_conversions,
 )
@@ -133,7 +134,7 @@ def write_datastreamid_yaml_template(thing_id, file: Path) -> None:
         f.writelines(out)
 
 
-@hydra.main(config_path="../conf", config_name="config.yaml", version_base="1.2")
+@hydra.main(config_path="../conf", config_name="config 4.yaml", version_base="1.2")
 def main(cfg: QCconf):
     log_extra = logging.getLogger(name="extra")
     log_extra.setLevel(logging.INFO)
@@ -470,7 +471,8 @@ def main(cfg: QCconf):
                     dependent=dependent_ii,
                     dt_tolerance=dt_tolerance,
                 )
-                df_all.update({Df.QC_FLAG: base_flags})  # type: ignore
+                # df_all.update({Df.QC_FLAG: base_flags})  # type: ignore
+                df_all[Df.QC_FLAG] = df_all[Df.QC_FLAG].combine(base_flags.astype(CAT_TYPE), max, QualityFlags.NO_QUALITY_CONTROL)
                 secondary_flags = qc_dependent_quantity_secondary(
                     df_all,
                     independent=independent,
@@ -478,7 +480,7 @@ def main(cfg: QCconf):
                     range_=tuple(dependent_i.QC.range),  # type: ignore
                     dt_tolerance=cfg.QC_dependent[0].dt_tolerance,
                 )
-                df_all.update({Df.QC_FLAG: secondary_flags})  # type: ignore
+                df_all[Df.QC_FLAG] = df_all[Df.QC_FLAG].combine(secondary_flags.astype(CAT_TYPE), max, QualityFlags.NO_QUALITY_CONTROL)
 
         else:
             base_flags = qc_dependent_quantity_base(
@@ -487,7 +489,7 @@ def main(cfg: QCconf):
                 dependent=dependent,
                 dt_tolerance=dt_tolerance,
             )
-            df_all.update({Df.QC_FLAG: base_flags})  # type: ignore
+            df_all[Df.QC_FLAG] = df_all[Df.QC_FLAG].combine(base_flags.astype(CAT_TYPE), max, QualityFlags.NO_QUALITY_CONTROL)
             secondary_flags = qc_dependent_quantity_secondary(
                 df_all,
                 independent=independent,
@@ -495,7 +497,7 @@ def main(cfg: QCconf):
                 range_=tuple(dependent_i.QC.range),  # type: ignore
                 dt_tolerance=cfg.QC_dependent[0].dt_tolerance,
             )
-            df_all.update({Df.QC_FLAG: secondary_flags})  # type: ignore
+            df_all[Df.QC_FLAG] = df_all[Df.QC_FLAG].combine(secondary_flags.astype(CAT_TYPE), max, QualityFlags.NO_QUALITY_CONTROL)
     t_dependent1 = time.time()
 
     log.info(f"{df_all[Df.QC_FLAG].value_counts(dropna=False).to_json()=}")
