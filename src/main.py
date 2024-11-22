@@ -134,6 +134,18 @@ def write_datastreamid_yaml_template(thing_id, file: Path) -> None:
         f.writelines(out)
 
 
+def combine_df_all_w_dependency_output(
+    df: pd.DataFrame, dependency_flags: pd.Series
+) -> pd.Series:
+    df["idx"] = df.index
+    df = df.set_index(Df.IOT_ID)
+    df[Df.QC_FLAG] = df[Df.QC_FLAG].combine(dependency_flags.astype(CAT_TYPE), max, QualityFlags.NO_QUALITY_CONTROL).astype(CAT_TYPE)  # type: ignore
+
+    df_out = df.set_index("idx", drop=True)
+    df_out.index.name = None
+    return df_out[Df.QC_FLAG]
+
+
 @hydra.main(config_path="../conf", config_name="config 4.yaml", version_base="1.2")
 def main(cfg: QCconf):
     log_extra = logging.getLogger(name="extra")
@@ -463,7 +475,7 @@ def main(cfg: QCconf):
         independent = dependent_i.independent
         dependent = dependent_i.dependent
         dt_tolerance = dependent_i.dt_tolerance
-        if isinstance(dependent, str) and ',' in dependent:
+        if isinstance(dependent, str) and "," in dependent:
             for dependent_ii in [int(ii) for ii in dependent.split(",")]:
                 base_flags = qc_dependent_quantity_base(
                     df_all,
@@ -472,7 +484,9 @@ def main(cfg: QCconf):
                     dt_tolerance=dt_tolerance,
                 )
                 # df_all.update({Df.QC_FLAG: base_flags})  # type: ignore
-                df_all[Df.QC_FLAG] = df_all[Df.QC_FLAG].combine(base_flags.astype(CAT_TYPE), max, QualityFlags.NO_QUALITY_CONTROL)
+                df_all[Df.QC_FLAG] = combine_df_all_w_dependency_output(
+                    df_all, base_flags
+                )
                 secondary_flags = qc_dependent_quantity_secondary(
                     df_all,
                     independent=independent,
@@ -480,7 +494,9 @@ def main(cfg: QCconf):
                     range_=tuple(dependent_i.QC.range),  # type: ignore
                     dt_tolerance=cfg.QC_dependent[0].dt_tolerance,
                 )
-                df_all[Df.QC_FLAG] = df_all[Df.QC_FLAG].combine(secondary_flags.astype(CAT_TYPE), max, QualityFlags.NO_QUALITY_CONTROL)
+                df_all[Df.QC_FLAG] = combine_df_all_w_dependency_output(
+                    df_all, secondary_flags
+                )
 
         else:
             base_flags = qc_dependent_quantity_base(
@@ -489,7 +505,7 @@ def main(cfg: QCconf):
                 dependent=dependent,
                 dt_tolerance=dt_tolerance,
             )
-            df_all[Df.QC_FLAG] = df_all[Df.QC_FLAG].combine(base_flags.astype(CAT_TYPE), max, QualityFlags.NO_QUALITY_CONTROL)
+            df_all[Df.QC_FLAG] = combine_df_all_w_dependency_output(df_all, base_flags)
             secondary_flags = qc_dependent_quantity_secondary(
                 df_all,
                 independent=independent,
@@ -497,7 +513,9 @@ def main(cfg: QCconf):
                 range_=tuple(dependent_i.QC.range),  # type: ignore
                 dt_tolerance=cfg.QC_dependent[0].dt_tolerance,
             )
-            df_all[Df.QC_FLAG] = df_all[Df.QC_FLAG].combine(secondary_flags.astype(CAT_TYPE), max, QualityFlags.NO_QUALITY_CONTROL)
+            df_all[Df.QC_FLAG] = combine_df_all_w_dependency_output(
+                df_all, secondary_flags
+            )
     t_dependent1 = time.time()
 
     log.info(f"{df_all[Df.QC_FLAG].value_counts(dropna=False).to_json()=}")

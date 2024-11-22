@@ -51,12 +51,12 @@ schema = {
                             "format": {"type": "string"},
                             "range": {"type": "list", "schema": {"type": "string"}},
                         },
+                    },
                     "Datastreams": {
                         "type": "dict",
                         "schema": {
-                            "ids": {"type": "list", "schema": {"type": "integer"}},
+                            "ids": {"type": "list", "schema": {"type": "integer"}}
                         }
-                    }
                     }
                 },
             },
