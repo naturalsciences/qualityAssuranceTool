@@ -8,10 +8,10 @@ from functools import partial
 from pathlib import Path
 from urllib.parse import urljoin
 
+import aenum
 import geopandas as gpd
 import hydra
 import pandas as pd
-import aenum
 from df_qc_tools.config import QCconf, filter_cfg_to_query
 from df_qc_tools.qc import (
     FEATURES_BODY_TEMPLATE,
@@ -32,21 +32,23 @@ from df_qc_tools.qc import (
 from dotenv import load_dotenv
 from omegaconf import OmegaConf
 from pandassta.df import (
+    CAT_TYPE,
     Df,
     QualityFlags,
-    CAT_TYPE,
-    get_dt_velocity_and_acceleration_series,
     df_type_conversions,
+    get_dt_velocity_and_acceleration_series,
 )
 from pandassta.sta import Entities, Properties, Settings
 from pandassta.sta_requests import (
+    Entity,
+    Query,
     config,
     get_all_data,
     get_elev_netcdf,
     patch_qc_flags,
     set_sta_url,
-    Entity,
-    Query,
+    write_patch_to_file,
+    create_patch_json,
 )
 from searegion_detection.pandaseavox import intersect_df_region
 
@@ -532,6 +534,18 @@ def main(cfg: QCconf):
     t_qc1 = time.time()
     t_patch0 = time.time()
     t3 = time.time()
+
+    if cfg.other.write_flags_to_json:
+        write_patch_to_file(
+            create_patch_json(
+                df=df_all,
+                columns=[Df.IOT_ID, Df.QC_FLAG],
+                url_entity=Entities.OBSERVATIONS,
+            ),
+            file_path=Path(log.root.handlers[1].baseFilename).parent,
+            log_level="INFO",
+        )
+
     auth_tuple = (
         getattr(cfg.data_api, "auth", {}).get("username", None),
         getattr(cfg.data_api, "auth", {}).get("passphrase", None),

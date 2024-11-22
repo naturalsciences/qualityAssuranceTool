@@ -75,6 +75,7 @@ schema = {
         "type": "dict",
         "schema": {
             "count_observations": {"type": "boolean"},
+            "write_flags_to_json": {"type": "boolean"},
         },
     },
     "location": {
