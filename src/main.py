@@ -146,7 +146,7 @@ def combine_df_all_w_dependency_output(
     return df_out[Df.QC_FLAG]
 
 
-@hydra.main(config_path="../conf", config_name="config 4.yaml", version_base="1.2")
+@hydra.main(config_path="../conf", config_name="config.yaml", version_base="1.2")
 def main(cfg: QCconf):
     log_extra = logging.getLogger(name="extra")
     log_extra.setLevel(logging.INFO)
