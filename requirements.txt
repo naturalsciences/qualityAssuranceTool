@@ -15,5 +15,5 @@ searegion-detection>=0.0.2
 
 cerberus
 
-df-qc-tools>=0.0.8
-pandassta>=0.0.10
+df-qc-tools>=0.0.9
+pandassta>=0.0.11

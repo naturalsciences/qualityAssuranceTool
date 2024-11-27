@@ -49,6 +49,7 @@ from pandassta.sta_requests import (
     set_sta_url,
     write_patch_to_file,
     create_patch_json,
+    set_dryrun_var
 )
 from searegion_detection.pandaseavox import intersect_df_region
 
@@ -185,6 +186,7 @@ def main(cfg: QCconf):
     t_df0 = time.time()
     config.filename = Path("outputs/.staconf.ini")
     set_sta_url(cfg.data_api.base_url)
+    set_dryrun_var(getattr(cfg.data_api, "dry_run", False))
     url_batch = urljoin(cfg.data_api.base_url + "/", "$batch")
 
     auth_tuple = (
@@ -542,7 +544,7 @@ def main(cfg: QCconf):
                 columns=[Df.IOT_ID, Df.QC_FLAG],
                 url_entity=Entities.OBSERVATIONS,
             ),
-            file_path=Path(log.root.handlers[1].baseFilename).parent,
+            file_path=Path(log.root.handlers[1].baseFilename).parent, # type: ignore
             log_level="INFO",
         )
 

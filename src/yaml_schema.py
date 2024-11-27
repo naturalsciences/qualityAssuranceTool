@@ -34,6 +34,7 @@ schema = {
         "type": "dict",
         "schema": {
             "base_url": {"type": "string", "regex": r"^https?://[^\s/$.?#].[^\s]*$"},
+            "dry_run": {"type": "boolean"},
             "auth": {
                 "type": "dict",
                 "schema": {
