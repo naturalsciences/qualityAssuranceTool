@@ -3,10 +3,11 @@ import os
 import sys
 import threading
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from functools import partial
 from pathlib import Path
 from urllib.parse import urljoin
+import copy
 
 import aenum
 import geopandas as gpd
@@ -30,7 +31,7 @@ from df_qc_tools.qc import (
     update_flag_history_series,
 )
 from dotenv import load_dotenv
-from omegaconf import OmegaConf
+from omegaconf import OmegaConf, dictconfig
 from pandassta.df import (
     CAT_TYPE,
     Df,
@@ -49,7 +50,7 @@ from pandassta.sta_requests import (
     set_sta_url,
     write_patch_to_file,
     create_patch_json,
-    set_dryrun_var
+    set_dryrun_var,
 )
 from searegion_detection.pandaseavox import intersect_df_region
 
@@ -204,6 +205,34 @@ def main(cfg: QCconf):
 
     # get data in dataframe
     # write_datastreamid_yaml_template(thing_id=thing_id, file=Path("/tmp/test.yaml"))
+
+    width_hours_window = 2
+    datastreams_window_list = [7793, 7795, 7971, 7830]
+
+    filter_window = copy.deepcopy(cfg.data_api.filter)
+    filter_range = getattr(filter_window, Df.TIME).get("range", "")
+    format_range = getattr(filter_window, Df.TIME).get("format", "%Y-%m-%d %H:%M")
+    filter_range[0] = datetime.strftime(
+        datetime.strptime(filter_range[0], format_range)
+        - timedelta(hours=width_hours_window),
+        format_range,
+    )
+    datastreams_window = getattr(filter_window, Entities.DATASTREAMS).get("ids", [])
+    datastreams_window = datastreams_window_list
+
+    filter_window_cfg = filter_cfg_to_query(filter_window)
+    filter_window_cfg_datastreams = filter_cfg_to_query(filter_window, level=Entities.DATASTREAMS)
+
+
+    df_independent_timewindow = threading.Thread(
+        target=get_all_data,
+        kwargs={
+            "thing_id": thing_id,
+            "filter_cfg": filter_window_cfg,
+            "filter_cfg_datastreams": filter_window_cfg_datastreams,
+            "count_observations": False,
+        },
+    )
 
     df_all = get_all_data(
         thing_id=thing_id,
@@ -544,7 +573,7 @@ def main(cfg: QCconf):
                 columns=[Df.IOT_ID, Df.QC_FLAG],
                 url_entity=Entities.OBSERVATIONS,
             ),
-            file_path=Path(log.root.handlers[1].baseFilename).parent, # type: ignore
+            file_path=Path(log.root.handlers[1].baseFilename).parent,  # type: ignore
             log_level="INFO",
         )
 
