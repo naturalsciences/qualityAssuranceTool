@@ -563,6 +563,7 @@ def main(cfg: QCconf):
         df_all.reset_index(),
         url=url_batch,
         auth=auth_in,
+        write_patch_to_file=cfg.other.write_flags_to_json,
     )
     t_patch1 = time.time()
     tend = time.time()
