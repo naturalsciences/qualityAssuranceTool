@@ -547,6 +547,15 @@ def main(cfg: QCconf):
             file_path=Path(log.root.handlers[1].baseFilename).parent, # type: ignore
             log_level="INFO",
         )
+        write_patch_to_file(
+            create_patch_json(
+                df=df_all,
+                columns=[Df.IOT_ID, Df.QC_FLAG],
+                url_entity=Entities.FEATUREOFINTEREST,
+            ),
+            file_path=Path(log.root.handlers[1].baseFilename).parent, # type: ignore
+            log_level="INFO",
+        )
 
     auth_tuple = (
         getattr(cfg.data_api, "auth", {}).get("username", None),
