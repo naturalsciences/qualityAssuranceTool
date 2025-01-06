@@ -385,6 +385,7 @@ def main(cfg: QCconf):
             "columns": [Df.FEATURE_ID, Df.QC_FLAG],
             "url_entity": Entities.FEATURESOFINTEREST,
             "json_body_template": FEATURES_BODY_TEMPLATE,
+            "bool_write_patch_to_file": cfg.other.write_flags_to_json,
         },
     )
     counter_flag_outliers.start()
@@ -576,6 +577,15 @@ def main(cfg: QCconf):
             file_path=Path(log.root.handlers[1].baseFilename).parent,  # type: ignore
             log_level="INFO",
         )
+        write_patch_to_file(
+            create_patch_json(
+                df=df_all,
+                columns=[Df.FEATURE_ID, Df.QC_FLAG],
+                url_entity=Entities.FEATURESOFINTEREST,
+            ),
+            file_path=Path(log.root.handlers[1].baseFilename).parent, # type: ignore
+            log_level="INFO",
+        )
 
     auth_tuple = (
         getattr(cfg.data_api, "auth", {}).get("username", None),
@@ -592,6 +602,7 @@ def main(cfg: QCconf):
         df_all.reset_index(),
         url=url_batch,
         auth=auth_in,
+        bool_write_patch_to_file=cfg.other.write_flags_to_json,
     )
     t_patch1 = time.time()
     tend = time.time()
