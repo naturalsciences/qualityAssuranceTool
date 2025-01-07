@@ -115,7 +115,7 @@ schema = {
                     "type": "string",
                     "regex": r"^(\.)?\d(\.\d+)?+[a-zA-Z]+$",
                 },
-                "dt_stabalization": {
+                "dt_stabilization": {
                     "type": "string",
                     "regex": r"^(\.)?\d(\.\d+)?+[a-zA-Z]+$",
                 },
