@@ -2,6 +2,7 @@ import logging
 import os
 import sys
 import threading
+import queue
 import time
 from datetime import datetime, timedelta
 from functools import partial
@@ -206,8 +207,9 @@ def main(cfg: QCconf):
     # get data in dataframe
     # write_datastreamid_yaml_template(thing_id=thing_id, file=Path("/tmp/test.yaml"))
 
-    width_hours_window = 2
-    datastreams_window_list = [7793, 7795, 7971, 7830]
+    width_hours_window = 0
+    # datastreams_window_list = [7793, 7795, 7971, 7830]
+    datastreams_window_list = [7795]
 
     filter_window = copy.deepcopy(cfg.data_api.filter)
     filter_range = getattr(filter_window, Df.TIME).get("range", "")
@@ -217,29 +219,84 @@ def main(cfg: QCconf):
         - timedelta(hours=width_hours_window),
         format_range,
     )
-    datastreams_window = getattr(filter_window, Entities.DATASTREAMS).get("ids", [])
-    datastreams_window = datastreams_window_list
+    # datastreams_window = getattr(filter_window, Entities.DATASTREAMS, {}).get("ids", [])
 
     filter_window_cfg = filter_cfg_to_query(filter_window)
-    filter_window_cfg_datastreams = filter_cfg_to_query(filter_window, level=Entities.DATASTREAMS)
+    filter_window_cfg_datastreams = f"{Properties.IOT_ID} in {str(tuple(datastreams_window_list)).replace(',)',')')}"
 
-
-    df_independent_timewindow = threading.Thread(
+    queue_independent_timewindow = queue.Queue()
+    thread_df_independent_timewindow = threading.Thread(
         target=get_all_data,
+        name="independent_timewindow",
         kwargs={
             "thing_id": thing_id,
             "filter_cfg": filter_window_cfg,
             "filter_cfg_datastreams": filter_window_cfg_datastreams,
             "count_observations": False,
+            "message_str": f"Get data independent time window.",
+            "result_queue": queue_independent_timewindow,
         },
     )
+    thread_df_independent_timewindow.start()
+    # ## PLACE thread_df_independent_timewindow.join() here
+    thread_df_independent_timewindow.join()
+    df_independent_timewindow = queue_independent_timewindow.get()
+    # testing
+    # df_independent_timewindow.loc[20376, Df.RESULT] =di 0.
 
-    df_all = get_all_data(
-        thing_id=thing_id,
-        filter_cfg=filter_cfg,
-        filter_cfg_datastreams=filter_cfg_datastreams,
-        count_observations=cfg.other.count_observations,
+    def limit_value_fctn(group, max_down_limit=pd.Timedelta(seconds=0)):
+        g = group[Df.RESULT] > 0.2
+        group["ABOVE_LIMIT"] = g
+
+        group["dt"] = group[Df.TIME].diff().fillna(pd.Timedelta(seconds=0))
+        group["cumsum"] = (group["dt"]).cumsum()
+        tmp_up = group["cumsum"].where(~group["ABOVE_LIMIT"])
+        tmp_up.iloc[0] = pd.Timedelta(seconds=0)
+        group["time_up_since"] = group["cumsum"] - tmp_up.ffill()
+        tmp_down = group["cumsum"].where(group["ABOVE_LIMIT"])
+        tmp_down.iloc[0] = pd.Timedelta(seconds=0)
+        group["time_down"] = group["cumsum"] - tmp_down.ffill()
+
+        # Group by consecutive ABOVE_LIMIT values
+        group["block_id"] = (group["ABOVE_LIMIT"] != group["ABOVE_LIMIT"].shift()).cumsum()
+
+        # Calculate max downtime per "down" block and propagate within the block
+        group["max_downtime"] = pd.Timedelta(seconds=0)  # Initialize column
+        for block_id, sub_group in group.groupby("block_id"):
+            if not sub_group["ABOVE_LIMIT"].iloc[0]:  # If the block is a "down" block
+                max_down = sub_group["time_down"].max()
+                group.loc[sub_group.index, "max_downtime"] = max_down
+
+        # g_time = 
+        return group
+
+    df_independent_grouped = df_independent_timewindow.sort_values(Df.TIME).groupby(by=[Df.DATASTREAM_ID], group_keys=False)
+    df_independent_tmp = df_independent_grouped[[str(Df.RESULT), str(Df.DATASTREAM_ID), str(Df.TIME)]].apply(limit_value_fctn, max_down_limit=pd.Timedelta(seconds=90))
+
+    
+    queue_all = queue.Queue()
+    thread_df_all = threading.Thread(
+        target=get_all_data,
+        name="all_data",
+        kwargs={
+            "thing_id": thing_id,
+            "filter_cfg": filter_cfg,
+            "filter_cfg_datastreams": filter_cfg_datastreams,
+            "count_observations": cfg.other.count_observations,
+            "message_str": f"Get all data.",
+            "result_queue": queue_all,
+        },
     )
+    thread_df_all.start()
+    thread_df_all.join()
+    df_all = queue_all.get()
+
+    # df_all = get_all_data(
+    #     thing_id=thing_id,
+    #     filter_cfg=filter_cfg,
+    #     filter_cfg_datastreams=filter_cfg_datastreams,
+    #     count_observations=cfg.other.count_observations,
+    # )
 
     if df_all.empty:
         log.warning("Terminating script.")
@@ -269,6 +326,25 @@ def main(cfg: QCconf):
     #     ).apply(pd.Series)
     # qc_df[["qc_zscore_min", "qc_zscore_max"]] = cfg.QC_global["global"].zscore
 
+    # ## PLACE thread_df_independent_timewindow.join() here
+    # thread_df_independent_timewindow.join()
+    # df_independent_timewindow = queue_independent_timewindow.get()
+    # # testing
+    # # df_independent_timewindow.loc[20376, Df.RESULT] =di 0.
+
+    # def limit_value_fctn(group):
+    #     g = group[Df.RESULT] > 0.2
+    #     group["ABOVE_LIMIT"] = g
+
+    #     group["dt"] = group[Df.TIME].diff().fillna(pd.Timedelta(seconds=0))
+    #     group["cumsum"] = (group["dt"]).cumsum()
+    #     group["time_up_since"] = group["cumsum"] - group["cumsum"].where(~group["ABOVE_LIMIT"]).ffill()
+    #     group["time_down"] = group["cumsum"].where(group["ABOVE_LIMIT"]).ffill()
+    #     # g_time = 
+    #     return group
+
+    # df_independent_grouped = df_independent_timewindow.sort_values(Df.TIME).groupby(by=[Df.DATASTREAM_ID], group_keys=False)
+    # df_independent_tmp = df_independent_grouped[[str(Df.RESULT), str(Df.DATASTREAM_ID), str(Df.TIME)]].apply(limit_value_fctn)
     df_all = calc_gradient_results(df_all, Df.DATASTREAM_ID)
     df_all = calc_zscore_results(df_all, Df.DATASTREAM_ID)
 

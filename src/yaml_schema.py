@@ -115,6 +115,10 @@ schema = {
                     "type": "string",
                     "regex": r"^(\.)?\d(\.\d+)?+[a-zA-Z]+$",
                 },
+                "dt_stabalization": {
+                    "type": "string",
+                    "regex": r"^(\.)?\d(\.\d+)?+[a-zA-Z]+$",
+                },
                 "QC": {
                     "type": "dict",
                     "schema": {
