@@ -29,7 +29,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install cerberus yaml
+        pip install cerberus pyyaml
     - name: Export PYTHONPATH
       run: |
         echo "PYTHONPATH=${PYTHONPATH}:./:./src/" >> "$GITHUB_ENV"
