@@ -1,14 +1,14 @@
+import copy
 import logging
 import os
+import queue
 import sys
 import threading
-import queue
 import time
 from datetime import datetime, timedelta
 from functools import partial
 from pathlib import Path
 from urllib.parse import urljoin
-import copy
 
 import aenum
 import geopandas as gpd
@@ -27,6 +27,7 @@ from df_qc_tools.qc import (
     get_bool_null_region,
     get_bool_out_of_range,
     get_bool_spacial_outlier_compared_to_median,
+    get_qc_flag_from_bool,
     qc_dependent_quantity_base,
     qc_dependent_quantity_secondary,
     update_flag_history_series,
@@ -45,13 +46,13 @@ from pandassta.sta_requests import (
     Entity,
     Query,
     config,
+    create_patch_json,
     get_all_data,
     get_elev_netcdf,
     patch_qc_flags,
+    set_dryrun_var,
     set_sta_url,
     write_patch_to_file,
-    create_patch_json,
-    set_dryrun_var,
 )
 from searegion_detection.pandaseavox import intersect_df_region
 
@@ -207,16 +208,63 @@ def main(cfg: QCconf):
     # get data in dataframe
     # write_datastreamid_yaml_template(thing_id=thing_id, file=Path("/tmp/test.yaml"))
 
-    width_hours_window = 0
+    list_independent_ids = [getattr(li, "independent") for li in cfg.QC_dependent]
+    list_independent_ids = [
+        ids_i
+        for ids_i in list_independent_ids
+        if ids_i
+        in getattr(cfg.data_api.filter, Entities.DATASTREAMS, {}).get(
+            "ids", list_independent_ids
+        )
+    ]
+    assert len(list_independent_ids) == len(
+        set(list_independent_ids)
+    ), "Independent ids must be unique."
+
+    qc_dep_stabilize_configs = [
+        li for li in cfg.QC_dependent if getattr(li, "dt_stabilization", None)
+    ]
+    qc_df_dep_stabilize = pd.DataFrame.from_dict(
+        {getattr(c_i, "independent", {}): c_i for c_i in qc_dep_stabilize_configs},
+        orient="index",
+    )
+    # qc_df_dep_stabilize[["QC_range_min", "QC_range_max"]] = qc_df_dep_stabilize["QC"].apply(lambda x: x.get("range", [None, None]))
+    qc_df_dep_stabilize[["QC_range_min", "QC_range_max"]] = pd.DataFrame(
+        qc_df_dep_stabilize["QC"].apply(lambda x: x["range"]).tolist(),
+        index=qc_df_dep_stabilize.index,
+    )
+    # qc_dep_stabilize_config_data = []
+    # for entry in qc_dep_stabilize_configs:
+    #     qc_range = getattr(entry, "QC", {}).get("range", [None, None])
+    #     qc_dep_stabilize_config_data.append(
+    #         {
+    #             "independent": entry.independent,
+    #             "dependent": entry.dependent,
+    #             "dt_tolerance": pd.Timedelta(entry.dt_tolerance),
+    #             "dt_stabilization": pd.Timedelta(entry.dt_stabilization),
+    #             "QC_range_min": qc_range[0],
+    #             "QC_range_max": qc_range[1],
+    #         }
+    #     )
+    # qc_df_dep_stabilize = pd.DataFrame(qc_dep_stabilize_config_data)
+
+    ## line below to merge df with config df, need something similar
+    # df_all = df_all.merge(qc_df, on=qc_df.index.name, how="left")
+
+    cfg_indep_time = [
+        ci for ci in cfg.QC_dependent if getattr(ci, "dt_stabilization", None)
+    ]
+    width_hours_window = max(
+        [pd.Timedelta(ci.dt_stabilization) for ci in cfg_indep_time]
+    )
     # datastreams_window_list = [7793, 7795, 7971, 7830]
-    datastreams_window_list = [7795]
+    datastreams_window_list = [ci.independent for ci in cfg_indep_time]
 
     filter_window = copy.deepcopy(cfg.data_api.filter)
     filter_range = getattr(filter_window, Df.TIME).get("range", "")
     format_range = getattr(filter_window, Df.TIME).get("format", "%Y-%m-%d %H:%M")
     filter_range[0] = datetime.strftime(
-        datetime.strptime(filter_range[0], format_range)
-        - timedelta(hours=width_hours_window),
+        datetime.strptime(filter_range[0], format_range) - width_hours_window,
         format_range,
     )
     # datastreams_window = getattr(filter_window, Entities.DATASTREAMS, {}).get("ids", [])
@@ -245,35 +293,72 @@ def main(cfg: QCconf):
     # df_independent_timewindow.loc[20376, Df.RESULT] =di 0.
 
     def limit_value_fctn(group, max_down_limit=pd.Timedelta(seconds=0)):
-        g = group[Df.RESULT] > 0.2
-        group["ABOVE_LIMIT"] = g
+        g = (group[Df.RESULT] > group["QC_range_min"]) & (
+            group[Df.RESULT] < group["QC_range_max"]
+        )
+        group["WITHIN_LIMITS"] = g
 
         group["dt"] = group[Df.TIME].diff().fillna(pd.Timedelta(seconds=0))
         group["cumsum"] = (group["dt"]).cumsum()
-        tmp_up = group["cumsum"].where(~group["ABOVE_LIMIT"])
-        tmp_up.iloc[0] = pd.Timedelta(seconds=0)
-        group["time_up_since"] = group["cumsum"] - tmp_up.ffill()
-        tmp_down = group["cumsum"].where(group["ABOVE_LIMIT"])
+
+        tmp_down = group["cumsum"].where(group["WITHIN_LIMITS"])
         tmp_down.iloc[0] = pd.Timedelta(seconds=0)
         group["time_down"] = group["cumsum"] - tmp_down.ffill()
 
-        # Group by consecutive ABOVE_LIMIT values
-        group["block_id"] = (group["ABOVE_LIMIT"] != group["ABOVE_LIMIT"].shift()).cumsum()
+        tmp_up = group["cumsum"].where(
+            (group["time_down"] > group["max_allowed_downtime"])
+        )
+        tmp_up.iloc[0] = pd.Timedelta(seconds=0)
+        group["time_up_since"] = group["cumsum"] - tmp_up.ffill()
+
+        # Group by consecutive WITHIN_LIMITS values
+        group["block_id"] = (
+            group["WITHIN_LIMITS"] != group["WITHIN_LIMITS"].shift()
+        ).cumsum()
 
         # Calculate max downtime per "down" block and propagate within the block
         group["max_downtime"] = pd.Timedelta(seconds=0)  # Initialize column
         for block_id, sub_group in group.groupby("block_id"):
-            if not sub_group["ABOVE_LIMIT"].iloc[0]:  # If the block is a "down" block
+            if not sub_group["WITHIN_LIMITS"].iloc[0]:  # If the block is a "down" block
                 max_down = sub_group["time_down"].max()
                 group.loc[sub_group.index, "max_downtime"] = max_down
 
-        # g_time = 
+        # group["FLAGGING_NEEDED"] = group["max_downtime"] < group["max_allowed_downtime"]
+        # group.loc[group["max_downtime"] > group["max_allowed_downtime"], Df.QC_FLAG] = QualityFlags.BAD
+        # group.loc[group["time_up_since"] < group["dt_stabilization"], Df.QC_FLAG] = (
+            # QualityFlags.BAD
+        # )
+        group[Df.QC_FLAG] = get_qc_flag_from_bool(
+            group["time_up_since"] < group["dt_stabilization"],
+            flag_on_true=QualityFlags.BAD,
+            flag_on_false=QualityFlags.NO_QUALITY_CONTROL,
+        ).astype(CAT_TYPE)
         return group
 
-    df_independent_grouped = df_independent_timewindow.sort_values(Df.TIME).groupby(by=[Df.DATASTREAM_ID], group_keys=False)
-    df_independent_tmp = df_independent_grouped[[str(Df.RESULT), str(Df.DATASTREAM_ID), str(Df.TIME)]].apply(limit_value_fctn, max_down_limit=pd.Timedelta(seconds=90))
+    df_independent_timewindow = df_independent_timewindow.merge(
+        qc_df_dep_stabilize.drop(columns=["dependent"]).rename(
+            columns={"independent": "datastream_id"}
+        ),
+        on="datastream_id",
+    )
+    df_independent_grouped = df_independent_timewindow.sort_values(Df.TIME).groupby(
+        by=[Df.DATASTREAM_ID], group_keys=False
+    )
 
-    
+    df_independent_tmp = df_independent_grouped[
+        [
+            str(Df.IOT_ID),
+            str(Df.RESULT),
+            str(Df.DATASTREAM_ID),
+            str(Df.TIME),
+            "max_allowed_downtime",
+            "dt_stabilization",
+            "QC_range_min",
+            "QC_range_max",
+        ]
+    ].apply(limit_value_fctn, max_down_limit=pd.Timedelta(seconds=90))
+    # df_independent_tmp = df_independent_tmp.merge(qc_df_dep_stabilize.drop(columns=["dependent"]).rename(columns={"independent": "datastream_id"}), on="datastream_id")
+
     queue_all = queue.Queue()
     thread_df_all = threading.Thread(
         target=get_all_data,
@@ -302,10 +387,33 @@ def main(cfg: QCconf):
         log.warning("Terminating script.")
         return 0
 
+    df_all_w_dependent = df_all.merge(
+        df_independent_tmp, on=Df.IOT_ID, how="left", suffixes=("", "_independent")
+    )
+    df_all_w_dependent[Df.QC_FLAG + "_independent"] = df_all_w_dependent[Df.QC_FLAG + "_independent"].fillna(QualityFlags.NO_QUALITY_CONTROL)
+    df_all_w_dependent[Df.QC_FLAG] = df_all_w_dependent[Df.QC_FLAG].combine(df_all_w_dependent[Df.QC_FLAG +"_independent"], max, QualityFlags.NO_QUALITY_CONTROL).astype(CAT_TYPE)  # type: ignore
+    
+    for cfg_dep_i in qc_dep_stabilize_configs:
+        independent_i = getattr(cfg_dep_i, "independent")
+        dependent_list_i = [int(dep_i) for dep_i in str(getattr(cfg_dep_i, "dependent", [])).split(",")]
+        tolerance_i = getattr(cfg_dep_i, "dt_tolerance")
+
+        for dependent_ii in dependent_list_i:
+            stabilize_flags_ii = qc_dependent_quantity_base(
+                df_all_w_dependent,
+                independent=independent_i,
+                dependent=dependent_ii,
+                dt_tolerance=tolerance_i,
+                return_only_dependent=True,
+            )
+            df_all[Df.QC_FLAG] = combine_df_all_w_dependency_output(
+                df_all, stabilize_flags_ii
+            )
+
     nb_observations = df_all.shape[0]
     df_all = gpd.GeoDataFrame(df_all, geometry=gpd.points_from_xy(df_all[Df.LONG], df_all[Df.LAT]), crs=cfg.location.crs)  # type: ignore
     # get qc check df (try to find clearer name)
-    qc_config_dict = {li.get("id"): li for li in cfg.QC}  # type: ignore
+    qc_config_dict = {getattr(li, "id"): li for li in cfg.QC}
     qc_df = pd.DataFrame.from_dict(qc_config_dict, orient="index")
     qc_df = qc_df.drop(columns="id")
     ## Is changing this suffusient to correctit?
@@ -340,7 +448,7 @@ def main(cfg: QCconf):
     #     group["cumsum"] = (group["dt"]).cumsum()
     #     group["time_up_since"] = group["cumsum"] - group["cumsum"].where(~group["ABOVE_LIMIT"]).ffill()
     #     group["time_down"] = group["cumsum"].where(group["ABOVE_LIMIT"]).ffill()
-    #     # g_time = 
+    #     # g_time =
     #     return group
 
     # df_independent_grouped = df_independent_timewindow.sort_values(Df.TIME).groupby(by=[Df.DATASTREAM_ID], group_keys=False)
@@ -659,7 +767,7 @@ def main(cfg: QCconf):
                 columns=[Df.FEATURE_ID, Df.QC_FLAG],
                 url_entity=Entities.FEATURESOFINTEREST,
             ),
-            file_path=Path(log.root.handlers[1].baseFilename).parent, # type: ignore
+            file_path=Path(log.root.handlers[1].baseFilename).parent,  # type: ignore
             log_level="INFO",
         )
 
