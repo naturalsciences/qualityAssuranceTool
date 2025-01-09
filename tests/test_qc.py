@@ -531,6 +531,76 @@ def test_example_pivot_and_reverse():
     pdt.assert_frame_equal(df_p_undone.sort_index(axis=1), df.sort_index(axis=1))
 
 
+import pytest
+import pandas as pd
+from pandas.testing import assert_frame_equal
+from datetime import datetime, timedelta
+from src.main import limit_value_fctn
+from pandassta.df import Df, QualityFlags
+
+
+def test_limit_value_fctn():
+    # Create a sample DataFrame
+    data = {
+        Df.RESULT: [1, 2, 3, 4, 5],
+        "QC_range_min": [1] * 5,
+        "QC_range_max": [6, 6, 6, 6, 6],
+        Df.TIME: pd.to_datetime(
+            [
+                "2023-01-01 00:00:00",
+                "2023-01-01 01:00:00",
+                "2023-01-01 02:00:00",
+                "2023-01-01 03:00:00",
+                "2023-01-01 04:00:00",
+            ]
+        ),
+        "max_allowed_downtime": [timedelta(hours=1)] * 5,
+        "dt_stabilization": [timedelta(hours=2)] * 5,
+    }
+    df = pd.DataFrame(data)
+
+    # Expected output
+    expected_data = data.copy()
+    expected_data.update(
+        {
+            "WITHIN_LIMITS": [False] + [True] * 4,
+            "dt": [
+                timedelta(0),
+                timedelta(hours=1),
+                timedelta(hours=1),
+                timedelta(hours=1),
+                timedelta(hours=1),
+            ],
+            "cumsum": [
+                timedelta(0),
+                timedelta(hours=1),
+                timedelta(hours=2),
+                timedelta(hours=3),
+                timedelta(hours=4),
+            ],
+            "time_down": [timedelta(0)] * 5,
+            "time_up_since": [
+                timedelta(0),
+                timedelta(hours=1),
+                timedelta(hours=2),
+                timedelta(hours=3),
+                timedelta(hours=4),
+            ],
+            "block_id": [1] + [2] * 4,
+            "max_downtime": [timedelta(0)] * 5,
+            Df.QC_FLAG: [QualityFlags.BAD] * 2 + [QualityFlags.NO_QUALITY_CONTROL] * 3,
+        }
+    )
+    expected_df = pd.DataFrame(expected_data)
+    expected_df[Df.QC_FLAG] = expected_df[Df.QC_FLAG].astype(CAT_TYPE)
+
+    # Apply the function
+    result_df = limit_value_fctn(df)
+
+    # Assert the result
+    assert_frame_equal(result_df, expected_df)
+
+
 @pytest.mark.parametrize("n", tuple(range(len(base_list_region))))
 def test_qc_dependent_quantities(df_testing, n):
     # setup ref count
@@ -600,7 +670,9 @@ def test_qc_range(df_testing):
 
 def test_qc_outlier(df_outliers):
     df_outliers[Df.QC_FLAG] = QualityFlags(0)
-    df = calc_zscore_results(df_outliers, groupby=Df.DATASTREAM_ID, rolling_time_window="60min")
+    df = calc_zscore_results(
+        df_outliers, groupby=Df.DATASTREAM_ID, rolling_time_window="60min"
+    )
     df[["qc_zscore_min", "qc_zscore_max"]] = [-25, 25]
     # df[["qc_zscore_min", "qc_zscore_max"]] = [-3.5, 3.5]
     bool_zscore = get_bool_out_of_range(df=df, qc_on=Df.ZSCORE, qc_type="zscore")
@@ -643,7 +715,7 @@ def test_qc_dependent_quantities_base_3streams(df_testing, n):
     df_testing[Df.QC_FLAG] = QualityFlags.GOOD
 
     idx_ = df_testing.loc[df_testing[Df.DATASTREAM_ID] == 0].index[n]
-    df_testing.loc[idx_, Df.QC_FLAG] = QualityFlags.BAD
+    df_testing.loc[idx_, Df.QC_FLAG] = QualityFlags.BAD  # type: ignore
 
     qc_flag_count_ref = {
         QualityFlags.GOOD: df_testing.shape[0] - 2,
@@ -653,7 +725,7 @@ def test_qc_dependent_quantities_base_3streams(df_testing, n):
         df_testing, independent=0, dependent=1, dt_tolerance="0.5s"
     )
     df_testing = df_testing.set_index(Df.IOT_ID)
-    df_testing.update({Df.QC_FLAG: qc_update})
+    df_testing.update({Df.QC_FLAG: qc_update})  # type: ignore
     assert df_testing[Df.QC_FLAG].value_counts().to_dict() == qc_flag_count_ref
 
 
@@ -688,7 +760,7 @@ def test_qc_dependent_quantities_base_3streams_missing(
             None,
         )
     )
-    df_testing.loc[idx_, Df.QC_FLAG] = QualityFlags.BAD
+    df_testing.loc[idx_, Df.QC_FLAG] = QualityFlags.BAD  # type: ignore
     df_testing = df_testing.drop(idx_delete).reset_index()
 
     qc_flag_count_ref = {
@@ -703,7 +775,7 @@ def test_qc_dependent_quantities_base_3streams_missing(
         flag_when_missing=QualityFlags.BAD,
     )
     df_testing = df_testing.set_index(Df.IOT_ID)
-    df_testing.update({Df.QC_FLAG: qc_update})
+    df_testing.update({Df.QC_FLAG: qc_update})  # type: ignore
     assert df_testing[Df.QC_FLAG].value_counts().to_dict() == qc_flag_count_ref
 
 
@@ -738,7 +810,7 @@ def test_qc_dependent_quantities_base_3streams_missing_dependent(
             None,
         )
     )
-    df_testing.loc[idx_, Df.QC_FLAG] = QualityFlags.BAD
+    df_testing.loc[idx_, Df.QC_FLAG] = QualityFlags.BAD  # type: ignore
     df_testing = df_testing.drop(idx_delete).reset_index()
 
     qc_flag_count_ref = {
@@ -753,7 +825,7 @@ def test_qc_dependent_quantities_base_3streams_missing_dependent(
         flag_when_missing=QualityFlags.BAD,
     )
     df_testing = df_testing.set_index(Df.IOT_ID)
-    df_testing.update({Df.QC_FLAG: qc_update})
+    df_testing.update({Df.QC_FLAG: qc_update})  # type: ignore
     assert df_testing[Df.QC_FLAG].value_counts().to_dict() == qc_flag_count_ref
 
 
@@ -788,7 +860,7 @@ def test_qc_dependent_quantities_base_3streams_missing_noflag(
             None,
         )
     )
-    df_testing.loc[idx_, Df.QC_FLAG] = QualityFlags.BAD
+    df_testing.loc[idx_, Df.QC_FLAG] = QualityFlags.BAD  # type: ignore
     df_testing = df_testing.drop(idx_delete).reset_index()
 
     qc_flag_count_ref = {

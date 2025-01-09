@@ -152,6 +152,43 @@ def combine_df_all_w_dependency_output(
     return df_out[Df.QC_FLAG]
 
 
+def limit_value_fctn(group):
+    g = (group[Df.RESULT] > group["QC_range_min"]) & (
+        group[Df.RESULT] < group["QC_range_max"]
+    )
+    group["WITHIN_LIMITS"] = g
+
+    group["dt"] = group[Df.TIME].diff().fillna(pd.Timedelta(seconds=0))
+    group["cumsum"] = (group["dt"]).cumsum()
+
+    tmp_down = group["cumsum"].where(group["WITHIN_LIMITS"])
+    tmp_down.iloc[0] = pd.Timedelta(seconds=0)
+    group["time_down"] = group["cumsum"] - tmp_down.ffill()
+
+    tmp_up = group["cumsum"].where((group["time_down"] > group["max_allowed_downtime"]))
+    tmp_up.iloc[0] = pd.Timedelta(seconds=0)
+    group["time_up_since"] = group["cumsum"] - tmp_up.ffill()
+
+    # Group by consecutive WITHIN_LIMITS values
+    group["block_id"] = (
+        group["WITHIN_LIMITS"] != group["WITHIN_LIMITS"].shift()
+    ).cumsum()
+
+    # Calculate max downtime per "down" block and propagate within the block
+    group["max_downtime"] = pd.Timedelta(seconds=0)  # Initialize column
+    for block_id, sub_group in group.groupby("block_id"):
+        if not sub_group["WITHIN_LIMITS"].iloc[0]:  # If the block is a "down" block
+            max_down = sub_group["time_down"].max()
+            group.loc[sub_group.index, "max_downtime"] = max_down
+
+    group[Df.QC_FLAG] = get_qc_flag_from_bool(
+        group["time_up_since"] < group["dt_stabilization"],
+        flag_on_true=QualityFlags.BAD,
+        flag_on_false=QualityFlags.NO_QUALITY_CONTROL,
+    ).astype(CAT_TYPE)
+    return group
+
+
 @hydra.main(config_path="../conf", config_name="config.yaml", version_base="1.2")
 def main(cfg: QCconf):
     log_extra = logging.getLogger(name="extra")
@@ -267,44 +304,6 @@ def main(cfg: QCconf):
     )
     thread_df_independent_timewindow.start()
 
-    def limit_value_fctn(group):
-        g = (group[Df.RESULT] > group["QC_range_min"]) & (
-            group[Df.RESULT] < group["QC_range_max"]
-        )
-        group["WITHIN_LIMITS"] = g
-
-        group["dt"] = group[Df.TIME].diff().fillna(pd.Timedelta(seconds=0))
-        group["cumsum"] = (group["dt"]).cumsum()
-
-        tmp_down = group["cumsum"].where(group["WITHIN_LIMITS"])
-        tmp_down.iloc[0] = pd.Timedelta(seconds=0)
-        group["time_down"] = group["cumsum"] - tmp_down.ffill()
-
-        tmp_up = group["cumsum"].where(
-            (group["time_down"] > group["max_allowed_downtime"])
-        )
-        tmp_up.iloc[0] = pd.Timedelta(seconds=0)
-        group["time_up_since"] = group["cumsum"] - tmp_up.ffill()
-
-        # Group by consecutive WITHIN_LIMITS values
-        group["block_id"] = (
-            group["WITHIN_LIMITS"] != group["WITHIN_LIMITS"].shift()
-        ).cumsum()
-
-        # Calculate max downtime per "down" block and propagate within the block
-        group["max_downtime"] = pd.Timedelta(seconds=0)  # Initialize column
-        for block_id, sub_group in group.groupby("block_id"):
-            if not sub_group["WITHIN_LIMITS"].iloc[0]:  # If the block is a "down" block
-                max_down = sub_group["time_down"].max()
-                group.loc[sub_group.index, "max_downtime"] = max_down
-
-        group[Df.QC_FLAG] = get_qc_flag_from_bool(
-            group["time_up_since"] < group["dt_stabilization"],
-            flag_on_true=QualityFlags.BAD,
-            flag_on_false=QualityFlags.NO_QUALITY_CONTROL,
-        ).astype(CAT_TYPE)
-        return group
-
     queue_all = queue.Queue()
     thread_df_all = threading.Thread(
         target=get_all_data,
@@ -354,12 +353,16 @@ def main(cfg: QCconf):
     df_all_w_dependent = df_all.merge(
         df_independent_tmp, on=Df.IOT_ID, how="left", suffixes=("", "_independent")
     )
-    df_all_w_dependent[Df.QC_FLAG + "_independent"] = df_all_w_dependent[Df.QC_FLAG + "_independent"].fillna(QualityFlags.NO_QUALITY_CONTROL)
-    df_all_w_dependent[Df.QC_FLAG] = df_all_w_dependent[Df.QC_FLAG].combine(df_all_w_dependent[Df.QC_FLAG +"_independent"], max, QualityFlags.NO_QUALITY_CONTROL).astype(CAT_TYPE)  # type: ignore
-    
+    df_all_w_dependent[Df.QC_FLAG + "_independent"] = df_all_w_dependent[
+        Df.QC_FLAG + "_independent"
+    ].fillna(QualityFlags.NO_QUALITY_CONTROL)
+    df_all_w_dependent[Df.QC_FLAG] = df_all_w_dependent[Df.QC_FLAG].combine(df_all_w_dependent[Df.QC_FLAG + "_independent"], max, QualityFlags.NO_QUALITY_CONTROL).astype(CAT_TYPE)  # type: ignore
+
     for cfg_dep_i in qc_dep_stabilize_configs:
         independent_i = getattr(cfg_dep_i, "independent")
-        dependent_list_i = [int(dep_i) for dep_i in str(getattr(cfg_dep_i, "dependent", [])).split(",")]
+        dependent_list_i = [
+            int(dep_i) for dep_i in str(getattr(cfg_dep_i, "dependent", [])).split(",")
+        ]
         tolerance_i = getattr(cfg_dep_i, "dt_tolerance")
 
         for dependent_ii in dependent_list_i:
@@ -631,41 +634,20 @@ def main(cfg: QCconf):
         independent = dependent_i.independent
         dependent = dependent_i.dependent
         dt_tolerance = dependent_i.dt_tolerance
-        if isinstance(dependent, str) and "," in dependent:
-            for dependent_ii in [int(ii) for ii in dependent.split(",")]:
-                base_flags = qc_dependent_quantity_base(
-                    df_all,
-                    independent=independent,
-                    dependent=dependent_ii,
-                    dt_tolerance=dt_tolerance,
-                )
-                # df_all.update({Df.QC_FLAG: base_flags})  # type: ignore
-                df_all[Df.QC_FLAG] = combine_df_all_w_dependency_output(
-                    df_all, base_flags
-                )
-                secondary_flags = qc_dependent_quantity_secondary(
-                    df_all,
-                    independent=independent,
-                    dependent=dependent_ii,
-                    range_=tuple(dependent_i.QC.range),  # type: ignore
-                    dt_tolerance=cfg.QC_dependent[0].dt_tolerance,
-                )
-                df_all[Df.QC_FLAG] = combine_df_all_w_dependency_output(
-                    df_all, secondary_flags
-                )
-
-        else:
+        dependent_list_i = [int(dep_i) for dep_i in str(dependent).split(",")]
+        for dependent_ii in dependent_list_i:
             base_flags = qc_dependent_quantity_base(
                 df_all,
                 independent=independent,
-                dependent=dependent,
+                dependent=dependent_ii,
                 dt_tolerance=dt_tolerance,
             )
+            # df_all.update({Df.QC_FLAG: base_flags})  # type: ignore
             df_all[Df.QC_FLAG] = combine_df_all_w_dependency_output(df_all, base_flags)
             secondary_flags = qc_dependent_quantity_secondary(
                 df_all,
                 independent=independent,
-                dependent=dependent,
+                dependent=dependent_ii,
                 range_=tuple(dependent_i.QC.range),  # type: ignore
                 dt_tolerance=cfg.QC_dependent[0].dt_tolerance,
             )
