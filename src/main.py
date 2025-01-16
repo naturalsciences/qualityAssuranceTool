@@ -373,9 +373,20 @@ def main(cfg: QCconf):
                 dt_tolerance=tolerance_i,
                 return_only_dependent=True,
             )
+            count_old_flags = df_all.loc[
+                df_all[Df.IOT_ID].isin(stabilize_flags_ii.index), Df.QC_FLAG
+            ].value_counts(dropna=False)
+            count_new_flags = stabilize_flags_ii.value_counts(dropna=False)
+
             df_all[Df.QC_FLAG] = combine_df_all_w_dependency_output(
                 df_all, stabilize_flags_ii
             )
+            if count_old_flags[QualityFlags.BAD] != count_new_flags[QualityFlags.BAD]:  # type: ignore
+                log.info(f"Independent: {independent_i}")
+                log.info(f"--- Dependent: {dependent_ii}")
+                log.info(f"------ old: {count_old_flags.to_json()}")
+                log.info(f"------ new: {count_new_flags.to_json()}")
+                log.info(f"------ df_all (new): {df_all[Df.QC_FLAG].value_counts(dropna=False).to_json()}")
 
     nb_observations = df_all.shape[0]
     df_all = gpd.GeoDataFrame(df_all, geometry=gpd.points_from_xy(df_all[Df.LONG], df_all[Df.LAT]), crs=cfg.location.crs)  # type: ignore
