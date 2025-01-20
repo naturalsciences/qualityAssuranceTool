@@ -382,11 +382,19 @@ def main(cfg: QCconf):
                 df_all, stabilize_flags_ii
             )
             if count_old_flags[QualityFlags.BAD] != count_new_flags[QualityFlags.BAD]:  # type: ignore
-                log.info(f"Independent: {independent_i}")
-                log.info(f"--- Dependent: {dependent_ii}")
-                log.info(f"------ old: {count_old_flags.to_json()}")
-                log.info(f"------ new: {count_new_flags.to_json()}")
-                log.info(f"------ df_all (new): {df_all[Df.QC_FLAG].value_counts(dropna=False).to_json()}")
+                log.debug(f"Independent: {independent_i}")
+                log.debug(f"--- Dependent: {dependent_ii}")
+                log.debug(f"------ old: {count_old_flags.to_json()}")
+                log.debug(f"------ new: {count_new_flags.to_json()}")
+                log.debug(
+                    f"------ df_all (new): {combine_df_all_w_dependency_output(
+                    df_all, stabilize_flags_ii
+                    ).value_counts(dropna=False).to_json()}"
+                )
+
+            df_all[Df.QC_FLAG] = combine_df_all_w_dependency_output(
+                df_all, stabilize_flags_ii
+            )
 
     nb_observations = df_all.shape[0]
     df_all = gpd.GeoDataFrame(df_all, geometry=gpd.points_from_xy(df_all[Df.LONG], df_all[Df.LAT]), crs=cfg.location.crs)  # type: ignore
