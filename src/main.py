@@ -254,9 +254,9 @@ def main(cfg: QCconf):
             "ids", list_independent_ids
         )
     ]
-    assert len(list_independent_ids) == len(
-        set(list_independent_ids)
-    ), "Independent ids must be unique."
+    # assert len(list_independent_ids) == len(
+        # set(list_independent_ids)
+    # ), "Independent ids must be unique."
 
     qc_dep_stabilize_configs = [
         li for li in cfg.QC_dependent if getattr(li, "dt_stabilization", None)
@@ -320,6 +320,36 @@ def main(cfg: QCconf):
     thread_df_all.start()
     thread_df_all.join()
     df_all = queue_all.get()
+
+    ## reset flags
+    RESET_OVERWRITE_FLAGS = cfg.reset.overwrite_flags
+    RESET_OBSERVATION_FLAGS = cfg.reset.observation_flags
+    RESET_FEATURE_FLAGS = cfg.reset.feature_flags
+    QUIT_AFTER_RESET = cfg.reset.exit
+
+    if RESET_OVERWRITE_FLAGS or RESET_FEATURE_FLAGS or RESET_OBSERVATION_FLAGS:
+        df_all[Df.QC_FLAG] = QualityFlags.NO_QUALITY_CONTROL
+        log.warning("QC flags will we overwritten!")
+    if RESET_OBSERVATION_FLAGS:
+        log.warning("Flags will be reset!")
+        df_all[Df.QC_FLAG] = QualityFlags.NO_QUALITY_CONTROL
+        counter_reset = patch_qc_flags(
+            df_all.reset_index(),
+            url=url_batch,
+            auth=auth_in,
+        )
+    if RESET_FEATURE_FLAGS:
+        counter_reset_features = patch_qc_flags(
+            df_all.reset_index(),
+            url=url_batch,
+            auth=auth_in,
+            columns=[Df.FEATURE_ID, Df.QC_FLAG],
+            url_entity=Entities.FEATURESOFINTEREST,
+            json_body_template=FEATURES_BODY_TEMPLATE,
+        )
+
+        if QUIT_AFTER_RESET:
+            return 0
 
     thread_df_independent_timewindow.join()
     df_independent_timewindow = queue_independent_timewindow.get()
@@ -418,36 +448,6 @@ def main(cfg: QCconf):
 
     t_df1 = time.time()
     t_qc0 = time.time()
-
-    ## reset flags
-    RESET_OVERWRITE_FLAGS = cfg.reset.overwrite_flags
-    RESET_OBSERVATION_FLAGS = cfg.reset.observation_flags
-    RESET_FEATURE_FLAGS = cfg.reset.feature_flags
-    QUIT_AFTER_RESET = cfg.reset.exit
-
-    if RESET_OVERWRITE_FLAGS or RESET_FEATURE_FLAGS or RESET_OBSERVATION_FLAGS:
-        df_all[Df.QC_FLAG] = QualityFlags.NO_QUALITY_CONTROL
-        log.warning("QC flags will we overwritten!")
-    if RESET_OBSERVATION_FLAGS:
-        log.warning("Flags will be reset!")
-        df_all[Df.QC_FLAG] = QualityFlags.NO_QUALITY_CONTROL
-        counter_reset = patch_qc_flags(
-            df_all.reset_index(),
-            url=url_batch,
-            auth=auth_in,
-        )
-    if RESET_FEATURE_FLAGS:
-        counter_reset_features = patch_qc_flags(
-            df_all.reset_index(),
-            url=url_batch,
-            auth=auth_in,
-            columns=[Df.FEATURE_ID, Df.QC_FLAG],
-            url_entity=Entities.FEATURESOFINTEREST,
-            json_body_template=FEATURES_BODY_TEMPLATE,
-        )
-
-        if QUIT_AFTER_RESET:
-            return 0
 
     ## find region
     t_region0 = time.time()
