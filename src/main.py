@@ -261,15 +261,7 @@ def main(cfg: QCconf):
     qc_dep_stabilize_configs = [
         li for li in cfg.QC_dependent if getattr(li, "dt_stabilization", None)
     ]
-    qc_df_dep_stabilize = pd.DataFrame.from_dict(
-        {getattr(c_i, "independent", {}): c_i for c_i in qc_dep_stabilize_configs},
-        orient="index",
-    )
-    qc_df_dep_stabilize[["QC_range_min", "QC_range_max"]] = pd.DataFrame(
-        qc_df_dep_stabilize["QC"].apply(lambda x: x["range"]).tolist(),
-        index=qc_df_dep_stabilize.index,
-    )
-
+    
     cfg_indep_time = [
         ci for ci in cfg.QC_dependent if getattr(ci, "dt_stabilization", None)
     ]
@@ -353,42 +345,52 @@ def main(cfg: QCconf):
 
     thread_df_independent_timewindow.join()
     df_independent_timewindow = queue_independent_timewindow.get()
-    df_independent_timewindow = df_independent_timewindow.merge(
-        qc_df_dep_stabilize.drop(columns=["dependent"]).rename(
-            columns={"independent": "datastream_id"}
-        ),
-        on="datastream_id",
-    )
-    df_independent_grouped = df_independent_timewindow.sort_values(Df.TIME).groupby(
-        by=[Df.DATASTREAM_ID], group_keys=False
-    )
-
-    df_independent_tmp = df_independent_grouped[
-        [
-            str(Df.IOT_ID),
-            str(Df.RESULT),
-            str(Df.DATASTREAM_ID),
-            str(Df.TIME),
-            "max_allowed_downtime",
-            "dt_stabilization",
-            "QC_range_min",
-            "QC_range_max",
-        ]
-    ].apply(limit_value_fctn)
-
-    if df_all.empty:
-        log.warning("Terminating script.")
-        return 0
-
-    df_all_w_dependent = df_all.merge(
-        df_independent_tmp, on=Df.IOT_ID, how="left", suffixes=("", "_independent")
-    )
-    df_all_w_dependent[Df.QC_FLAG + "_independent"] = df_all_w_dependent[
-        Df.QC_FLAG + "_independent"
-    ].fillna(QualityFlags.NO_QUALITY_CONTROL)
-    df_all_w_dependent[Df.QC_FLAG] = df_all_w_dependent[Df.QC_FLAG].combine(df_all_w_dependent[Df.QC_FLAG + "_independent"], max, QualityFlags.NO_QUALITY_CONTROL).astype(CAT_TYPE)  # type: ignore
-
+    # LOOP STARTS HERE?
     for cfg_dep_i in qc_dep_stabilize_configs:
+        qc_df_dep_stabilize_i = pd.DataFrame.from_dict(
+            {getattr(cfg_dep_i, "independent", {}): cfg_dep_i }, # type: ignore
+            orient="index",
+        )
+        qc_df_dep_stabilize_i[["QC_range_min", "QC_range_max"]] = pd.DataFrame(
+            qc_df_dep_stabilize_i["QC"].apply(lambda x: x["range"]).tolist(),
+            index=qc_df_dep_stabilize_i.index,
+        )
+
+        df_independent_timewindow_i = df_independent_timewindow.merge(
+            qc_df_dep_stabilize_i.drop(columns=["dependent"]).rename(
+                columns={"independent": "datastream_id"}
+            ),
+            on="datastream_id",
+        )
+        df_independent_grouped = df_independent_timewindow_i.sort_values(Df.TIME).groupby(
+            by=[Df.DATASTREAM_ID], group_keys=False
+        )
+
+        df_independent_tmp = df_independent_grouped[
+            [
+                str(Df.IOT_ID),
+                str(Df.RESULT),
+                str(Df.DATASTREAM_ID),
+                str(Df.TIME),
+                "max_allowed_downtime",
+                "dt_stabilization",
+                "QC_range_min",
+                "QC_range_max",
+            ]
+        ].apply(limit_value_fctn)
+
+        if df_all.empty:
+            log.warning("Terminating script.")
+            return 0
+
+        df_all_w_dependent = df_all.merge(
+            df_independent_tmp, on=Df.IOT_ID, how="left", suffixes=("", "_independent")
+        )
+        df_all_w_dependent[Df.QC_FLAG + "_independent"] = df_all_w_dependent[
+            Df.QC_FLAG + "_independent"
+        ].fillna(QualityFlags.NO_QUALITY_CONTROL)
+        df_all_w_dependent[Df.QC_FLAG] = df_all_w_dependent[Df.QC_FLAG].combine(df_all_w_dependent[Df.QC_FLAG + "_independent"], max, QualityFlags.NO_QUALITY_CONTROL).astype(CAT_TYPE)  # type: ignore
+
         independent_i = getattr(cfg_dep_i, "independent")
         dependent_list_i = [
             int(dep_i) for dep_i in str(getattr(cfg_dep_i, "dependent", [])).split(",")
@@ -408,9 +410,9 @@ def main(cfg: QCconf):
             ].value_counts(dropna=False)
             count_new_flags = stabilize_flags_ii.value_counts(dropna=False)
 
-            df_all[Df.QC_FLAG] = combine_df_all_w_dependency_output(
-                df_all, stabilize_flags_ii
-            )
+            # df_all[Df.QC_FLAG] = combine_df_all_w_dependency_output(
+                # df_all, stabilize_flags_ii
+            # )
             if count_old_flags[QualityFlags.BAD] != count_new_flags[QualityFlags.BAD]:  # type: ignore
                 log.debug(f"Independent: {independent_i}")
                 log.debug(f"--- Dependent: {dependent_ii}")
@@ -655,12 +657,14 @@ def main(cfg: QCconf):
         dt_tolerance = dependent_i.dt_tolerance
         dependent_list_i = [int(dep_i) for dep_i in str(dependent).split(",")]
         for dependent_ii in dependent_list_i:
+            log.debug(f"Dependent base flagging. Independent: {independent}, dependent: {dependent_ii}.")
             base_flags = qc_dependent_quantity_base(
                 df_all,
                 independent=independent,
                 dependent=dependent_ii,
                 dt_tolerance=dt_tolerance,
             )
+            log.debug(f"Dependent secondary flagging. Independent: {independent}, dependent: {dependent_ii}.")
             # df_all.update({Df.QC_FLAG: base_flags})  # type: ignore
             df_all[Df.QC_FLAG] = combine_df_all_w_dependency_output(df_all, base_flags)
             secondary_flags = qc_dependent_quantity_secondary(
