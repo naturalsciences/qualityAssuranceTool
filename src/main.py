@@ -8,6 +8,7 @@ import time
 from datetime import datetime, timedelta
 from functools import partial
 from pathlib import Path
+from typing import Optional
 from urllib.parse import urljoin
 
 import aenum
@@ -189,6 +190,81 @@ def limit_value_fctn(group):
     return group
 
 
+def get_independent_window_data(
+    cfg: QCconf,
+    count_observations: bool = False,
+    message_str: str | None = None,
+    result_queue: Optional[queue.Queue] = None,
+):
+    list_independent_ids = [getattr(li, "independent") for li in cfg.QC_dependent]
+    list_independent_ids = [
+        ids_i
+        for ids_i in list_independent_ids
+        if ids_i
+        in getattr(cfg.data_api.filter, Entities.DATASTREAMS, {}).get(
+            "ids", list_independent_ids
+        )
+    ]
+    # assert len(list_independent_ids) == len(
+    # set(list_independent_ids)
+    # ), "Independent ids must be unique."
+
+    qc_dep_stabilize_configs = [
+        li for li in cfg.QC_dependent if getattr(li, "dt_stabilization", None)
+    ]
+
+    cfg_indep_time = [
+        ci for ci in cfg.QC_dependent if getattr(ci, "dt_stabilization", None)
+    ]
+    width_hours_window = max(
+        [pd.Timedelta(ci.dt_stabilization) for ci in cfg_indep_time]
+    )
+    datastreams_window_list = [ci.independent for ci in cfg_indep_time]
+
+    filter_window = copy.deepcopy(cfg.data_api.filter)
+    filter_range = getattr(filter_window, Df.TIME).get("range", "")
+    format_range = getattr(filter_window, Df.TIME).get("format", "%Y-%m-%d %H:%M")
+    filter_range[1] = copy.deepcopy(filter_range[0])
+    filter_range[0] = datetime.strftime(
+        datetime.strptime(filter_range[0], format_range) - width_hours_window,
+        format_range,
+    )
+
+    filter_window_cfg = filter_cfg_to_query(filter_window)
+    filter_window_cfg_datastreams = f"{Properties.IOT_ID} in {str(tuple(datastreams_window_list)).replace(',)',')')}"
+
+    thing_id = cfg.data_api.things.id
+    std_filter_cfg = filter_cfg_to_query(cfg.data_api.filter)
+    filter_cfg_datastreams = filter_cfg_to_query(
+        cfg.data_api.filter, level=Entities.DATASTREAMS
+    )
+    df_default_window = get_all_data(
+        thing_id=thing_id,
+        filter_cfg=std_filter_cfg,
+        filter_cfg_datastreams=filter_window_cfg_datastreams,
+        message_str=f"Indep std window",
+    )
+    if df_default_window.empty:
+        log.warning("No data in indep std window.")
+        if result_queue:
+            df_out = pd.DataFrame()
+            result_queue.put(df_out)
+        return df_out
+
+    else:
+        df_additional_window = get_all_data(
+            thing_id = thing_id,
+            filter_cfg=filter_window_cfg,
+            filter_cfg_datastreams = filter_cfg_datastreams,
+            message_str=f"additional",
+        )
+
+    df_out = df_default_window.merge(df_additional_window)
+    if result_queue:
+        result_queue.put(df_out)
+    return df_out
+
+
 @hydra.main(config_path="../conf", config_name="config.yaml", version_base="1.2")
 def main(cfg: QCconf):
     log_extra = logging.getLogger(name="extra")
@@ -245,50 +321,12 @@ def main(cfg: QCconf):
     # get data in dataframe
     # write_datastreamid_yaml_template(thing_id=thing_id, file=Path("/tmp/test.yaml"))
 
-    list_independent_ids = [getattr(li, "independent") for li in cfg.QC_dependent]
-    list_independent_ids = [
-        ids_i
-        for ids_i in list_independent_ids
-        if ids_i
-        in getattr(cfg.data_api.filter, Entities.DATASTREAMS, {}).get(
-            "ids", list_independent_ids
-        )
-    ]
-    # assert len(list_independent_ids) == len(
-        # set(list_independent_ids)
-    # ), "Independent ids must be unique."
-
-    qc_dep_stabilize_configs = [
-        li for li in cfg.QC_dependent if getattr(li, "dt_stabilization", None)
-    ]
-    
-    cfg_indep_time = [
-        ci for ci in cfg.QC_dependent if getattr(ci, "dt_stabilization", None)
-    ]
-    width_hours_window = max(
-        [pd.Timedelta(ci.dt_stabilization) for ci in cfg_indep_time]
-    )
-    datastreams_window_list = [ci.independent for ci in cfg_indep_time]
-
-    filter_window = copy.deepcopy(cfg.data_api.filter)
-    filter_range = getattr(filter_window, Df.TIME).get("range", "")
-    format_range = getattr(filter_window, Df.TIME).get("format", "%Y-%m-%d %H:%M")
-    filter_range[0] = datetime.strftime(
-        datetime.strptime(filter_range[0], format_range) - width_hours_window,
-        format_range,
-    )
-
-    filter_window_cfg = filter_cfg_to_query(filter_window)
-    filter_window_cfg_datastreams = f"{Properties.IOT_ID} in {str(tuple(datastreams_window_list)).replace(',)',')')}"
-
     queue_independent_timewindow = queue.Queue()
     thread_df_independent_timewindow = threading.Thread(
-        target=get_all_data,
+        target=get_independent_window_data,
         name="independent_timewindow",
         kwargs={
-            "thing_id": thing_id,
-            "filter_cfg": filter_window_cfg,
-            "filter_cfg_datastreams": filter_window_cfg_datastreams,
+            "cfg": cfg,
             "count_observations": False,
             "message_str": f"Get data independent time window.",
             "result_queue": queue_independent_timewindow,
@@ -345,10 +383,14 @@ def main(cfg: QCconf):
 
     thread_df_independent_timewindow.join()
     df_independent_timewindow = queue_independent_timewindow.get()
+    datastreams_list = df_all[Df.DATASTREAM_ID].unique()
+    qc_dep_stabilize_configs = [
+        li for li in cfg.QC_dependent if getattr(li, "dt_stabilization", None)
+    ]
     # LOOP STARTS HERE?
     for cfg_dep_i in qc_dep_stabilize_configs:
         qc_df_dep_stabilize_i = pd.DataFrame.from_dict(
-            {getattr(cfg_dep_i, "independent", {}): cfg_dep_i }, # type: ignore
+            {getattr(cfg_dep_i, "independent", {}): cfg_dep_i},  # type: ignore
             orient="index",
         )
         qc_df_dep_stabilize_i[["QC_range_min", "QC_range_max"]] = pd.DataFrame(
@@ -362,9 +404,9 @@ def main(cfg: QCconf):
             ),
             on="datastream_id",
         )
-        df_independent_grouped = df_independent_timewindow_i.sort_values(Df.TIME).groupby(
-            by=[Df.DATASTREAM_ID], group_keys=False
-        )
+        df_independent_grouped = df_independent_timewindow_i.sort_values(
+            Df.TIME
+        ).groupby(by=[Df.DATASTREAM_ID], group_keys=False)
 
         df_independent_tmp = df_independent_grouped[
             [
@@ -393,7 +435,9 @@ def main(cfg: QCconf):
 
         independent_i = getattr(cfg_dep_i, "independent")
         dependent_list_i = [
-            int(dep_i) for dep_i in str(getattr(cfg_dep_i, "dependent", [])).split(",")
+            int(dep_i)
+            for dep_i in str(getattr(cfg_dep_i, "dependent", [])).split(",")
+            if int(dep_i) in datastreams_list
         ]
         tolerance_i = getattr(cfg_dep_i, "dt_tolerance")
 
@@ -411,7 +455,7 @@ def main(cfg: QCconf):
             count_new_flags = stabilize_flags_ii.value_counts(dropna=False)
 
             # df_all[Df.QC_FLAG] = combine_df_all_w_dependency_output(
-                # df_all, stabilize_flags_ii
+            # df_all, stabilize_flags_ii
             # )
             if count_old_flags[QualityFlags.BAD] != count_new_flags[QualityFlags.BAD]:  # type: ignore
                 log.debug(f"Independent: {independent_i}")
@@ -655,16 +699,24 @@ def main(cfg: QCconf):
         independent = dependent_i.independent
         dependent = dependent_i.dependent
         dt_tolerance = dependent_i.dt_tolerance
-        dependent_list_i = [int(dep_i) for dep_i in str(dependent).split(",")]
+        dependent_list_i = [
+            int(dep_i)
+            for dep_i in str(dependent).split(",")
+            if int(dep_i) in datastreams_list
+        ]
         for dependent_ii in dependent_list_i:
-            log.debug(f"Dependent base flagging. Independent: {independent}, dependent: {dependent_ii}.")
+            log.debug(
+                f"Dependent base flagging. Independent: {independent}, dependent: {dependent_ii}."
+            )
             base_flags = qc_dependent_quantity_base(
                 df_all,
                 independent=independent,
                 dependent=dependent_ii,
                 dt_tolerance=dt_tolerance,
             )
-            log.debug(f"Dependent secondary flagging. Independent: {independent}, dependent: {dependent_ii}.")
+            log.debug(
+                f"Dependent secondary flagging. Independent: {independent}, dependent: {dependent_ii}."
+            )
             # df_all.update({Df.QC_FLAG: base_flags})  # type: ignore
             df_all[Df.QC_FLAG] = combine_df_all_w_dependency_output(df_all, base_flags)
             secondary_flags = qc_dependent_quantity_secondary(
