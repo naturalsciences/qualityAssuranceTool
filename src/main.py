@@ -249,7 +249,7 @@ def get_independent_window_data(
         if result_queue:
             df_out = pd.DataFrame()
             result_queue.put(df_out)
-        return df_out
+        return 0
 
     else:
         df_additional_window = get_all_data(
@@ -387,6 +387,11 @@ def main(cfg: QCconf):
 
     thread_df_independent_timewindow.join()
     df_independent_timewindow = queue_independent_timewindow.get()
+
+    if df_all.empty:
+        log.warning("Terminating script.")
+        return 0
+
     datastreams_list = df_all[Df.DATASTREAM_ID].unique()
     qc_dep_stabilize_configs = [
         li for li in cfg.QC_dependent if getattr(li, "dt_stabilization", None)
@@ -424,10 +429,6 @@ def main(cfg: QCconf):
                 "QC_range_max",
             ]
         ].apply(limit_value_fctn)
-
-        if df_all.empty:
-            log.warning("Terminating script.")
-            return 0
 
         df_all_w_dependent = df_all.merge(
             df_independent_tmp, on=Df.IOT_ID, how="left", suffixes=("", "_independent")
