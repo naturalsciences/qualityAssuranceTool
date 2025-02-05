@@ -253,13 +253,17 @@ def get_independent_window_data(
 
     else:
         df_additional_window = get_all_data(
-            thing_id = thing_id,
+            thing_id=thing_id,
             filter_cfg=filter_window_cfg,
-            filter_cfg_datastreams = filter_cfg_datastreams,
+            filter_cfg_datastreams=filter_window_cfg_datastreams,
             message_str=f"additional",
         )
 
-    df_out = pd.concat([df_additional_window, df_default_window], ignore_index=True).sort_values(Df.TIME).reset_index(drop=True)
+    df_out = (
+        pd.concat([df_additional_window, df_default_window], ignore_index=True)
+        .sort_values(Df.TIME)
+        .reset_index(drop=True)
+    )
     if result_queue:
         result_queue.put(df_out)
     return df_out
