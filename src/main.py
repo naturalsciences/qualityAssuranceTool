@@ -259,7 +259,7 @@ def get_independent_window_data(
             message_str=f"additional",
         )
 
-    df_out = df_default_window.merge(df_additional_window)
+    df_out = pd.concat([df_additional_window, df_default_window], ignore_index=True).sort_values(Df.TIME).reset_index(drop=True)
     if result_queue:
         result_queue.put(df_out)
     return df_out
