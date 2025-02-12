@@ -397,89 +397,92 @@ def main(cfg: QCconf):
         li for li in cfg.QC_dependent if getattr(li, "dt_stabilization", None)
     ]
     # LOOP STARTS HERE?
-    for cfg_dep_i in qc_dep_stabilize_configs:
-        qc_df_dep_stabilize_i = pd.DataFrame.from_dict(
-            {getattr(cfg_dep_i, "independent", {}): cfg_dep_i},  # type: ignore
-            orient="index",
-        )
-        qc_df_dep_stabilize_i[["QC_range_min", "QC_range_max"]] = pd.DataFrame(
-            qc_df_dep_stabilize_i["QC"].apply(lambda x: x["range"]).tolist(),
-            index=qc_df_dep_stabilize_i.index,
-        )
-
-        df_independent_timewindow_i = df_independent_timewindow.merge(
-            qc_df_dep_stabilize_i.drop(columns=["dependent"]).rename(
-                columns={"independent": "datastream_id"}
-            ),
-            on="datastream_id",
-        )
-        df_independent_grouped = df_independent_timewindow_i.sort_values(
-            Df.TIME
-        ).groupby(by=[Df.DATASTREAM_ID], group_keys=False)
-
-        df_independent_tmp = df_independent_grouped[
-            [
-                str(Df.IOT_ID),
-                str(Df.RESULT),
-                str(Df.DATASTREAM_ID),
-                str(Df.TIME),
-                "max_allowed_downtime",
-                "dt_stabilization",
-                "QC_range_min",
-                "QC_range_max",
-            ]
-        ].apply(limit_value_fctn)
-
-        independent_i = getattr(cfg_dep_i, "independent")
-        if not df_independent_tmp.empty:
-            df_all_w_dependent = df_all.merge(
-                df_independent_tmp, on=Df.IOT_ID, how="left", suffixes=("", "_independent")
+    if not df_independent_timewindow.empty:
+        for cfg_dep_i in qc_dep_stabilize_configs:
+            qc_df_dep_stabilize_i = pd.DataFrame.from_dict(
+                {getattr(cfg_dep_i, "independent", {}): cfg_dep_i},  # type: ignore
+                orient="index",
             )
-            df_all_w_dependent[Df.QC_FLAG + "_independent"] = df_all_w_dependent[
-                Df.QC_FLAG + "_independent"
-            ].fillna(QualityFlags.NO_QUALITY_CONTROL)
-            df_all_w_dependent[Df.QC_FLAG] = df_all_w_dependent[Df.QC_FLAG].combine(df_all_w_dependent[Df.QC_FLAG + "_independent"], max, QualityFlags.NO_QUALITY_CONTROL).astype(CAT_TYPE)  # type: ignore
+            qc_df_dep_stabilize_i[["QC_range_min", "QC_range_max"]] = pd.DataFrame(
+                qc_df_dep_stabilize_i["QC"].apply(lambda x: x["range"]).tolist(),
+                index=qc_df_dep_stabilize_i.index,
+            )
 
-            dependent_list_i = [
-                int(dep_i)
-                for dep_i in str(getattr(cfg_dep_i, "dependent", [])).split(",")
-                if int(dep_i) in datastreams_list
-            ]
-            tolerance_i = getattr(cfg_dep_i, "dt_tolerance")
+            df_independent_timewindow_i = df_independent_timewindow.merge(
+                qc_df_dep_stabilize_i.drop(columns=["dependent"]).rename(
+                    columns={"independent": "datastream_id"}
+                ),
+                on="datastream_id",
+            )
+            df_independent_grouped = df_independent_timewindow_i.sort_values(
+                Df.TIME
+            ).groupby(by=[Df.DATASTREAM_ID], group_keys=False)
 
-            for dependent_ii in dependent_list_i:
-                stabilize_flags_ii = qc_dependent_quantity_base(
-                    df_all_w_dependent,
-                    independent=independent_i,
-                    dependent=dependent_ii,
-                    dt_tolerance=tolerance_i,
-                    return_only_dependent=True,
+            df_independent_tmp = df_independent_grouped[
+                [
+                    str(Df.IOT_ID),
+                    str(Df.RESULT),
+                    str(Df.DATASTREAM_ID),
+                    str(Df.TIME),
+                    "max_allowed_downtime",
+                    "dt_stabilization",
+                    "QC_range_min",
+                    "QC_range_max",
+                ]
+            ].apply(limit_value_fctn)
+
+            independent_i = getattr(cfg_dep_i, "independent")
+            if not df_independent_tmp.empty:
+                df_all_w_dependent = df_all.merge(
+                    df_independent_tmp, on=Df.IOT_ID, how="left", suffixes=("", "_independent")
                 )
-                count_old_flags = df_all.loc[
-                    df_all[Df.IOT_ID].isin(stabilize_flags_ii.index), Df.QC_FLAG
-                ].value_counts(dropna=False)
-                count_new_flags = stabilize_flags_ii.value_counts(dropna=False)
+                df_all_w_dependent[Df.QC_FLAG + "_independent"] = df_all_w_dependent[
+                    Df.QC_FLAG + "_independent"
+                ].fillna(QualityFlags.NO_QUALITY_CONTROL)
+                df_all_w_dependent[Df.QC_FLAG] = df_all_w_dependent[Df.QC_FLAG].combine(df_all_w_dependent[Df.QC_FLAG + "_independent"], max, QualityFlags.NO_QUALITY_CONTROL).astype(CAT_TYPE)  # type: ignore
 
-                # df_all[Df.QC_FLAG] = combine_df_all_w_dependency_output(
-                # df_all, stabilize_flags_ii
-                # )
-                if count_old_flags[QualityFlags.BAD] != count_new_flags[QualityFlags.BAD]:  # type: ignore
-                    log.debug(f"Independent: {independent_i}")
-                    log.debug(f"--- Dependent: {dependent_ii}")
-                    log.debug(f"------ old: {count_old_flags.to_json()}")
-                    log.debug(f"------ new: {count_new_flags.to_json()}")
-                    log.debug(
-                        f"------ df_all (new): {combine_df_all_w_dependency_output(
-                        df_all, stabilize_flags_ii
-                        ).value_counts(dropna=False).to_json()}"
+                dependent_list_i = [
+                    int(dep_i)
+                    for dep_i in str(getattr(cfg_dep_i, "dependent", [])).split(",")
+                    if int(dep_i) in datastreams_list
+                ]
+                tolerance_i = getattr(cfg_dep_i, "dt_tolerance")
+
+                for dependent_ii in dependent_list_i:
+                    stabilize_flags_ii = qc_dependent_quantity_base(
+                        df_all_w_dependent,
+                        independent=independent_i,
+                        dependent=dependent_ii,
+                        dt_tolerance=tolerance_i,
+                        return_only_dependent=True,
                     )
+                    count_old_flags = df_all.loc[
+                        df_all[Df.IOT_ID].isin(stabilize_flags_ii.index), Df.QC_FLAG
+                    ].value_counts(dropna=False)
+                    count_new_flags = stabilize_flags_ii.value_counts(dropna=False)
 
-                df_all[Df.QC_FLAG] = combine_df_all_w_dependency_output(
-                    df_all, stabilize_flags_ii
-                )
-            else:
-                log.warning(f"No data for independent datastream {independent_i}")
+                    # df_all[Df.QC_FLAG] = combine_df_all_w_dependency_output(
+                    # df_all, stabilize_flags_ii
+                    # )
+                    if count_old_flags[QualityFlags.BAD] != count_new_flags[QualityFlags.BAD]:  # type: ignore
+                        log.debug(f"Independent: {independent_i}")
+                        log.debug(f"--- Dependent: {dependent_ii}")
+                        log.debug(f"------ old: {count_old_flags.to_json()}")
+                        log.debug(f"------ new: {count_new_flags.to_json()}")
+                        log.debug(
+                            f"------ df_all (new): {combine_df_all_w_dependency_output(
+                            df_all, stabilize_flags_ii
+                            ).value_counts(dropna=False).to_json()}"
+                        )
 
+                    df_all[Df.QC_FLAG] = combine_df_all_w_dependency_output(
+                        df_all, stabilize_flags_ii
+                    )
+                else:
+                    log.warning(f"No data for independent datastream {independent_i}")
+
+        else:
+            log.warning("Skipping QC_dependent!")
     nb_observations = df_all.shape[0]
     df_all = gpd.GeoDataFrame(df_all, geometry=gpd.points_from_xy(df_all[Df.LONG], df_all[Df.LAT]), crs=cfg.location.crs)  # type: ignore
     # get qc check df (try to find clearer name)
