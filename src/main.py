@@ -478,11 +478,10 @@ def main(cfg: QCconf):
                     df_all[Df.QC_FLAG] = combine_df_all_w_dependency_output(
                         df_all, stabilize_flags_ii
                     )
-                else:
-                    log.warning(f"No data for independent datastream {independent_i}")
-
-        else:
-            log.warning("Skipping QC_dependent!")
+            else:
+                log.warning(f"No data for independent datastream {independent_i}")
+    else:
+        log.warning("Skipping QC_dependent!")
     nb_observations = df_all.shape[0]
     df_all = gpd.GeoDataFrame(df_all, geometry=gpd.points_from_xy(df_all[Df.LONG], df_all[Df.LAT]), crs=cfg.location.crs)  # type: ignore
     # get qc check df (try to find clearer name)
