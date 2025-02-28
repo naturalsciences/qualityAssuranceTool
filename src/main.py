@@ -554,6 +554,7 @@ def main(cfg: QCconf):
         )
 
     # find geographical outliers
+    outlier_bool_merge_function = (max, lambda x,y: y)[getattr(cfg.reset, "overwrite_feature_flags", True)]
     qc_flag_config_outlier = QCFlagConfig(
         "spacial_outliers",
         # bool_function=lambda x: pd.Series(False, index=x.index), # easiest method to disable this
@@ -562,11 +563,13 @@ def main(cfg: QCconf):
             max_dx_dt=cfg.location.max_dx_dt,
             time_window=cfg.location.time_window,
         ),
-        bool_merge_function=max,
+        bool_merge_function=outlier_bool_merge_function,
         flag_on_true=QualityFlags.BAD,
         flag_on_nan=QualityFlags.PROBABLY_GOOD,
     )
-    df_all[Df.QC_FLAG] = qc_flag_config_outlier.execute(df_all)
+    # df_all[Df.QC_FLAG] = qc_flag_config_outlier.execute(df_all)
+    df_all[Df.FEATURE_QC_FLAG] = qc_flag_config_outlier.execute(df_all, column=Df.FEATURE_QC_FLAG)
+    df_all[Df.QC_FLAG] = qc_flag_config_outlier.execute(df_all, column=Df.FEATURE_QC_FLAG)
 
     log.info(
         f"Detected number of spacial outliers: {df_all.loc[qc_flag_config_outlier.bool_series].shape[0]}."
@@ -582,7 +585,7 @@ def main(cfg: QCconf):
             # "df": df_all.reset_index(),
             "url": url_batch,
             "auth": auth_in,
-            "columns": [Df.FEATURE_ID, Df.QC_FLAG],
+            "columns": [Df.FEATURE_ID, Df.FEATURE_QC_FLAG],
             "url_entity": Entities.FEATURESOFINTEREST,
             "json_body_template": FEATURES_BODY_TEMPLATE,
             "bool_write_patch_to_file": cfg.other.write_flags_to_json,
@@ -769,7 +772,8 @@ def main(cfg: QCconf):
         write_patch_to_file(
             create_patch_json(
                 df=df_all,
-                columns=[Df.FEATURE_ID, Df.QC_FLAG],
+                columns=[Df.FEATURE_ID, Df.FEATURE_QC_FLAG],
+                json_body_template=FEATURES_BODY_TEMPLATE,
                 url_entity=Entities.FEATURESOFINTEREST,
             ),
             file_path=Path(log.root.handlers[1].baseFilename).parent,  # type: ignore
