@@ -9,7 +9,7 @@ DATE_TIME_FORMAT="+%Y-%m-%d %H:%M:%S"
 
 # Function to display usage
 usage() {
-    echo "Usage: $0 -s START -e END -d total_time_window -o time_window_overlap [-i IMAGE_TAG] [-c CONFIG_NAME]"
+    echo "Usage: $0 -s START -e END -d total_time_window -o time_window_overlap [-i IMAGE_TAG] [-c CONFIG_NAME] [-r RESOURCES_FOLDER]"
     exit 1
 }
 
@@ -27,6 +27,8 @@ while getopts ":s:e:d:o:i:c:t" opt; do
         i) IMAGE_TAG="$OPTARG"
         ;;
         c) CONFIG_NAME="$OPTARG"
+        ;;
+        r) CONFIG_NAME="$OPTARG"
         ;;
         t) MODE="_testing"
         ;;
@@ -53,6 +55,7 @@ echo "TOTAL_TIME_WINDOW: $TOTAL_TIME_WINDOW"
 echo "WINDOW_OVERLAP: $WINDOW_OVERLAP"
 echo "IMAGE_TAG: $IMAGE_TAG"
 echo "CONFIG_NAME: $CONFIG_NAME"
+echo "RESOURCES_FOLDER: $RESOURCES_FOLDER"
 echo "MODE: $MODE"
 echo "---------------"
 
@@ -83,6 +86,7 @@ do
         --rm --network=host --workdir /app \
         -v "$CONFIG_FOLDER":/app/conf \
         -v "$OUTPUT_FOLDER":/app/outputs \
+        -v "$RESOURCES_FOLDER":/app/resources \
         -e DEV_SENSORS_USER="$SENSORS_USER" \
         -e DEV_SENSORS_PASS="$SENSORS_PASS" \
         rbinsbmdc/quality_assurance_tool:$IMAGE_TAG \
