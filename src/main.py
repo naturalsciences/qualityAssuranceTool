@@ -25,6 +25,7 @@ from df_qc_tools.qc import (
     get_bool_exceed_max_acceleration,
     get_bool_exceed_max_velocity,
     get_bool_land_region,
+    get_bool_natural_earth_land,
     get_bool_null_region,
     get_bool_out_of_range,
     get_bool_spacial_outlier_compared_to_median,
@@ -50,6 +51,7 @@ from pandassta.sta_requests import (
     create_patch_json,
     get_all_data,
     get_elev_netcdf,
+    get_ne_10m_shp,
     patch_qc_flags,
     set_dryrun_var,
     set_sta_url,
@@ -434,7 +436,10 @@ def main(cfg: QCconf):
             independent_i = getattr(cfg_dep_i, "independent")
             if not df_independent_tmp.empty:
                 df_all_w_dependent = df_all.merge(
-                    df_independent_tmp, on=Df.IOT_ID, how="left", suffixes=("", "_independent")
+                    df_independent_tmp,
+                    on=Df.IOT_ID,
+                    how="left",
+                    suffixes=("", "_independent"),
                 )
                 df_all_w_dependent[Df.QC_FLAG + "_independent"] = df_all_w_dependent[
                     Df.QC_FLAG + "_independent"
@@ -553,8 +558,28 @@ def main(cfg: QCconf):
             history_series, qc_flag_config_depth_above_threshold
         )
 
+    feature_bool_merge_function = (max, lambda x, y: y)[
+        getattr(cfg.reset, "overwrite_feature_flags", True)
+    ]
+
+    get_ne_10m_shp(local_folder=Path().absolute().joinpath("resources"))
+    qc_flag_config_land_ne_shp = QCFlagConfig(
+        "Intersect_ne_land_polynomial",
+        partial(
+            get_bool_natural_earth_land, path_shp=Path().absolute().joinpath("resources/ne_10m_land.shp")
+        ),
+        feature_bool_merge_function,
+        QualityFlags.BAD,
+        QualityFlags.NO_QUALITY_CONTROL,
+    )
+    df_all[Df.FEATURE_QC_FLAG] = qc_flag_config_land_ne_shp.execute(
+        df_all, column=Df.FEATURE_QC_FLAG
+    )
+    df_all[Df.QC_FLAG] = qc_flag_config_land_ne_shp.execute(
+        df_all, column=Df.FEATURE_QC_FLAG
+    )
+
     # find geographical outliers
-    outlier_bool_merge_function = (max, lambda x,y: y)[getattr(cfg.reset, "overwrite_feature_flags", True)]
     qc_flag_config_outlier = QCFlagConfig(
         "spacial_outliers",
         # bool_function=lambda x: pd.Series(False, index=x.index), # easiest method to disable this
@@ -563,13 +588,17 @@ def main(cfg: QCconf):
             max_dx_dt=cfg.location.max_dx_dt,
             time_window=cfg.location.time_window,
         ),
-        bool_merge_function=outlier_bool_merge_function,
+        bool_merge_function=max,
         flag_on_true=QualityFlags.BAD,
         flag_on_nan=QualityFlags.PROBABLY_GOOD,
     )
     # df_all[Df.QC_FLAG] = qc_flag_config_outlier.execute(df_all)
-    df_all[Df.FEATURE_QC_FLAG] = qc_flag_config_outlier.execute(df_all, column=Df.FEATURE_QC_FLAG)
-    df_all[Df.QC_FLAG] = qc_flag_config_outlier.execute(df_all, column=Df.FEATURE_QC_FLAG)
+    df_all[Df.FEATURE_QC_FLAG] = qc_flag_config_outlier.execute(
+        df_all, column=Df.FEATURE_QC_FLAG
+    )
+    df_all[Df.QC_FLAG] = qc_flag_config_outlier.execute(
+        df_all, column=Df.FEATURE_QC_FLAG
+    )
 
     log.info(
         f"Detected number of spacial outliers: {df_all.loc[qc_flag_config_outlier.bool_series].shape[0]}."
