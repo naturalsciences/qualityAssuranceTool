@@ -365,6 +365,7 @@ def main(cfg: QCconf):
 
     if RESET_OVERWRITE_FLAGS or RESET_FEATURE_FLAGS or RESET_OBSERVATION_FLAGS:
         df_all[Df.QC_FLAG] = QualityFlags.NO_QUALITY_CONTROL
+        df_all[Df.QC_FLAG] = df_all[Df.QC_FLAG].astype(CAT_TYPE)
         log.warning("QC flags will we overwritten!")
     if RESET_OBSERVATION_FLAGS:
         log.warning("Flags will be reset!")
@@ -545,7 +546,7 @@ def main(cfg: QCconf):
             history_series, qc_flag_config_land_region
         )
 
-        get_elev_netcdf()
+        get_elev_netcdf(local_folder=Path().absolute().joinpath("resources"))
         qc_flag_config_depth_above_threshold = QCFlagConfig(
             "Depth",
             partial(get_bool_depth_above_treshold, threshold=0.0),
@@ -578,6 +579,23 @@ def main(cfg: QCconf):
     df_all[Df.QC_FLAG] = qc_flag_config_land_ne_shp.execute(
         df_all, column=Df.FEATURE_QC_FLAG
     )
+    history_series = update_flag_history_series(history_series, qc_flag_config_land_ne_shp)
+
+    etop_file = get_elev_netcdf(local_folder=Path().absolute().joinpath("resources"))
+    if bool(qc_flag_config_land_ne_shp.bool_series.any()):
+        qc_flag_config_depth_above_threshold = QCFlagConfig(
+            "Depth_ne_land",
+        partial(get_bool_depth_above_treshold, threshold=0.0, mask_to_check=qc_flag_config_land_ne_shp.bool_series, etop_file=etop_file),
+            max,
+            QualityFlags.BAD,
+            QualityFlags.NO_QUALITY_CONTROL,
+            QualityFlags.NO_QUALITY_CONTROL,
+        )
+        df_all[Df.QC_FLAG] = qc_flag_config_depth_above_threshold.execute(df_all, column=Df.FEATURE_QC_FLAG)
+        history_series = update_flag_history_series(
+            history_series, qc_flag_config_depth_above_threshold
+        )
+
 
     # find geographical outliers
     qc_flag_config_outlier = QCFlagConfig(

@@ -11,6 +11,6 @@ python-dotenv==1.0.1
 scipy==1.15.2
 tqdm==4.67.1
 
-pandassta>=0.0.17
-df-qc-tools>=0.0.13
+pandassta>=0.0.18
+df-qc-tools>=0.0.14
 searegion-detection>=0.0.5

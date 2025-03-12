@@ -1,5 +1,5 @@
 -e ../df-qc-tools
-df-qc-tools>=0.0.13
+df-qc-tools>=0.0.14
 -e ../pandassta
-pandassta>=0.0.17
+pandassta>=0.0.18
 -r requirements.txt
