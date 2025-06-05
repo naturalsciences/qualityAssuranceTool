@@ -198,7 +198,13 @@ def get_independent_window_data(
     message_str: str | None = None,
     result_queue: Optional[queue.Queue] = None,
 ):
-    list_independent_ids = [getattr(li, "independent") for li in cfg.QC_dependent]
+    list_independent_ids = [getattr(li, "independent") for li in getattr(cfg, "QC_dependent", []) if getattr(li, "dt_stabilization", None)]
+    if not list_independent_ids:
+        log.warning("No independent ids found in QC_dependent.")
+        if result_queue:
+            df_out = pd.DataFrame()
+            result_queue.put(df_out)
+        return df_out
     list_independent_ids = [
         ids_i
         for ids_i in list_independent_ids
@@ -212,11 +218,11 @@ def get_independent_window_data(
     # ), "Independent ids must be unique."
 
     qc_dep_stabilize_configs = [
-        li for li in cfg.QC_dependent if getattr(li, "dt_stabilization", None)
+        li for li in getattr(cfg, "QC_dependent", []) if getattr(li, "dt_stabilization", None)
     ]
 
     cfg_indep_time = [
-        ci for ci in cfg.QC_dependent if getattr(ci, "dt_stabilization", None)
+        ci for ci in getattr(cfg, "QC_dependent", []) if getattr(ci, "dt_stabilization", None)
     ]
     width_hours_window = max(
         [pd.Timedelta(ci.dt_stabilization) for ci in cfg_indep_time]
@@ -397,7 +403,7 @@ def main(cfg: QCconf):
 
     datastreams_list = df_all[Df.DATASTREAM_ID].unique()
     qc_dep_stabilize_configs = [
-        li for li in cfg.QC_dependent if getattr(li, "dt_stabilization", None)
+        li for li in getattr(cfg, "QC_dependent", []) if getattr(li, "dt_stabilization", None)
     ]
     # LOOP STARTS HERE?
     if not df_independent_timewindow.empty:
@@ -755,7 +761,7 @@ def main(cfg: QCconf):
 
     t_dependent0 = time.time()
     # TODO: not yet in flag_history
-    for dependent_i in cfg.QC_dependent:
+    for dependent_i in getattr(cfg, "QC_dependent", []):
         independent = dependent_i.independent
         dependent = dependent_i.dependent
         dt_tolerance = dependent_i.dt_tolerance
