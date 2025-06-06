@@ -4,6 +4,44 @@ from pathlib import Path
 import yaml
 from cerberus import Validator
 
+timedelta_units = [
+    "W",
+    "D",
+    "days",
+    "day",
+    "hours",
+    "our",
+    "hr",
+    "h",
+    "minutes",
+    "minute",
+    "min",
+    "m",
+    "seconds",
+    "econd",
+    "sec",
+    "s",
+    "milliseconds",
+    "illisecond",
+    "millis",
+    "milli",
+    "ms",
+    "microseconds",
+    "icrosecond",
+    "micros",
+    "micro",
+    "us",
+    "nanoseconds",
+    "anosecond",
+    "nanos",
+    "nano",
+    "ns",
+]
+
+timedelta_units_pattern = "|".join(
+    sorted(timedelta_units, key=len, reverse=True)
+)  # Longest first to avoid partial match issues
+
 schema = {
     "time": {
         "type": "dict",
@@ -26,7 +64,13 @@ schema = {
     "hydra": {
         "type": "dict",
         "schema": {
-            "verbose": {"type": "string"},
+            "verbose": {
+                "oneof": [
+                    {"type": "string"},
+                    {"type": "boolean"},
+                    {"type": "list", "schema": {"type": "string"}},
+                ]
+            },
             "run": {"type": "dict", "schema": {"dir": {"type": "string"}}},
         },
     },
@@ -57,8 +101,8 @@ schema = {
                         "type": "dict",
                         "schema": {
                             "ids": {"type": "list", "schema": {"type": "integer"}}
-                        }
-                    }
+                        },
+                    },
                 },
             },
         },
@@ -93,7 +137,10 @@ schema = {
                 },
             },
             "crs": {"type": "string"},
-            "time_window": {"type": "string", "regex": r"^\d+[a-zA-Z]+$"},
+            "time_window": {
+                "type": "string",
+                "regex": rf"^\d+({timedelta_units_pattern})",
+            },
             "max_dx_dt": {"type": "float"},
             "max_ddx_dtdt": {"type": "float"},
         },
@@ -113,11 +160,15 @@ schema = {
                 },
                 "dt_tolerance": {
                     "type": "string",
-                    "regex": r"^(\.)?\d(\.\d+)?+[a-zA-Z]+$",
+                    "regex": rf"^(\.)?\d(\.\d+)?+({timedelta_units_pattern})$",
                 },
                 "dt_stabilization": {
                     "type": "string",
-                    "regex": r"^(\.)?\d(\.\d+)?+[a-zA-Z]+$",
+                    "regex": rf"^(\.)?\d+(\.\d+)?+({timedelta_units_pattern})$",
+                },
+                "max_allowed_downtime": {
+                    "type": "string",
+                    "regex": rf"^(\.)?\d+(\.\d+)?+({timedelta_units_pattern})$",
                 },
                 "QC": {
                     "type": "dict",
