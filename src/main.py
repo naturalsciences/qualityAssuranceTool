@@ -503,6 +503,10 @@ def main(cfg: QCconf):
     ## Is changing this suffusient to correctit?
     # qc_df.index.name = Df.OBSERVATION_TYPE
     qc_df.index.name = Df.DATASTREAM_ID
+    if hasattr(cfg, "QC_global"):
+        for qc_type in OmegaConf.structured(cfg.QC_global).keys():
+            qc_df.loc[qc_df[qc_type].isna(), qc_type] = qc_df.loc[qc_df[qc_type].isna(), qc_type].apply(lambda x: getattr(cfg.QC_global, qc_type, {}).get("range", float("NaN")))
+            print(qc_type)
 
     ## setup needed columns. Should these be removed?
     t_ranges0 = time.time()
@@ -512,7 +516,8 @@ def main(cfg: QCconf):
         ).apply(pd.Series)
 
     df_all = calc_gradient_results(df_all, Df.DATASTREAM_ID)
-    df_all = calc_zscore_results(df_all, Df.DATASTREAM_ID)
+    # df_all = calc_zscore_results(df_all, Df.DATASTREAM_ID)
+    columns_at_start_tmp = df_all.columns.tolist()
 
     t_df1 = time.time()
     t_qc0 = time.time()
@@ -741,6 +746,8 @@ def main(cfg: QCconf):
 
     history_series = update_flag_history_series(history_series, qc_flag_config_gradient)
 
+    # df_all.loc[df_all[Df.QC_FLAG] <= QualityFlags.PROBABLY_GOOD] = calc_zscore_results(df_all.loc[df_all[Df.QC_FLAG] <= QualityFlags.PROBABLY_GOOD], Df.DATASTREAM_ID)
+    df_all.loc[df_all[Df.QC_FLAG] <= QualityFlags.PROBABLY_GOOD, Df.ZSCORE] = calc_zscore_results(df_all.loc[df_all[Df.QC_FLAG] <= QualityFlags.PROBABLY_GOOD, columns_at_start_tmp ], Df.DATASTREAM_ID, rolling_time_window=cfg.QC_global.zscore.time_window)
     qc_flag_config_zscore = QCFlagConfig(
         label="zscore",
         bool_function=partial(get_bool_out_of_range, qc_on=Df.ZSCORE, qc_type="zscore"),

@@ -193,6 +193,34 @@ schema = {
             },
         },
     },
+    "QC_global": {
+        "type": "dict",
+        "schema": {
+            "zscore": {
+                "type": "dict",
+                "schema": {
+                    "time_window": {
+                        "type": "string",
+                        "regex": rf"^\d+({timedelta_units_pattern})$",
+                    },
+                    "range": {"type": "list", "schema": {"type": "float"}},
+                },
+            },
+            "range": {
+                "type": "dict",
+                "schema": {
+                    "range": {"type": "list", "schema": {"type": "float"}},
+                },
+            },
+            "gradient": {
+                "type": "dict",
+                "schema": {
+                    "range": {"type": "list", "schema": {"type": "float"}},
+                },
+            }
+
+        },
+    },
 }
 
 
