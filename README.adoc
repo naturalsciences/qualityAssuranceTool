@@ -329,3 +329,190 @@ source .env
 for f in $(seq -f "%02g" 1 11); do fp1=$((f+1)); ff=$(printf "%02d" $f); fp1f=$(printf "%02d" $fp1); docker run --rm --name=QC_$ff --network=host -v ./conf:/app/conf -v ./outputs:/app/outputs -e DEV_SENSORS_USER=$DEV_SENSORS_USER -e DEV_SENSORS_PASS=$DEV_SENSORS_PASS qc_sensorthings "time.start=2023-$ff-01" "time.end=2023-$fp1f-15"; done
 ----
 ////
+
+## REDIS
+
+Redis could be used as a cache. This could be very useful in the NRT use case.
+data could be stored as follows
+
+[source,python]
+----
+import redis
+import pandas as pd
+
+# -----------------------------
+# Configuration
+# -----------------------------
+REDIS_HOST = "127.0.0.1"   # use "redis" if Python runs in another container
+REDIS_PORT = 6379
+REDIS_DB = 0               # optional
+
+CSV_FILE = "data.csv"      # your CSV path
+TTL_SECONDS = 3600         # TTL for sorted sets (rolling cache)
+
+# -----------------------------
+# Connect to Redis
+# -----------------------------
+r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB)
+
+# -----------------------------
+# Helper Functions
+# -----------------------------
+def clean_value(v):
+    """Convert pandas/other objects to Redis-compatible string/number."""
+    if pd.isna(v):
+        return ""
+    if isinstance(v, pd.Timestamp):
+        return v.isoformat()
+    if isinstance(v, (float, int, str)):
+        return v
+    # Try accessing value attribute for custom objects like QualityFlags
+    if hasattr(v, "value"):
+        return v.value
+    return str(v)
+
+def safe_float(v):
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return 0.0
+
+def safe_int(v):
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        if hasattr(v, "value"):
+            return int(v.value)
+        return 0
+
+# -----------------------------
+# Ingest into Redis
+# -----------------------------
+for _, row in df.iterrows():
+    obs_id = int(row["@iot.id"])
+    ds = int(row["datastream_id"])
+    
+    # Convert phenomenonTime to timestamp for Sorted Set
+    ts_obj = pd.Timestamp(row["phenomenonTime"])
+    ts_epoch = ts_obj.timestamp()
+    
+    # 1️⃣ Sorted Set per datastream
+    r.zadd(f"obs:{ds}", {obs_id: ts_epoch})
+    
+    # 2️⃣ Observation hash
+    r.hset(
+        f"obsdata:{obs_id}",
+        mapping={
+            "result": safe_float(row["result"]),
+            "phenomenonTime": ts_obj.isoformat(),
+            "resultQuality": safe_int(row["resultQuality"]),
+            "observation_type": clean_value(row["observation_type"]),
+            "observed_property_id": safe_int(row["observed_property_id"]),
+            "units": clean_value(row["units"]),
+            "feature_id": safe_int(row["feature_id"]),
+            "quality_flag": clean_value(row["properties.resultQuality"]),
+            "lon": safe_float(row["long"]),
+            "lat": safe_float(row["lat"]),
+        }
+    )
+    
+    # 3️⃣ Latest observation per datastream
+    r.set(f"latest:{ds}", obs_id)
+
+# 4️⃣ Optional: set TTL on sorted sets
+for ds in df["datastream_id"].unique():
+    r.expire(f"obs:{ds}", TTL_SECONDS)
+
+print("✅ Redis ingestion completed successfully!")
+----
+
+
+possible faster, but untested option:
+
+[source,python]
+----
+import redis
+import pandas as pd
+
+# -----------------------------
+# Config
+# -----------------------------
+REDIS_HOST = "127.0.0.1"
+REDIS_PORT = 6379
+REDIS_DB = 0
+CSV_FILE = "data.csv"
+TTL_SECONDS = 3600
+
+r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB)
+pipe = r.pipeline()  # use pipeline for batch writes
+
+# -----------------------------
+# Load CSV
+# -----------------------------
+df = pd.read_csv(CSV_FILE)
+
+# -----------------------------
+# Convert columns vectorized
+# -----------------------------
+# Timestamps -> epoch float
+df['ts_epoch'] = pd.to_datetime(df['phenomenonTime']).astype('int64') / 1e9
+# Timestamps -> ISO string
+df['ts_iso'] = pd.to_datetime(df['phenomenonTime']).dt.isoformat()
+# Ensure numeric types
+df['result'] = pd.to_numeric(df['result'], errors='coerce').fillna(0.0)
+df['resultQuality'] = pd.to_numeric(df['resultQuality'], errors='coerce').fillna(0).astype(int)
+df['observed_property_id'] = pd.to_numeric(df['observed_property_id'], errors='coerce').fillna(0).astype(int)
+df['feature_id'] = pd.to_numeric(df['feature_id'], errors='coerce').fillna(0).astype(int)
+df['lon'] = pd.to_numeric(df['long'], errors='coerce').fillna(0.0)
+df['lat'] = pd.to_numeric(df['lat'], errors='coerce').fillna(0.0)
+# Convert QualityFlags or object to string
+df['quality_flag'] = df['properties.resultQuality'].astype(str)
+df['observation_type'] = df['observation_type'].astype(str)
+df['units'] = df['units'].astype(str)
+
+# -----------------------------
+# Convert to dict records
+# -----------------------------
+records = df.to_dict('records')
+
+# -----------------------------
+# Ingest into Redis using pipeline
+# -----------------------------
+for rec in records:
+    obs_id = int(rec["@iot.id"])
+    ds = int(rec["datastream_id"])
+    
+    # Sorted set: obs:<datastream_id>
+    pipe.zadd(f"obs:{ds}", {obs_id: rec['ts_epoch']})
+    
+    # Hash: obsdata:<@iot.id>
+    pipe.hset(
+        f"obsdata:{obs_id}",
+        mapping={
+            "result": rec['result'],
+            "phenomenonTime": rec['ts_iso'],
+            "resultQuality": rec['resultQuality'],
+            "observation_type": rec['observation_type'],
+            "observed_property_id": rec['observed_property_id'],
+            "units": rec['units'],
+            "feature_id": rec['feature_id'],
+            "quality_flag": rec['quality_flag'],
+            "lon": rec['lon'],
+            "lat": rec['lat'],
+        }
+    )
+    
+    # Latest observation shortcut
+    pipe.set(f"latest:{ds}", obs_id)
+
+# Execute all commands in pipeline
+pipe.execute()
+
+# -----------------------------
+# Optional: TTL for sorted sets
+# -----------------------------
+for ds in df['datastream_id'].unique():
+    r.expire(f"obs:{ds}", TTL_SECONDS)
+
+print("✅ Redis ingestion completed (vectorized)!")
+----
