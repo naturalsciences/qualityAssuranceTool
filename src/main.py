@@ -198,7 +198,11 @@ def get_independent_window_data(
     message_str: str | None = None,
     result_queue: Optional[queue.Queue] = None,
 ):
-    list_independent_ids = [getattr(li, "independent") for li in getattr(cfg, "QC_dependent", []) if getattr(li, "dt_stabilization", None)]
+    list_independent_ids = [
+        getattr(li, "independent")
+        for li in getattr(cfg, "QC_dependent", [])
+        if getattr(li, "dt_stabilization", None)
+    ]
     if not list_independent_ids:
         log.warning("No independent ids found in QC_dependent.")
         if result_queue:
@@ -218,11 +222,15 @@ def get_independent_window_data(
     # ), "Independent ids must be unique."
 
     qc_dep_stabilize_configs = [
-        li for li in getattr(cfg, "QC_dependent", []) if getattr(li, "dt_stabilization", None)
+        li
+        for li in getattr(cfg, "QC_dependent", [])
+        if getattr(li, "dt_stabilization", None)
     ]
 
     cfg_indep_time = [
-        ci for ci in getattr(cfg, "QC_dependent", []) if getattr(ci, "dt_stabilization", None)
+        ci
+        for ci in getattr(cfg, "QC_dependent", [])
+        if getattr(ci, "dt_stabilization", None)
     ]
     width_hours_window = max(
         [pd.Timedelta(ci.dt_stabilization) for ci in cfg_indep_time]
@@ -277,7 +285,10 @@ def get_independent_window_data(
     return df_out
 
 
-@hydra.main(config_path="../conf", config_name="config.yaml", version_base="1.2")
+# @hydra.main(config_path="../conf", config_name="config.yaml", version_base="1.2")
+@hydra.main(
+    config_path="../conf", config_name="config_20260325.yaml", version_base="1.2"
+)
 def main(cfg: QCconf):
     log_extra = logging.getLogger(name="extra")
     log_extra.setLevel(logging.INFO)
@@ -403,7 +414,9 @@ def main(cfg: QCconf):
 
     datastreams_list = df_all[Df.DATASTREAM_ID].unique()
     qc_dep_stabilize_configs = [
-        li for li in getattr(cfg, "QC_dependent", []) if getattr(li, "dt_stabilization", None)
+        li
+        for li in getattr(cfg, "QC_dependent", [])
+        if getattr(li, "dt_stabilization", None)
     ]
     # LOOP STARTS HERE?
     if not df_independent_timewindow.empty:
@@ -529,10 +542,10 @@ def main(cfg: QCconf):
 
         qc_flag_config_nan_region = QCFlagConfig(
             "Region nan",
-            get_bool_null_region,
-            max,
-            QualityFlags.PROBABLY_GOOD,
-            QualityFlags.NO_QUALITY_CONTROL,
+            bool_function=get_bool_null_region,
+            bool_merge_function=max,
+            flag_on_true=QualityFlags.PROBABLY_GOOD,
+            flag_on_false=QualityFlags.NO_QUALITY_CONTROL,
         )
         df_all[Df.QC_FLAG] = qc_flag_config_nan_region.execute(df_all)
 
@@ -542,10 +555,10 @@ def main(cfg: QCconf):
 
         qc_flag_config_land_region = QCFlagConfig(
             "Region mainland",
-            get_bool_land_region,
-            max,
-            QualityFlags.BAD,
-            QualityFlags.NO_QUALITY_CONTROL,
+            bool_function=get_bool_land_region,
+            bool_merge_function=max,
+            flag_on_true=QualityFlags.BAD,
+            flag_on_false=QualityFlags.NO_QUALITY_CONTROL,
         )
         df_all[Df.QC_FLAG] = qc_flag_config_land_region.execute(df_all)
         history_series = update_flag_history_series(
@@ -555,10 +568,10 @@ def main(cfg: QCconf):
         get_elev_netcdf(local_folder=Path().absolute().joinpath("resources"))
         qc_flag_config_depth_above_threshold = QCFlagConfig(
             "Depth",
-            partial(get_bool_depth_above_treshold, threshold=0.0),
-            max,
-            QualityFlags.BAD,
-            QualityFlags.NO_QUALITY_CONTROL,
+            bool_function=partial(get_bool_depth_above_treshold, threshold=0.0),
+            bool_merge_function=max,
+            flag_on_true=QualityFlags.BAD,
+            flag_on_false=QualityFlags.NO_QUALITY_CONTROL,
         )
         df_all[Df.QC_FLAG] = qc_flag_config_depth_above_threshold.execute(df_all)
         history_series = update_flag_history_series(
@@ -572,12 +585,14 @@ def main(cfg: QCconf):
     get_ne_10m_shp(local_folder=Path().absolute().joinpath("resources"))
     qc_flag_config_land_ne_shp = QCFlagConfig(
         "Intersect_ne_land_polynomial",
-        partial(
-            get_bool_natural_earth_land, path_shp=Path().absolute().joinpath("resources/ne_10m_land.shp")
+        bool_function=partial(
+            get_bool_natural_earth_land,
+            path_shp=Path().absolute().joinpath("resources/ne_10m_land.shp"),
         ),
-        feature_bool_merge_function,
-        QualityFlags.BAD,
-        QualityFlags.NO_QUALITY_CONTROL,
+        bool_merge_function=feature_bool_merge_function,
+        flag_on_true=QualityFlags.BAD,
+        flag_on_false=QualityFlags.NO_QUALITY_CONTROL,
+        flag_on_nan=QualityFlags.NO_QUALITY_CONTROL,
     )
     df_all[Df.FEATURE_QC_FLAG] = qc_flag_config_land_ne_shp.execute(
         df_all, column=Df.FEATURE_QC_FLAG
@@ -585,23 +600,31 @@ def main(cfg: QCconf):
     df_all[Df.QC_FLAG] = qc_flag_config_land_ne_shp.execute(
         df_all, column=Df.FEATURE_QC_FLAG
     )
-    history_series = update_flag_history_series(history_series, qc_flag_config_land_ne_shp)
+    history_series = update_flag_history_series(
+        history_series, qc_flag_config_land_ne_shp
+    )
 
     etop_file = get_elev_netcdf(local_folder=Path().absolute().joinpath("resources"))
     if bool(qc_flag_config_land_ne_shp.bool_series.any()):
         qc_flag_config_depth_above_threshold = QCFlagConfig(
             "Depth_ne_land",
-        partial(get_bool_depth_above_treshold, threshold=0.0, mask_to_check=qc_flag_config_land_ne_shp.bool_series, etop_file=etop_file),
-            max,
-            QualityFlags.BAD,
-            QualityFlags.NO_QUALITY_CONTROL,
-            QualityFlags.NO_QUALITY_CONTROL,
+            bool_function=partial(
+                get_bool_depth_above_treshold,
+                threshold=0.0,
+                mask_to_check=qc_flag_config_land_ne_shp.bool_series,
+                etop_file=etop_file,
+            ),
+            bool_merge_function=max,
+            flag_on_true=QualityFlags.BAD,
+            flag_on_false=QualityFlags.NO_QUALITY_CONTROL,
+            flag_on_nan=QualityFlags.NO_QUALITY_CONTROL,
         )
-        df_all[Df.QC_FLAG] = qc_flag_config_depth_above_threshold.execute(df_all, column=Df.FEATURE_QC_FLAG)
+        df_all[Df.QC_FLAG] = qc_flag_config_depth_above_threshold.execute(
+            df_all, column=Df.FEATURE_QC_FLAG
+        )
         history_series = update_flag_history_series(
             history_series, qc_flag_config_depth_above_threshold
         )
-
 
     # find geographical outliers
     qc_flag_config_outlier = QCFlagConfig(
