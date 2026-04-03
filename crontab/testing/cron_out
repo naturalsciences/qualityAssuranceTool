@@ -1,0 +1,250 @@
+ 
+(1 row)
+
+ observations_populate_mds 
+---------------------------
+ 
+(1 row)
+
+ update_belgica_locations 
+--------------------------
+ 
+(1 row)
+
+2026-04-03 15:28:37 Sub-sampling data and moving to production server
+2026-04-03 15:28:37 Downloading data from sensorthings database between 2026-04-03 11:00:00 and 2026-04-03 11:09:59
+COPY 192
+COPY 379
+COPY 14
+COPY 1
+COPY 10
+COPY 10
+COPY 10
+COPY 128
+COPY 2
+COPY 1
+2026-04-03 15:28:37 Importing data to target database.
+SELECT 0
+COPY 192
+INSERT 0 0
+SELECT 0
+COPY 379
+INSERT 0 0
+SELECT 0
+COPY 14
+COPY 1
+INSERT 0 0
+SELECT 0
+COPY 10
+INSERT 0 0
+SELECT 0
+COPY 10
+INSERT 0 0
+SELECT 0
+COPY 10
+INSERT 0 0
+SELECT 0
+COPY 128
+COPY 2
+INSERT 0 0
+SELECT 0
+COPY 1
+UPDATE 1
+[2026-04-03 15:28:37] - Starting docker container for range 2026-04-03 10:19:59 - 2026-04-03 11:19:59
+[2026-04-03 15:29:24] - Status code a651ffc8afbb4e64a6c3585a1b1ed65b34e285d2b749688206cc2a69acc6128b: 0
+[2026-04-03 15:29:24] - Start production 
+2026-04-03 15:29:24 Creation of the multidatastream
+ observations_populate_mds 
+---------------------------
+ 
+(1 row)
+
+ observations_populate_mds 
+---------------------------
+ 
+(1 row)
+
+ update_belgica_locations 
+--------------------------
+ 
+(1 row)
+
+2026-04-03 15:29:25 Sub-sampling data and moving to production server
+2026-04-03 15:29:25 Downloading data from sensorthings database between 2026-04-03 12:00:00 and 2026-04-03 12:19:59
+COPY 192
+COPY 379
+COPY 27
+COPY 2
+COPY 20
+COPY 20
+COPY 20
+COPY 216
+COPY 4
+COPY 1
+2026-04-03 15:29:25 Importing data to target database.
+SELECT 0
+COPY 192
+INSERT 0 0
+SELECT 0
+COPY 379
+INSERT 0 0
+SELECT 0
+COPY 27
+COPY 2
+INSERT 0 0
+SELECT 0
+COPY 20
+INSERT 0 0
+SELECT 0
+COPY 20
+INSERT 0 0
+SELECT 0
+COPY 20
+INSERT 0 0
+SELECT 0
+COPY 216
+COPY 4
+INSERT 0 0
+SELECT 0
+COPY 1
+UPDATE 1
+[2026-04-03 15:29:25] - Starting docker container for range 2026-04-03 11:39:59 - 2026-04-03 12:39:59
+grep: /var/quality_assurance_tool/cron_out: binary file matches
+[2026-04-03 15:30:01] - Start QC script.
+   Comparing with 2026-02-22 16:20:01
+[2026-04-03 15:30:01] - Starting docker container for range 2026-04-03 09:39:59 - 2026-04-03 10:39:59
+[2026-04-03 15:30:46] - Status code 5badd69da2e3303a6af2dd776c247636d997b06ad4456f0ae56add1385e39789: 0
+[2026-04-03 15:30:46] - Start production 
+2026-04-03 15:30:47 Creation of the multidatastream
+ observations_populate_mds 
+---------------------------
+ 
+(1 row)
+
+ observations_populate_mds 
+---------------------------
+ 
+(1 row)
+
+ update_belgica_locations 
+--------------------------
+ 
+(1 row)
+
+2026-04-03 15:30:47 Sub-sampling data and moving to production server
+2026-04-03 15:30:47 Downloading data from sensorthings database between 2026-04-03 11:10:00 and 2026-04-03 1[2026-04-03 15:30:47] - Starting docker container for range 2026-04-03 10:39:59 - 2026-04-03 11:39:59
+[2026-04-03 15:31:36] - Status code 26e1f2342478772e4deaa6b699e6966a74c9fb32c8a98a7f46b9d301c0b77b70: 0
+[2026-04-03 15:31:36] - Start production 
+2026-04-03 15:31:36 Creation of the multidatastream
+ observations_populate_mds 
+---------------------------
+ 
+(1 row)
+
+ observations_populate_mds 
+---------------------------
+ 
+(1 row)
+
+ update_belgica_locations 
+--------------------------
+ 
+(1 row)
+
+2026-04-03 15:31:36 Sub-sampling data and moving to production server
+2026-04-03 15:31:36 Downloading data from sensorthings database between 2026-04-03 12:20:00 and 2026-04-03 12:39:59
+COPY 192
+COPY 379
+COPY 26
+COPY 2
+COPY 20
+COPY 20
+COPY 20
+COPY 203
+COPY 4
+COPY 1
+2026-04-03 15:31:36 Importing data to target database.
+SELECT 0
+COPY 192
+INSERT 0 0
+SELECT 0
+COPY 379
+INSERT 0 0
+SELECT 0
+COPY 26
+COPY 2
+INSERT 0 0
+SELECT 0
+COPY 20
+INSERT 0 0
+SELECT 0
+COPY 20
+INSERT 0 0
+SELECT 0
+COPY 20
+INSERT 0 0
+SELECT 0
+COPY 203
+COPY 4
+INSERT 0 41
+SELECT 0
+COPY 1
+UPDATE 1
+[2026-04-03 15:32:11] - Status code 8ed3cc5c1282e6d2610df693271de6922f1e0f44458c19258c3887d661e263e0: 0
+[2026-04-03 15:32:11] - Start production 
+2026-04-03 15:32:11 Creation of the multidatastream
+ observations_populate_mds 
+---------------------------
+ 
+(1 row)
+
+ observations_populate_mds 
+---------------------------
+ 
+(1 row)
+
+ update_belgica_locations 
+--------------------------
+ 
+(1 row)
+
+2026-04-03 15:32:11 Sub-sampling data and moving to production server
+2026-04-03 15:32:11 Downloading data from sensorthings database between 2026-04-03 10:30:00 and 2026-04-03 10:39:59
+COPY 192
+COPY 379
+COPY 14
+COPY 1
+COPY 10
+COPY 10
+COPY 10
+COPY 122
+COPY 2
+COPY 1
+2026-04-03 15:32:11 Importing data to target database.
+SELECT 0
+COPY 192
+INSERT 0 0
+SELECT 0
+COPY 379
+INSERT 0 0
+SELECT 0
+COPY 14
+COPY 1
+INSERT 0 0
+SELECT 0
+COPY 10
+INSERT 0 0
+SELECT 0
+COPY 10
+INSERT 0 0
+SELECT 0
+COPY 10
+INSERT 0 0
+SELECT 0
+COPY 122
+COPY 2
+INSERT 0 0
+SELECT 0
+COPY 1
+UPDATE 1
+[2026-04-03 15:32:11] - Starting docker container for range 2026-04-03 09:49:59 - 2026-04-03 10:49:59

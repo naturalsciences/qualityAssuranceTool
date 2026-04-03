@@ -1,0 +1,250 @@
+/home/RBINS.BE/bmdc/ftpodas/www_2026-04-03_112000.csv.zip
+/home/RBINS.BE/bmdc/ftpodas/www_2026-04-03_113000.csv.zip
+new file(s) to process
+created temporary folder data_processing_2026-04-03-13-50-01
+Unzipping new files
+Archive:  /home/RBINS.BE/bmdc/belgica_data_transfer/data/mdm5_raw_data/data_processing_2026-04-03-13-50-01/www_2026-04-03_112000.csv.zip
+  inflating: www_2026-04-03_112000.csv  
+Archive:  /home/RBINS.BE/bmdc/belgica_data_transfer/data/mdm5_raw_data/data_processing_2026-04-03-13-50-01/www_2026-04-03_113000.csv.zip
+  inflating: www_2026-04-03_113000.csv  
+2026-04-03 13:50:11 Starting data transfer
+2026-04-03 13:50:11 Importing data in mdm5.
+Importing file www_2026-04-03_112000.csv for dates 2026-04-03 11:20:00.077 2026-04-03 11:29:59.973
+SET
+SELECT 0
+COPY 16441
+INSERT 0 16441
+2026-04-03 13:50:11 Transfering data from mdm5 to sensorthings from 2026-04-03 11:20:00.077 to 2026-04-03 11:29:59.973
+processing data between 2026-04-03 11:20:00 and  2026-04-03 11:29:59
+COPY 16962
+INSERT 0 16184
+DELETE 16962
+Importing file www_2026-04-03_113000.csv for dates 2026-04-03 11:30:00.177 2026-04-03 11:39:59.977
+SET
+SELECT 0
+COPY 16434
+INSERT 0 16434
+2026-04-03 13:52:03 Transfering data from mdm5 to sensorthings from 2026-04-03 11:30:00.177 to 2026-04-03 11:39:59.977
+processing data between 2026-04-03 11:30:00 and  2026-04-03 11:39:59
+COPY 16951
+INSERT 0 16177
+DELETE 16951
+2026-04-03 13:54:01 Ready for QC from 2026-04-03 11:20:00 to 2026-04-03 11:39:59.
+Deleting temporary folder data_processing_2026-04-03-13-50-01
+Execution time was 240 seconds.
+------------------------------------------------------------------------------------
+last file processed www_2026-04-03_113000.csv.zip
+new file(s) to process
+created temporary folder data_processing_2026-04-03-14-00-01
+Unzipping new files
+new last file not updated
+------------------------------------------------------------------------------------
+last file processed www_2026-04-03_113000.csv.zip
+/home/RBINS.BE/bmdc/ftpodas/www_2026-04-03_114000.csv.zip
+/home/RBINS.BE/bmdc/ftpodas/www_2026-04-03_115000.csv.zip
+new file(s) to process
+created temporary folder data_processing_2026-04-03-14-10-01
+Unzipping new files
+Archive:  /home/RBINS.BE/bmdc/belgica_data_transfer/data/mdm5_raw_data/data_processing_2026-04-03-14-10-01/www_2026-04-03_114000.csv.zip
+  inflating: www_2026-04-03_114000.csv  
+Archive:  /home/RBINS.BE/bmdc/belgica_data_transfer/data/mdm5_raw_data/data_processing_2026-04-03-14-10-01/www_2026-04-03_115000.csv.zip
+  inflating: www_2026-04-03_115000.csv  
+2026-04-03 14:10:10 Starting data transfer
+2026-04-03 14:10:10 Importing data in mdm5.
+Importing file www_2026-04-03_114000.csv for dates 2026-04-03 11:40:00.183 2026-04-03 11:49:59.987
+SET
+SELECT 0
+COPY 16447
+INSERT 0 16447
+2026-04-03 14:10:11 Transfering data from mdm5 to sensorthings from 2026-04-03 11:40:00.183 to 2026-04-03 11:49:59.987
+processing data between 2026-04-03 11:40:00 and  2026-04-03 11:49:59
+COPY 16966
+INSERT 0 16189
+DELETE 16966
+Importing file www_2026-04-03_115000.csv for dates 2026-04-03 11:50:00.203 2026-04-03 11:59:59.990
+SET
+SELECT 0
+COPY 16482
+INSERT 0 16482
+2026-04-03 14:12:06 Transfering data from mdm5 to sensorthings from 2026-04-03 11:50:00.203 to 2026-04-03 11:59:59.990
+processing data between 2026-04-03 11:50:00 and  2026-04-03 11:59:59
+COPY 16985
+INSERT 0 16187
+DELETE 16985
+2026-04-03 14:13:59 Ready for QC from 2026-04-03 11:40:00 to 2026-04-03 11:59:59.
+Deleting temporary folder data_processing_2026-04-03-14-10-01
+Execution time was 238 seconds.
+------------------------------------------------------------------------------------
+last file processed www_2026-04-03_115000.csv.zip
+new file(s) to process
+created temporary folder data_processing_2026-04-03-14-20-01
+Unzipping new files
+new last file not updated
+------------------------------------------------------------------------------------
+last file processed www_2026-04-03_115000.csv.zip
+/home/RBINS.BE/bmdc/ftpodas/www_2026-04-03_121000.csv.zip
+/home/RBINS.BE/bmdc/ftpodas/www_2026-04-03_120000.csv.zip
+new file(s) to process
+created temporary folder data_processing_2026-04-03-14-30-01
+Unzipping new files
+Archive:  /home/RBINS.BE/bmdc/belgica_data_transfer/data/mdm5_raw_data/data_processing_2026-04-03-14-30-01/www_2026-04-03_120000.csv.zip
+  inflating: www_2026-04-03_120000.csv  
+Archive:  /home/RBINS.BE/bmdc/belgica_data_transfer/data/mdm5_raw_data/data_processing_2026-04-03-14-30-01/www_2026-04-03_121000.csv.zip
+  inflating: www_2026-04-03_121000.csv  
+2026-04-03 14:30:11 Starting data transfer
+2026-04-03 14:30:11 Importing data in mdm5.
+Importing file www_2026-04-03_120000.csv for dates 2026-04-03 12:00:00.210 2026-04-03 12:09:59.997
+SET
+SELECT 0
+COPY 16428
+INSERT 0 16428
+2026-04-03 14:30:11 Transfering data from mdm5 to sensorthings from 2026-04-03 12:00:00.210 to 2026-04-03 12:09:59.997
+processing data between 2026-04-03 12:00:00 and  2026-04-03 12:09:59
+COPY 16949
+INSERT 0 16139
+DELETE 16949
+Importing file www_2026-04-03_121000.csv for dates 2026-04-03 12:10:00.217 2026-04-03 12:19:59.880
+SET
+SELECT 0
+COPY 16425
+INSERT 0 16425
+2026-04-03 14:32:02 Transfering data from mdm5 to sensorthings from 2026-04-03 12:10:00.217 to 2026-04-03 12:19:59.880
+processing data between 2026-04-03 12:10:00 and  2026-04-03 12:19:59
+COPY 16946
+INSERT 0 16158
+DELETE 16946
+2026-04-03 14:33:54 Ready for QC from 2026-04-03 12:00:00 to 2026-04-03 12:19:59.
+Deleting temporary folder data_processing_2026-04-03-14-30-01
+Execution time was 233 seconds.
+------------------------------------------------------------------------------------
+last file processed www_2026-04-03_121000.csv.zip
+new file(s) to process
+created temporary folder data_processing_2026-04-03-14-40-01
+Unzipping new files
+new last file not updated
+------------------------------------------------------------------------------------
+last file processed www_2026-04-03_121000.csv.zip
+/home/RBINS.BE/bmdc/ftpodas/www_2026-04-03_123000.csv.zip
+/home/RBINS.BE/bmdc/ftpodas/www_2026-04-03_122000.csv.zip
+new file(s) to process
+created temporary folder data_processing_2026-04-03-14-50-01
+Unzipping new files
+Archive:  /home/RBINS.BE/bmdc/belgica_data_transfer/data/mdm5_raw_data/data_processing_2026-04-03-14-50-01/www_2026-04-03_122000.csv.zip
+  inflating: www_2026-04-03_122000.csv  
+Archive:  /home/RBINS.BE/bmdc/belgica_data_transfer/data/mdm5_raw_data/data_processing_2026-04-03-14-50-01/www_2026-04-03_123000.csv.zip
+  inflating: www_2026-04-03_123000.csv  
+2026-04-03 14:50:11 Starting data transfer
+2026-04-03 14:50:11 Importing data in mdm5.
+Importing file www_2026-04-03_122000.csv for dates 2026-04-03 12:20:00.003 2026-04-03 12:29:59.683
+SET
+SELECT 0
+COPY 16461
+INSERT 0 16461
+2026-04-03 14:50:11 Transfering data from mdm5 to sensorthings from 2026-04-03 12:20:00.003 to 2026-04-03 12:29:59.683
+processing data between 2026-04-03 12:20:00 and  2026-04-03 12:29:59
+COPY 16986
+INSERT 0 16204
+DELETE 16986
+Importing file www_2026-04-03_123000.csv for dates 2026-04-03 12:30:00.010 2026-04-03 12:39:59.720
+SET
+SELECT 0
+COPY 16435
+INSERT 0 16435
+2026-04-03 14:52:06 Transfering data from mdm5 to sensorthings from 2026-04-03 12:30:00.010 to 2026-04-03 12:39:59.720
+processing data between 2026-04-03 12:30:00 and  2026-04-03 12:39:59
+COPY 16953
+INSERT 0 16179
+DELETE 16953
+2026-04-03 14:53:57 Ready for QC from 2026-04-03 12:20:00 to 2026-04-03 12:39:59.
+Deleting temporary folder data_processing_2026-04-03-14-50-01
+Execution time was 236 seconds.
+------------------------------------------------------------------------------------
+last file processed www_2026-04-03_123000.csv.zip
+new file(s) to process
+created temporary folder data_processing_2026-04-03-15-00-01
+Unzipping new files
+new last file not updated
+------------------------------------------------------------------------------------
+last file processed www_2026-04-03_123000.csv.zip
+/home/RBINS.BE/bmdc/ftpodas/www_2026-04-03_124000.csv.zip
+/home/RBINS.BE/bmdc/ftpodas/www_2026-04-03_125000.csv.zip
+new file(s) to process
+created temporary folder data_processing_2026-04-03-15-10-01
+Unzipping new files
+Archive:  /home/RBINS.BE/bmdc/belgica_data_transfer/data/mdm5_raw_data/data_processing_2026-04-03-15-10-01/www_2026-04-03_124000.csv.zip
+  inflating: www_2026-04-03_124000.csv  
+Archive:  /home/RBINS.BE/bmdc/belgica_data_transfer/data/mdm5_raw_data/data_processing_2026-04-03-15-10-01/www_2026-04-03_125000.csv.zip
+  inflating: www_2026-04-03_125000.csv  
+2026-04-03 15:10:11 Starting data transfer
+2026-04-03 15:10:11 Importing data in mdm5.
+Importing file www_2026-04-03_124000.csv for dates 2026-04-03 12:40:00.017 2026-04-03 12:49:59.820
+SET
+SELECT 0
+COPY 16433
+INSERT 0 16433
+2026-04-03 15:10:11 Transfering data from mdm5 to sensorthings from 2026-04-03 12:40:00.017 to 2026-04-03 12:49:59.820
+processing data between 2026-04-03 12:40:00 and  2026-04-03 12:49:59
+COPY 16954
+INSERT 0 16180
+DELETE 16954
+Importing file www_2026-04-03_125000.csv for dates 2026-04-03 12:50:00.040 2026-04-03 12:59:59.483
+SET
+SELECT 0
+COPY 16469
+INSERT 0 16469
+2026-04-03 15:12:02 Transfering data from mdm5 to sensorthings from 2026-04-03 12:50:00.040 to 2026-04-03 12:59:59.483
+processing data between 2026-04-03 12:50:00 and  2026-04-03 12:59:59
+COPY 16999
+INSERT 0 16215
+DELETE 16999
+2026-04-03 15:13:51 Ready for QC from 2026-04-03 12:40:00 to 2026-04-03 12:59:59.
+Deleting temporary folder data_processing_2026-04-03-15-10-01
+Execution time was 230 seconds.
+------------------------------------------------------------------------------------
+last file processed www_2026-04-03_125000.csv.zip
+new file(s) to process
+created temporary folder data_processing_2026-04-03-15-20-01
+Unzipping new files
+new last file not updated
+------------------------------------------------------------------------------------
+last file processed www_2026-04-03_125000.csv.zip
+/home/RBINS.BE/bmdc/ftpodas/www_2026-04-03_130000.csv.zip
+/home/RBINS.BE/bmdc/ftpodas/www_2026-04-03_131000.csv.zip
+new file(s) to process
+created temporary folder data_processing_2026-04-03-15-30-01
+Unzipping new files
+Archive:  /home/RBINS.BE/bmdc/belgica_data_transfer/data/mdm5_raw_data/data_processing_2026-04-03-15-30-01/www_2026-04-03_130000.csv.zip
+  inflating: www_2026-04-03_130000.csv  
+Archive:  /home/RBINS.BE/bmdc/belgica_data_transfer/data/mdm5_raw_data/data_processing_2026-04-03-15-30-01/www_2026-04-03_131000.csv.zip
+  inflating: www_2026-04-03_131000.csv  
+2026-04-03 15:30:10 Starting data transfer
+2026-04-03 15:30:10 Importing data in mdm5.
+Importing file www_2026-04-03_130000.csv for dates 2026-04-03 13:00:00.047 2026-04-03 13:09:59.897
+SET
+SELECT 0
+COPY 16461
+INSERT 0 16461
+2026-04-03 15:30:11 Transfering data from mdm5 to sensorthings from 2026-04-03 13:00:00.047 to 2026-04-03 13:09:59.897
+processing data between 2026-04-03 13:00:00 and  2026-04-03 13:09:59
+COPY 16981
+INSERT 0 16200
+DELETE 16981
+Importing file www_2026-04-03_131000.csv for dates 2026-04-03 13:10:00.053 2026-04-03 13:19:59.917
+SET
+SELECT 0
+COPY 16404
+INSERT 0 16404
+2026-04-03 15:32:06 Transfering data from mdm5 to sensorthings from 2026-04-03 13:10:00.053 to 2026-04-03 13:19:59.917
+processing data between 2026-04-03 13:10:00 and  2026-04-03 13:19:59
+COPY 16913
+INSERT 0 16146
+DELETE 16913
+2026-04-03 15:33:58 Ready for QC from 2026-04-03 13:00:00 to 2026-04-03 13:19:59.
+Deleting temporary folder data_processing_2026-04-03-15-30-01
+Execution time was 237 seconds.
+------------------------------------------------------------------------------------
+last file processed www_2026-04-03_131000.csv.zip
+new file(s) to process
+created temporary folder data_processing_2026-04-03-15-40-01
+Unzipping new files
+new last file not updated

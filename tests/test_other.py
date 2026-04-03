@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -21,16 +22,36 @@ from aums_data_request import (
 )
 
 
-@pytest.fixture(scope="session")
-def response_fix() -> dict:
-    with open("./tests/resources/aums_data_request_response.json") as f:
+def load_json(file: str | Path) -> dict:
+    with open(file) as f:
         response_out = json.load(f)
     return response_out
+
+
+response_files = [
+    Path("./tests/resources/aums_data_request_response.json"),
+    Path("./tests/resources/response_20260326.json"),
+]
+
+
+@pytest.fixture(scope="session")
+def response_fix(request) -> dict:
+    return load_json(response_files[0])
+
+
+@pytest.fixture(scope="session", params=response_files)
+def responses(request) -> dict:
+    return load_json(request.param)
 
 
 @pytest.fixture(scope="session")
 def df_fix(response_fix) -> pd.DataFrame:
     df_out = response_datastreams_to_df(response_fix)
+    return df_out
+
+@pytest.fixture(scope="session")
+def dfs(responses) -> pd.DataFrame:
+    df_out = response_datastreams_to_df(responses)
     return df_out
 
 
@@ -42,9 +63,9 @@ def df_pivoted_fix(df_fix) -> pd.DataFrame:
 
 
 class TestOtherFixture:
-    def test_response_fix(self, response_fix):
-        assert response_fix
-        assert response_fix["Datastreams"]
+    def test_response(self, responses):
+        assert responses
+        assert responses["Datastreams"]
 
     def test_df_pivot(self, df_pivoted_fix):
         assert df_pivoted_fix.shape == (10853, 14)
