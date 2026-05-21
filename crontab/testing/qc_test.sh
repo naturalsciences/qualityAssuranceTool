@@ -63,8 +63,9 @@ while read -r LINE; do
         echo "Starting docker container for range $START_I - $END_I"
 
         # start container to do QC
-        docker run \
-                --rm --network=host --user "$(id -u):$(id -g)"\
+        CONTAINER_ID=$(docker run \
+                -d \
+                --network=host --user "$(id -u):$(id -g)"\
                 --workdir /app \
                 -v "$CONFIG_FOLDER":/app/conf \
                 -v "$OUTPUT_FOLDER":/app/outputs \
@@ -72,11 +73,17 @@ while read -r LINE; do
                 -e DEV_SENSORS_USER="$SENSORS_USER" \
                 -e DEV_SENSORS_PASS="$SENSORS_PASS" \
                 rbinsbmdc/qc_log_testing:latest \
-                "time.start=$START_I" "time.end=$END_I"
+                "++time.start=$START_I" "++time.end=$END_I")
+        docker logs -f "$CONTAINER_ID" &
+        LOGS_PID=$!
+
+        echo "Container ID: $CONTAINER_ID"
         STATUS_CODE_CONTAINER=$?
         STATUS_CODE_CONTAINER="$(docker container wait $CONTAINER_ID)"
+        wait $LOGS_PID
         print_current_time
         echo "Status code $CONTAINER_ID: $STATUS_CODE_CONTAINER"
+        docker rm "$CONTAINER_ID"
 
         # variables needed for transfer script
         FMT_TRANSFER_SCRIPT="+%Y-%m-%d %H:%M:%S"
