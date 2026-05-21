@@ -5,7 +5,7 @@ import queue
 import sys
 import threading
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from functools import partial
 from pathlib import Path
 from typing import Optional
@@ -60,6 +60,23 @@ from pandassta.sta_requests import (
 from searegion_detection.pandaseavox import intersect_df_region
 
 log = logging.getLogger(__name__)
+
+class UTCFormatter(logging.Formatter):
+    def formatTime(self, record: logging.LogRecord, datefmt: str | None = None) -> str:
+        ct = datetime.fromtimestamp(record.created, tz=timezone.utc)
+        if datefmt:
+            return ct.strftime(datefmt)
+        return ct.strftime(self.default_time_format + ",%f")[:-3]
+
+
+def patch_logging_utc():
+    for handler in logging.root.handlers:
+        current_fmt = handler.formatter._fmt if handler.formatter else '[%(asctime)s][%(name)s][%(levelname)s] - %(message)s'
+        handler.setFormatter(
+            # UTCFormatter(fmt="[%(levelname)s] %(asctime)s | %(name)s | %(message)s")
+            UTCFormatter(fmt=current_fmt)
+        )
+
 
 load_dotenv()
 
@@ -285,12 +302,14 @@ def get_independent_window_data(
     return df_out
 
 
-# @hydra.main(config_path="../conf", config_name="config.yaml", version_base="1.2")
-@hydra.main(
-    config_path="../conf", config_name="config_20260325.yaml", version_base="1.2"
-)
+@hydra.main(config_path="../conf", config_name="config.yaml", version_base="1.2")
+# @hydra.main(
+    # config_path="../conf", config_name="config_20260325.yaml", version_base="1.2"
+    # config_path="../conf", config_name="config_ears_check.yaml", version_base="1.2"
+# )
 def main(cfg: QCconf):
     log_extra = logging.getLogger(name="extra")
+    patch_logging_utc()
     log_extra.setLevel(logging.INFO)
     rootlog = logging.getLogger()
     extra_log_file = Path(

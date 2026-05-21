@@ -61,18 +61,25 @@ while read -r LINE; do
 
         # start container to do QC
         CONTAINER_ID=$(docker run \
-                -d --rm --network=host --user "$(id -u):$(id -g)"\
+                -d \
+                --network=host --user "$(id -u):$(id -g)"\
                 --workdir /app \
                 -v "$CONFIG_FOLDER":/app/conf \
                 -v "$OUTPUT_FOLDER":/app/outputs \
+                -e PYTHONUNBUFFERED=1 \
                 -e DEV_SENSORS_USER="$SENSORS_USER" \
                 -e DEV_SENSORS_PASS="$SENSORS_PASS" \
                 rbinsbmdc/quality_assurance_tool:$IMAGE_TAG \
-                "time.start=$START_I" "time.end=$END_I")
+                "++time.start=$START_I" "++time.end=$END_I")
         
+        docker logs -f "$CONTAINER_ID" &
+        LOGS_PID=$!
+
         STATUS_CODE_CONTAINER="$(docker container wait $CONTAINER_ID)"
+        wait $LOGS_PID
         print_current_time
         echo "Status code $CONTAINER_ID: $STATUS_CODE_CONTAINER"
+        docker rm "$CONTAINER_ID"
 
         # variables needed for transfer script
         FMT_TRANSFER_SCRIPT="+%Y-%m-%d %H:%M:%S"
